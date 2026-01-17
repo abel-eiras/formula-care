@@ -18,26 +18,67 @@ const crearPacienteSchema = z.object({
 const actualizarPacienteSchema = crearPacienteSchema.partial();
 
 /**
- * Obtener todos los pacientes con búsqueda opcional
+ * Obtener todos los pacientes con búsqueda y filtros avanzados
  */
 export async function obtenerPacientes(req: Request, res: Response) {
   try {
-    const { busqueda } = req.query;
+    const { 
+      busqueda, 
+      email, 
+      sexo, 
+      tieneDermo, 
+      tieneBio,
+      fechaDesde,
+      fechaHasta,
+      ordenarPor = 'createdAt',
+      orden = 'desc'
+    } = req.query;
     
-    // SQLite no soporta mode: 'insensitive', usar toLowerCase en el código
-    const busquedaLower = busqueda ? (busqueda as string).toLowerCase() : '';
-    const where = busqueda
-      ? {
-          OR: [
-            { name: { contains: busqueda as string } },
-            { phone: { contains: busqueda as string } },
-          ],
-        }
-      : {};
-
+    // Construir condiciones de búsqueda
+    const condiciones: any[] = [];
+    
+    // Búsqueda general (nombre, teléfono, email)
+    if (busqueda) {
+      const term = busqueda as string;
+      condiciones.push({
+        OR: [
+          { name: { contains: term } },
+          { phone: { contains: term } },
+          { email: { contains: term } },
+        ],
+      });
+    }
+    
+    // Filtro por email específico
+    if (email) {
+      condiciones.push({ email: { contains: email as string } });
+    }
+    
+    // Filtro por sexo
+    if (sexo && (sexo === 'M' || sexo === 'F' || sexo === 'O')) {
+      condiciones.push({ sex: sexo });
+    }
+    
+    // Filtro por fecha de creación
+    if (fechaDesde || fechaHasta) {
+      const fechaFilter: any = {};
+      if (fechaDesde) {
+        fechaFilter.gte = new Date(fechaDesde as string);
+      }
+      if (fechaHasta) {
+        fechaFilter.lte = new Date(fechaHasta as string);
+      }
+      condiciones.push({ createdAt: fechaFilter });
+    }
+    
+    const where = condiciones.length > 0 ? { AND: condiciones } : {};
+    
+    // Obtener pacientes
     const pacientes = await prisma.paciente.findMany({
       where,
-      orderBy: { createdAt: 'desc' },
+      orderBy: { 
+        [ordenarPor as string]: orden === 'asc' ? 'asc' : 'desc' 
+      },
       include: {
         _count: {
           select: {
@@ -48,8 +89,19 @@ export async function obtenerPacientes(req: Request, res: Response) {
         },
       },
     });
+    
+    // Filtrar por tipo de servicio si se especifica (post-query porque requiere relación)
+    let pacientesFiltrados = pacientes;
+    
+    if (tieneDermo === 'true') {
+      pacientesFiltrados = pacientesFiltrados.filter(p => p._count.analisisDermo > 0);
+    }
+    
+    if (tieneBio === 'true') {
+      pacientesFiltrados = pacientesFiltrados.filter(p => p._count.analisisBio > 0);
+    }
 
-    res.json(pacientes);
+    res.json(pacientesFiltrados);
   } catch (error) {
     console.error('Error al obtener pacientes:', error);
     res.status(500).json({ error: 'Error al obtener pacientes' });

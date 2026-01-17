@@ -1,16 +1,30 @@
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { api } from '@/lib/api';
 import type { Paciente } from '@/types';
+import type { FiltrosPacientes } from '@/components/pacientes/FiltrosAvanzados';
 
 /**
- * Hook para gestionar la lista de pacientes
+ * Hook para gestionar la lista de pacientes con filtros opcionales
  * Usa React Query para caching y sincronización automática
  */
-export function usePacientes() {
+export function usePacientes(filtros?: FiltrosPacientes) {
   return useQuery({
-    queryKey: ['pacientes'],
+    queryKey: ['pacientes', filtros],
     queryFn: async () => {
-      return api.get<Paciente[]>('/pacientes');
+      const params = new URLSearchParams();
+      
+      if (filtros?.busqueda) params.append('busqueda', filtros.busqueda);
+      if (filtros?.email) params.append('email', filtros.email);
+      if (filtros?.sexo) params.append('sexo', filtros.sexo);
+      if (filtros?.tieneDermo) params.append('tieneDermo', 'true');
+      if (filtros?.tieneBio) params.append('tieneBio', 'true');
+      if (filtros?.fechaDesde) params.append('fechaDesde', filtros.fechaDesde.toISOString());
+      if (filtros?.fechaHasta) params.append('fechaHasta', filtros.fechaHasta.toISOString());
+      if (filtros?.ordenarPor) params.append('ordenarPor', filtros.ordenarPor);
+      if (filtros?.orden) params.append('orden', filtros.orden);
+      
+      const queryString = params.toString();
+      return api.get<Paciente[]>(`/pacientes${queryString ? `?${queryString}` : ''}`);
     },
     staleTime: 5 * 60 * 1000, // 5 minutos
   });

@@ -1,4 +1,4 @@
-import { useState, useMemo } from "react";
+import { useState } from "react";
 import { Avatar, AvatarFallback } from "@/components/ui/avatar";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
@@ -12,10 +12,11 @@ import {
   TableHeader, 
   TableRow 
 } from "@/components/ui/table";
-import { Search, UserPlus, Filter, ChevronRight } from "lucide-react";
+import { Search, UserPlus, ChevronRight } from "lucide-react";
 import { Link } from "react-router-dom";
 import { usePacientes } from "@/hooks/usePacientes";
 import { LoadingSpinner } from "@/components/ui/LoadingSpinner";
+import { FiltrosAvanzados, type FiltrosPacientes } from "@/components/pacientes/FiltrosAvanzados";
 import type { Paciente } from "@/types";
 
 /**
@@ -43,18 +44,15 @@ const getServices = (paciente: Paciente): ("dermo" | "bio")[] => {
 
 export default function Pacientes() {
   const [searchTerm, setSearchTerm] = useState("");
-  const { data: pacientes = [], isLoading, error } = usePacientes();
+  const [filtros, setFiltros] = useState<FiltrosPacientes>({});
   
-  // Memoizar el filtrado para evitar recalcular en cada render
-  const filteredPatients = useMemo(() => {
-    if (!searchTerm.trim()) return pacientes;
-    
-    const term = searchTerm.toLowerCase();
-    return pacientes.filter(patient =>
-      patient.name.toLowerCase().includes(term) ||
-      patient.phone.includes(searchTerm)
-    );
-  }, [searchTerm, pacientes]);
+  // Combinar búsqueda rápida con filtros avanzados
+  const filtrosCompletos: FiltrosPacientes = {
+    ...filtros,
+    busqueda: searchTerm || undefined,
+  };
+  
+  const { data: pacientes = [], isLoading, error } = usePacientes(filtrosCompletos);
 
   if (isLoading) {
     return <LoadingSpinner text="Cargando pacientes..." />;
@@ -97,16 +95,20 @@ export default function Pacientes() {
             <div className="relative flex-1">
               <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
               <Input
-                placeholder="Buscar por nombre o teléfono..."
+                placeholder="Buscar por nombre, teléfono o email..."
                 value={searchTerm}
                 onChange={(e) => setSearchTerm(e.target.value)}
                 className="pl-10"
               />
             </div>
-            <Button variant="outline" className="gap-2">
-              <Filter className="h-4 w-4" />
-              Filtros
-            </Button>
+            <FiltrosAvanzados
+              filtros={filtros}
+              onFiltrosChange={setFiltros}
+              onReset={() => {
+                setFiltros({});
+                setSearchTerm("");
+              }}
+            />
           </div>
         </CardContent>
       </Card>
@@ -115,11 +117,11 @@ export default function Pacientes() {
       <Card className="shadow-sm border-border/50">
         <CardHeader className="pb-4">
           <CardTitle className="text-lg font-semibold">
-            {filteredPatients.length} pacientes encontrados
+            {pacientes.length} pacientes encontrados
           </CardTitle>
         </CardHeader>
         <CardContent>
-          {filteredPatients.length === 0 ? (
+          {pacientes.length === 0 ? (
             <div className="text-center py-8 text-muted-foreground">
               <p>No se encontraron pacientes</p>
               <Button variant="link" asChild className="mt-2">
@@ -139,7 +141,7 @@ export default function Pacientes() {
                 </TableRow>
               </TableHeader>
               <TableBody>
-                {filteredPatients.map((patient) => {
+                {pacientes.map((patient) => {
                   const services = getServices(patient);
                   return (
                     <TableRow key={patient.id} className="group">

@@ -182,6 +182,91 @@ export async function obtenerAnalisisDermo(req: Request, res: Response) {
 }
 
 /**
+ * Obtener todos los análisis dermocosméticos con filtros avanzados
+ */
+export async function obtenerTodosAnalisisDermo(req: Request, res: Response) {
+  try {
+    const {
+      pacienteId,
+      pacienteNombre,
+      fechaDesde,
+      fechaHasta,
+      motivoConsulta,
+      ordenarPor = 'fecha',
+      orden = 'desc',
+      limit,
+    } = req.query;
+
+    const condiciones: any[] = [];
+
+    if (pacienteId) {
+      condiciones.push({ pacienteId: pacienteId as string });
+    }
+
+    if (pacienteNombre) {
+      condiciones.push({
+        paciente: {
+          name: { contains: pacienteNombre as string },
+        },
+      });
+    }
+
+    if (motivoConsulta) {
+      condiciones.push({
+        motivoConsulta: { contains: motivoConsulta as string },
+      });
+    }
+
+    if (fechaDesde || fechaHasta) {
+      const fechaFilter: any = {};
+      if (fechaDesde) {
+        fechaFilter.gte = fechaDesde as string;
+      }
+      if (fechaHasta) {
+        fechaFilter.lte = fechaHasta as string;
+      }
+      condiciones.push({ fecha: fechaFilter });
+    }
+
+    const where = condiciones.length > 0 ? { AND: condiciones } : {};
+
+    const analisis = await prisma.analisisDermo.findMany({
+      where,
+      include: {
+        paciente: {
+          select: {
+            id: true,
+            name: true,
+            phone: true,
+            email: true,
+          },
+        },
+      },
+      orderBy: {
+        [ordenarPor as string]: orden === 'asc' ? 'asc' : 'desc',
+      },
+      take: limit ? parseInt(limit as string) : undefined,
+    });
+
+    // Parsear campos JSON
+    const analisisParsed = analisis.map((a) => ({
+      ...a,
+      valoracionPiel: JSON.parse(a.valoracionPiel),
+      habitos: JSON.parse(a.habitos),
+      concerns: JSON.parse(a.concerns),
+      rutinaDia: a.rutinaDia ? JSON.parse(a.rutinaDia) : null,
+      rutinaNoche: a.rutinaNoche ? JSON.parse(a.rutinaNoche) : null,
+      cuidadosSemanales: a.cuidadosSemanales ? JSON.parse(a.cuidadosSemanales) : null,
+    }));
+
+    res.json(analisisParsed);
+  } catch (error) {
+    console.error('Error al obtener análisis dermo:', error);
+    res.status(500).json({ error: 'Error al obtener análisis dermocosméticos' });
+  }
+}
+
+/**
  * Obtener todos los análisis dermocosméticos de un paciente
  */
 export async function obtenerAnalisisDermoPorPaciente(req: Request, res: Response) {
@@ -365,6 +450,77 @@ export async function obtenerAnalisisBio(req: Request, res: Response) {
   } catch (error) {
     console.error('Error al obtener análisis bio:', error);
     res.status(500).json({ error: 'Error al obtener análisis bioquímico' });
+  }
+}
+
+/**
+ * Obtener todos los análisis bioquímicos con filtros avanzados
+ */
+export async function obtenerTodosAnalisisBio(req: Request, res: Response) {
+  try {
+    const {
+      pacienteId,
+      pacienteNombre,
+      fechaDesde,
+      fechaHasta,
+      parametroAlterado,
+      ordenarPor = 'fecha',
+      orden = 'desc',
+      limit,
+    } = req.query;
+
+    const condiciones: any[] = [];
+
+    if (pacienteId) {
+      condiciones.push({ pacienteId: pacienteId as string });
+    }
+
+    if (pacienteNombre) {
+      condiciones.push({
+        paciente: {
+          name: { contains: pacienteNombre as string },
+        },
+      });
+    }
+
+    if (fechaDesde || fechaHasta) {
+      const fechaFilter: any = {};
+      if (fechaDesde) {
+        fechaFilter.gte = fechaDesde as string;
+      }
+      if (fechaHasta) {
+        fechaFilter.lte = fechaHasta as string;
+      }
+      condiciones.push({ fecha: fechaFilter });
+    }
+
+    // Nota: parametroAlterado requeriría lógica más compleja para verificar valores fuera de rango
+    // Por ahora lo dejamos como placeholder
+
+    const where = condiciones.length > 0 ? { AND: condiciones } : {};
+
+    const analisis = await prisma.analisisBio.findMany({
+      where,
+      include: {
+        paciente: {
+          select: {
+            id: true,
+            name: true,
+            phone: true,
+            email: true,
+          },
+        },
+      },
+      orderBy: {
+        [ordenarPor as string]: orden === 'asc' ? 'asc' : 'desc',
+      },
+      take: limit ? parseInt(limit as string) : undefined,
+    });
+
+    res.json(analisis);
+  } catch (error) {
+    console.error('Error al obtener análisis bio:', error);
+    res.status(500).json({ error: 'Error al obtener análisis bioquímicos' });
   }
 }
 
