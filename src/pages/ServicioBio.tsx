@@ -544,6 +544,37 @@ export default function ServicioBio() {
           </Card>
         </div>
       </div>
+
+      {/* Observaciones y Recomendaciones */}
+      <Card className="shadow-sm border-border/50">
+        <CardContent className="pt-6">
+          <h3 className="text-lg font-semibold mb-4 text-primary">Observaciones y Recomendaciones</h3>
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+            <div className="space-y-2">
+              <Label htmlFor="observaciones">Observaciones</Label>
+              <Textarea
+                id="observaciones"
+                placeholder="Anotaciones sobre el análisis..."
+                value={formData.observaciones}
+                onChange={(e) => handleChange("observaciones", e.target.value)}
+                rows={6}
+                className="resize-none"
+              />
+            </div>
+            <div className="space-y-2">
+              <Label htmlFor="recomendaciones">Recomendaciones</Label>
+              <Textarea
+                id="recomendaciones"
+                placeholder="Recomendaciones para el paciente..."
+                value={formData.recomendaciones}
+                onChange={(e) => handleChange("recomendaciones", e.target.value)}
+                rows={6}
+                className="resize-none"
+              />
+            </div>
+          </div>
+        </CardContent>
+      </Card>
     </div>
   );
 }
