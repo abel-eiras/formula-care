@@ -80,7 +80,20 @@ class ApiClient {
     });
 
     if (!response.ok) {
-      throw new Error(`Error ${response.status}: ${response.statusText}`);
+      // Intentar obtener el mensaje de error del backend
+      let errorMessage = `${response.status}: ${response.statusText}`;
+      try {
+        const errorData = await response.json();
+        if (errorData.error) {
+          errorMessage = `Error ${response.status}: ${errorData.error}`;
+          if (errorData.detalles) {
+            errorMessage += ` - ${JSON.stringify(errorData.detalles)}`;
+          }
+        }
+      } catch {
+        // Si no se puede parsear el JSON, usar el mensaje por defecto
+      }
+      throw new Error(errorMessage);
     }
 
     return response.json();
