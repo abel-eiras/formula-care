@@ -1,6 +1,11 @@
 import { Request, Response } from 'express';
 import { prisma } from '../lib/prisma.js';
 import { z } from 'zod';
+import {
+  crearEventoEnCalendar,
+  actualizarEventoEnCalendar,
+  eliminarEventoEnCalendar,
+} from '../services/googleCalendar.js';
 
 // Esquema de validación para crear cita
 const crearCitaSchema = z.object({

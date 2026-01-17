@@ -4,11 +4,13 @@ import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/com
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Switch } from "@/components/ui/switch";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import { ArrowLeft, Save, Settings, Building2, FlaskConical } from "lucide-react";
+import { ArrowLeft, Save, Settings, Building2, FlaskConical, Calendar } from "lucide-react";
 import { Link } from "react-router-dom";
 import { toast } from "sonner";
 import { useConfiguracion, useActualizarFarmacia, useActualizarParametrosReferencia, useActualizarValoracionBio } from "@/hooks/useConfiguracion";
+import { useGoogleCalendarEstado, useCalendarios, iniciarOAuth, useConfigurarCalendario, useDesconectarGoogleCalendar } from "@/hooks/useGoogleCalendar";
 import type { ParametroReferencia } from "@/types";
 
 // Mapeo de parámetros con sus etiquetas y unidades
@@ -147,6 +149,10 @@ export default function Configuracion() {
           <TabsTrigger value="parametros" className="gap-2">
             <FlaskConical className="h-4 w-4" />
             Parámetros Bioquímicos
+          </TabsTrigger>
+          <TabsTrigger value="googleCalendar" className="gap-2">
+            <Calendar className="h-4 w-4" />
+            Google Calendar
           </TabsTrigger>
         </TabsList>
 
@@ -469,7 +475,214 @@ export default function Configuracion() {
             </Card>
           </div>
         </TabsContent>
+
+        {/* Tab: Google Calendar */}
+        <TabsContent value="googleCalendar">
+          <GoogleCalendarConfig />
+        </TabsContent>
       </Tabs>
     </div>
+  );
+}
+
+/**
+ * Componente de configuración de Google Calendar
+ */
+function GoogleCalendarConfig() {
+  const { data: estado, isLoading: loadingEstado } = useGoogleCalendarEstado();
+  const { data: calendarios, refetch: refetchCalendarios } = useCalendarios();
+  const configurarCalendario = useConfigurarCalendario();
+  const desconectar = useDesconectarGoogleCalendar();
+  const [calendarioSeleccionado, setCalendarioSeleccionado] = useState<string>("");
+
+  const handleConectar = async () => {
+    try {
+      const authUrl = await iniciarOAuth();
+      window.location.href = authUrl;
+    } catch (error) {
+      console.error("Error al iniciar OAuth:", error);
+      toast.error("Error al conectar con Google Calendar");
+    }
+  };
+
+  const handleCargarCalendarios = async () => {
+    try {
+      await refetchCalendarios();
+    } catch (error) {
+      console.error("Error al cargar calendarios:", error);
+      toast.error("Error al cargar calendarios. Verifica que estés conectado.");
+    }
+  };
+
+  const handleGuardarCalendario = async () => {
+    if (!calendarioSeleccionado) {
+      toast.error("Selecciona un calendario");
+      return;
+    }
+
+    try {
+      await configurarCalendario.mutateAsync(calendarioSeleccionado);
+      toast.success("Calendario configurado correctamente");
+    } catch (error) {
+      console.error("Error al configurar calendario:", error);
+      toast.error("Error al configurar calendario");
+    }
+  };
+
+  const handleDesconectar = async () => {
+    if (!confirm("¿Estás seguro de que quieres desconectar Google Calendar?")) {
+      return;
+    }
+
+    try {
+      await desconectar.mutateAsync();
+      toast.success("Google Calendar desconectado correctamente");
+    } catch (error) {
+      console.error("Error al desconectar:", error);
+      toast.error("Error al desconectar Google Calendar");
+    }
+  };
+
+  // Verificar si hay parámetro de éxito en la URL
+  useEffect(() => {
+    const params = new URLSearchParams(window.location.search);
+    if (params.get("googleCalendar") === "success") {
+      toast.success("¡Cuenta de Google conectada correctamente!");
+      // Limpiar URL
+      window.history.replaceState({}, "", "/configuracion");
+      // Cargar calendarios automáticamente
+      handleCargarCalendarios();
+    } else if (params.get("googleCalendar") === "error") {
+      toast.error("Error al conectar con Google Calendar");
+      window.history.replaceState({}, "", "/configuracion");
+    }
+  }, []);
+
+  if (loadingEstado) {
+    return (
+      <Card className="shadow-sm border-border/50">
+        <CardContent className="pt-6">
+          <p>Cargando estado de Google Calendar...</p>
+        </CardContent>
+      </Card>
+    );
+  }
+
+  return (
+    <Card className="shadow-sm border-border/50">
+      <CardHeader>
+        <CardTitle>Integración con Google Calendar</CardTitle>
+        <CardDescription>
+          Sincroniza tus citas con Google Calendar. Las citas de dermocosmética aparecerán en azul y las de análisis bioquímico en verde.
+        </CardDescription>
+      </CardHeader>
+      <CardContent className="space-y-6">
+        {/* Estado de conexión */}
+        <div className="p-4 rounded-lg border bg-muted/50">
+          <div className="flex items-center justify-between">
+            <div>
+              <p className="font-semibold">
+                Estado: {estado?.connected ? "Conectado" : "No conectado"}
+              </p>
+              {estado?.connected && estado.calendarId && (
+                <p className="text-sm text-muted-foreground mt-1">
+                  Calendario: {estado.calendarId === "primary" ? "Principal" : estado.calendarId}
+                </p>
+              )}
+            </div>
+            {estado?.connected ? (
+              <Button variant="destructive" onClick={handleDesconectar} disabled={desconectar.isPending}>
+                Desconectar
+              </Button>
+            ) : (
+              <Button onClick={handleConectar} className="gap-2">
+                <Calendar className="h-4 w-4" />
+                Conectar con Google
+              </Button>
+            )}
+          </div>
+        </div>
+
+        {/* Configuración de calendario */}
+        {estado?.connected && (
+          <div className="space-y-4">
+            <div className="space-y-2">
+              <Label>Seleccionar Calendario</Label>
+              <div className="flex gap-2">
+                <Select
+                  value={calendarioSeleccionado}
+                  onValueChange={setCalendarioSeleccionado}
+                  disabled={!calendarios || calendarios.length === 0}
+                >
+                  <SelectTrigger>
+                    <SelectValue placeholder="Selecciona un calendario" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    {calendarios?.map((cal) => (
+                      <SelectItem key={cal.id} value={cal.id}>
+                        {cal.summary} {cal.primary && "(Principal)"}
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+                <Button variant="outline" onClick={handleCargarCalendarios}>
+                  Actualizar Lista
+                </Button>
+              </div>
+              {calendarios && calendarios.length === 0 && (
+                <p className="text-sm text-muted-foreground">
+                  No se encontraron calendarios. Haz clic en "Actualizar Lista" para cargarlos.
+                </p>
+              )}
+            </div>
+
+            {calendarioSeleccionado && (
+              <Button
+                onClick={handleGuardarCalendario}
+                disabled={configurarCalendario.isPending}
+                className="gap-2"
+              >
+                <Save className="h-4 w-4" />
+                {configurarCalendario.isPending ? "Guardando..." : "Guardar Calendario"}
+              </Button>
+            )}
+          </div>
+        )}
+
+        {/* Información sobre colores */}
+        <div className="p-4 rounded-lg border border-primary/20 bg-primary/5">
+          <p className="font-semibold mb-2">Colores de las citas:</p>
+          <ul className="space-y-1 text-sm">
+            <li className="flex items-center gap-2">
+              <div className="w-4 h-4 rounded bg-blue-500"></div>
+              <span>Dermocosmética (Azul)</span>
+            </li>
+            <li className="flex items-center gap-2">
+              <div className="w-4 h-4 rounded bg-green-500"></div>
+              <span>Análisis Bioquímico (Verde)</span>
+            </li>
+            <li className="flex items-center gap-2">
+              <div className="w-4 h-4 rounded bg-purple-300"></div>
+              <span>Consulta General (Lavanda)</span>
+            </li>
+            <li className="flex items-center gap-2">
+              <div className="w-4 h-4 rounded bg-yellow-400"></div>
+              <span>Seguimiento (Amarillo)</span>
+            </li>
+          </ul>
+        </div>
+
+        {/* Instrucciones */}
+        <div className="p-4 rounded-lg border border-muted bg-muted/30">
+          <p className="font-semibold mb-2">Instrucciones:</p>
+          <ol className="list-decimal list-inside space-y-1 text-sm text-muted-foreground">
+            <li>Haz clic en "Conectar con Google" para autorizar el acceso</li>
+            <li>Selecciona tu cuenta de Google y otorga los permisos necesarios</li>
+            <li>Selecciona el calendario que quieres usar para las citas</li>
+            <li>Las citas creadas en el sistema se sincronizarán automáticamente</li>
+          </ol>
+        </div>
+      </CardContent>
+    </Card>
   );
 }

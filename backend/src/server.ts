@@ -7,6 +7,7 @@ import { serviciosRouter } from './routes/servicios.js';
 import { configuracionRouter } from './routes/configuracion.js';
 import { estadisticasRouter } from './routes/estadisticas.js';
 import { notificacionesRouter } from './routes/notificaciones.js';
+import { googleCalendarRouter } from './routes/googleCalendar.js';
 
 // Cargar variables de entorno
 dotenv.config();
@@ -35,6 +36,7 @@ app.use('/api/servicios', serviciosRouter);
 app.use('/api/configuracion', configuracionRouter);
 app.use('/api/estadisticas', estadisticasRouter);
 app.use('/api/notificaciones', notificacionesRouter);
+app.use('/api/google-calendar', googleCalendarRouter);
 
 // Ruta de salud
 app.get('/api/health', (req, res) => {

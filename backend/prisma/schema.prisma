@@ -183,6 +183,12 @@ model Configuracion {
   // Configuración de valoración bioquímica
   valoracionBioActiva   Boolean  @default(true) // Activar/desactivar valoración global
   parametrosReferencia  String   @default("{}") // JSON con valores de referencia por parámetro
+  // Integración Google Calendar
+  googleCalendarEnabled Boolean  @default(false) // Si está habilitada la sincronización
+  googleCalendarId      String?  // ID del calendario de Google (ej: "primary" o ID específico)
+  googleAccessToken     String?  // Access token de OAuth
+  googleRefreshToken    String?  // Refresh token de OAuth
+  googleTokenExpiry     DateTime? // Fecha de expiración del access token
   createdAt             DateTime @default(now())
   updatedAt             DateTime @updatedAt
 }
