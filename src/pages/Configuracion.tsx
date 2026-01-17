@@ -942,9 +942,15 @@ function CalComConfig() {
   }, [config]);
 
   const handleGuardar = async () => {
-    if (calComConfig.calComEnabled && !calComConfig.calComLink) {
-      toast.error("El enlace de Cal.com es requerido cuando está habilitado");
-      return;
+    if (calComConfig.calComEnabled) {
+      if (!calComConfig.calComLink) {
+        toast.error("El enlace de Cal.com es requerido cuando está habilitado");
+        return;
+      }
+      if (!calComConfig.calComWebhookSecret) {
+        toast.error("El Webhook Secret es requerido cuando está habilitado");
+        return;
+      }
     }
 
     try {
