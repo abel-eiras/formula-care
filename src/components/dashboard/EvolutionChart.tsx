@@ -1,3 +1,4 @@
+import { memo } from "react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, Legend } from "recharts";
 
@@ -10,7 +11,11 @@ const data = [
   { month: "Jun", dermo: 30, bio: 22 },
 ];
 
-export function EvolutionChart() {
+/**
+ * Gráfico de evolución de servicios
+ * Memoizado porque los datos son estáticos
+ */
+export const EvolutionChart = memo(function EvolutionChart() {
   return (
     <Card className="shadow-sm border-border/50">
       <CardHeader className="pb-4">
@@ -67,4 +72,4 @@ export function EvolutionChart() {
       </CardContent>
     </Card>
   );
-}
+});

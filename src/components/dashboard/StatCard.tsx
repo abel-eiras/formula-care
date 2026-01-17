@@ -1,3 +1,4 @@
+import { memo } from "react";
 import { cn } from "@/lib/utils";
 import { LucideIcon } from "lucide-react";
 
@@ -13,7 +14,11 @@ interface StatCardProps {
   variant?: "default" | "primary" | "secondary";
 }
 
-export function StatCard({ 
+/**
+ * Tarjeta de estadística para el dashboard
+ * Memoizada para evitar re-renders innecesarios cuando las props no cambian
+ */
+export const StatCard = memo(function StatCard({ 
   title, 
   value, 
   subtitle, 
@@ -59,4 +64,4 @@ export function StatCard({
       </div>
     </div>
   );
-}
+});
