@@ -40,7 +40,7 @@ export default function SolicitarCita() {
 
   // Hook para obtener eventos activos y configuración de farmacia
   const { data: eventosActivos = [] } = useEventosActivos();
-  const { data: configFarmacia } = useConfiguracion();
+  const { data: configFarmacia, isLoading: cargandoConfig } = useConfiguracion();
 
   // Determinar tipo y eventoId para disponibilidad
   const tipoParaDisponibilidad = tipoServicio?.startsWith('evento:') ? 'evento' : tipoServicio;
