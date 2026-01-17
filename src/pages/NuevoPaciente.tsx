@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useState, useMemo } from "react";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
@@ -8,9 +8,27 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { ArrowLeft, Save, UserPlus } from "lucide-react";
 import { Link, useNavigate } from "react-router-dom";
 import { toast } from "sonner";
+import { useCrearPaciente } from "@/hooks/usePacientes";
+import type { Paciente } from "@/types";
+
+/**
+ * Calcula la edad a partir de la fecha de nacimiento
+ */
+const calcularEdad = (birthDate: string): number | null => {
+  if (!birthDate) return null;
+  const hoy = new Date();
+  const nacimiento = new Date(birthDate);
+  let edad = hoy.getFullYear() - nacimiento.getFullYear();
+  const mes = hoy.getMonth() - nacimiento.getMonth();
+  if (mes < 0 || (mes === 0 && hoy.getDate() < nacimiento.getDate())) {
+    edad--;
+  }
+  return edad;
+};
 
 export default function NuevoPaciente() {
   const navigate = useNavigate();
+  const crearPaciente = useCrearPaciente();
   const [formData, setFormData] = useState({
     name: "",
     birthDate: "",
@@ -21,15 +39,53 @@ export default function NuevoPaciente() {
     notes: "",
   });
 
+  // Calcular edad automáticamente cuando cambia la fecha de nacimiento
+  const edad = useMemo(() => {
+    return formData.birthDate ? calcularEdad(formData.birthDate) : null;
+  }, [formData.birthDate]);
+
   const handleChange = (field: string, value: string) => {
     setFormData(prev => ({ ...prev, [field]: value }));
   };
 
-  const handleSubmit = (e: React.FormEvent) => {
+  const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    // In a real app, this would save to database
-    toast.success("Paciente registrado correctamente");
-    navigate("/pacientes");
+    
+    if (!formData.name || !formData.phone) {
+      toast.error("El nombre y teléfono son obligatorios");
+      return;
+    }
+
+    if (!formData.birthDate && !edad) {
+      toast.error("Debe proporcionar fecha de nacimiento o edad");
+      return;
+    }
+
+    if (!formData.sex) {
+      toast.error("Debe seleccionar el sexo");
+      return;
+    }
+
+    try {
+      const nuevoPaciente: Omit<Paciente, 'id' | 'createdAt' | 'updatedAt'> = {
+        name: formData.name,
+        age: edad || 0, // Si no hay fecha, usar 0 (se puede calcular después)
+        sex: formData.sex as "M" | "F" | "O",
+        phone: formData.phone,
+        email: formData.email || undefined,
+        birthDate: formData.birthDate || undefined,
+        address: formData.address || undefined,
+        notes: formData.notes || undefined,
+        services: [],
+      };
+
+      await crearPaciente.mutateAsync(nuevoPaciente);
+      toast.success("Paciente registrado correctamente");
+      navigate("/pacientes");
+    } catch (error) {
+      console.error("Error al crear paciente:", error);
+      toast.error("Error al registrar el paciente");
+    }
   };
 
   return (
@@ -70,19 +126,26 @@ export default function NuevoPaciente() {
                 />
               </div>
               <div className="space-y-2">
-                <Label htmlFor="birthDate">Fecha de Nacimiento</Label>
+                <Label htmlFor="birthDate">Fecha de Nacimiento *</Label>
                 <Input
                   id="birthDate"
                   type="date"
                   value={formData.birthDate}
                   onChange={(e) => handleChange("birthDate", e.target.value)}
+                  required
                 />
+                {edad !== null && (
+                  <p className="text-sm text-muted-foreground">
+                    Edad calculada: {edad} años
+                  </p>
+                )}
               </div>
               <div className="space-y-2">
-                <Label htmlFor="sex">Sexo</Label>
+                <Label htmlFor="sex">Sexo *</Label>
                 <Select
                   value={formData.sex}
                   onValueChange={(value) => handleChange("sex", value)}
+                  required
                 >
                   <SelectTrigger id="sex">
                     <SelectValue placeholder="Seleccionar" />
@@ -137,12 +200,12 @@ export default function NuevoPaciente() {
             </div>
 
             <div className="flex justify-end gap-3 pt-4 border-t">
-              <Button type="button" variant="outline" asChild>
+              <Button type="button" variant="outline" asChild disabled={crearPaciente.isPending}>
                 <Link to="/pacientes">Cancelar</Link>
               </Button>
-              <Button type="submit" size="lg" className="gap-2">
+              <Button type="submit" size="lg" className="gap-2" disabled={crearPaciente.isPending}>
                 <Save className="h-5 w-5" />
-                Guardar Paciente
+                {crearPaciente.isPending ? "Guardando..." : "Guardar Paciente"}
               </Button>
             </div>
           </CardContent>
