@@ -111,6 +111,28 @@ export async function crearCita(req: Request, res: Response) {
       },
     });
 
+    // Sincronizar con Google Calendar si está habilitado
+    try {
+      const config = await prisma.configuracion.findUnique({
+        where: { id: 'config' },
+        select: { googleCalendarEnabled: true },
+      });
+
+      if (config?.googleCalendarEnabled) {
+        await crearEventoEnCalendar(
+          datos.titulo,
+          datos.fecha,
+          datos.hora,
+          datos.tipo,
+          paciente.name,
+          datos.notas
+        );
+      }
+    } catch (calendarError) {
+      console.error('Error al sincronizar con Google Calendar (no crítico):', calendarError);
+      // No fallar la creación de la cita si falla la sincronización
+    }
+
     res.status(201).json(cita);
   } catch (error) {
     if (error instanceof z.ZodError) {
