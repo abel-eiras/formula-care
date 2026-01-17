@@ -29,13 +29,20 @@ export default function ServicioBioPrint() {
     ? pacientes.find((p) => p.id === analisis.pacienteId)
     : null;
 
-  // Auto-imprimir cuando se carga la página
+  // Auto-imprimir cuando se carga la página (solo si viene de la opción de imprimir)
   useEffect(() => {
     if (analisis) {
-      // Pequeño delay para asegurar que todo se renderice
-      setTimeout(() => {
-        window.print();
-      }, 500);
+      // Solo auto-imprimir si no viene de una descarga de PDF
+      const isPDFDownload = sessionStorage.getItem('pdfDownload');
+      if (!isPDFDownload) {
+        // Pequeño delay para asegurar que todo se renderice
+        setTimeout(() => {
+          window.print();
+        }, 500);
+      } else {
+        // Limpiar la bandera
+        sessionStorage.removeItem('pdfDownload');
+      }
     }
   }, [analisis]);
 
