@@ -157,7 +157,7 @@ export default function Configuracion() {
             Parámetros Bioquímicos
           </TabsTrigger>
           <TabsTrigger value="calendario" className="gap-2">
-            <Calendar className="h-4 w-4" />
+            <CalendarIcon className="h-4 w-4" />
             Calendario
           </TabsTrigger>
         </TabsList>
