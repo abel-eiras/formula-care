@@ -4,12 +4,108 @@ import { Card, CardContent } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-import { ArrowLeft, Save, Printer, FlaskConical } from "lucide-react";
+import { Badge } from "@/components/ui/badge";
+import { ArrowLeft, Save, Printer, FlaskConical, AlertTriangle, CheckCircle } from "lucide-react";
 import { Link, useNavigate, useSearchParams } from "react-router-dom";
 import { toast } from "sonner";
 import { usePacientes } from "@/hooks/usePacientes";
 import { useCrearAnalisisBio, useAnalisisBio, useActualizarAnalisisBio } from "@/hooks/useAnalisisBio";
-import type { AnalisisBio } from "@/types";
+import { useConfiguracion } from "@/hooks/useConfiguracion";
+import { evaluarValor, getMensajeValoracion } from "@/lib/valoracionBio";
+import { cn } from "@/lib/utils";
+import type { AnalisisBio, ParametroReferencia } from "@/types";
+
+// Componente para mostrar badge de valoración
+function ValoracionBadge({
+  valor,
+  parametroId,
+  referencia,
+}: {
+  valor: number;
+  parametroId: string;
+  referencia?: Record<string, ParametroReferencia>;
+}) {
+  const estado = evaluarValor(valor, referencia?.[parametroId]);
+  const mensaje = getMensajeValoracion(estado);
+
+  if (!estado) return null;
+
+  return (
+    <Badge
+      className={cn(
+        "gap-1 text-xs",
+        estado === "normal" && "bg-success-soft text-success border-success/20",
+        estado === "advertencia" && "bg-warning-soft text-warning border-warning/20",
+        estado === "critico" && "bg-destructive-soft text-destructive border-destructive/20"
+      )}
+    >
+      {estado === "normal" ? (
+        <CheckCircle className="h-3 w-3" />
+      ) : (
+        <AlertTriangle className="h-3 w-3" />
+      )}
+      {mensaje}
+    </Badge>
+  );
+}
+
+// Función para obtener clase CSS del input según valoración
+function getInputClass(estado: "normal" | "advertencia" | "critico" | null): string {
+  if (!estado) return "";
+  switch (estado) {
+    case "normal":
+      return "border-success focus-visible:ring-success";
+    case "advertencia":
+      return "border-warning focus-visible:ring-warning";
+    case "critico":
+      return "border-destructive focus-visible:ring-destructive";
+    default:
+      return "";
+  }
+}
+
+// Función para crear campo de parámetro con valoración
+function ParametroInput({
+  id,
+  label,
+  unit,
+  value,
+  onChange,
+  configuracion,
+  parametroId,
+}: {
+  id: string;
+  label: string;
+  unit: string;
+  value: string;
+  onChange: (value: string) => void;
+  configuracion?: { valoracionBioActiva: boolean; parametrosReferencia?: Record<string, ParametroReferencia> };
+  parametroId: string;
+}) {
+  const numValue = value ? parseFloat(value) : undefined;
+  const estado = configuracion?.valoracionBioActiva
+    ? evaluarValor(numValue, configuracion.parametrosReferencia?.[parametroId])
+    : null;
+
+  return (
+    <div className="space-y-2">
+      <div className="flex items-center justify-between">
+        <Label htmlFor={id}>{label} ({unit})</Label>
+        {configuracion?.valoracionBioActiva && numValue !== undefined && (
+          <ValoracionBadge valor={numValue} parametroId={parametroId} referencia={configuracion.parametrosReferencia} />
+        )}
+      </div>
+      <Input
+        id={id}
+        type="number"
+        step={parametroId === "hemoglobinaGlucosilada" || parametroId === "proteinaCReactiva" || parametroId === "vitaminaD" ? "0.1" : "1"}
+        value={value}
+        onChange={(e) => onChange(e.target.value)}
+        className={cn(estado && getInputClass(estado))}
+      />
+    </div>
+  );
+}
 
 export default function ServicioBio() {
   const navigate = useNavigate();
@@ -19,6 +115,7 @@ export default function ServicioBio() {
 
   const { data: pacientes = [] } = usePacientes();
   const { data: analisisExistente } = useAnalisisBio(analisisId || undefined);
+  const { data: configuracion } = useConfiguracion();
   const crearAnalisis = useCrearAnalisisBio();
   const actualizarAnalisis = useActualizarAnalisisBio();
 
@@ -83,6 +180,12 @@ export default function ServicioBio() {
     const heightM = height / 100;
     return Number((weight / (heightM * heightM)).toFixed(1));
   }, [formData.weight, formData.height]);
+
+  // Evaluar IMC si está activa la valoración
+  const estadoIMC = useMemo(() => {
+    if (!configuracion?.valoracionBioActiva || !imc) return null;
+    return evaluarValor(imc, configuracion.parametrosReferencia?.imc);
+  }, [imc, configuracion]);
 
   const handleChange = (field: keyof typeof formData, value: string) => {
     setFormData((prev) => ({ ...prev, [field]: value }));
@@ -213,56 +316,51 @@ export default function ServicioBio() {
             <CardContent className="pt-6">
               <h3 className="text-lg font-semibold mb-4 text-primary">Parámetros Básicos</h3>
               <div className="space-y-4">
-                <div className="space-y-2">
-                  <Label htmlFor="glucemia">Glucemia (mg/dL)</Label>
-                  <Input
-                    id="glucemia"
-                    type="number"
-                    placeholder="70-100"
-                    value={formData.glucemia}
-                    onChange={(e) => handleChange("glucemia", e.target.value)}
-                  />
-                </div>
-                <div className="space-y-2">
-                  <Label htmlFor="cholesterol">Colesterol Total (mg/dL)</Label>
-                  <Input
-                    id="cholesterol"
-                    type="number"
-                    placeholder="<200"
-                    value={formData.cholesterol}
-                    onChange={(e) => handleChange("cholesterol", e.target.value)}
-                  />
-                </div>
-                <div className="space-y-2">
-                  <Label htmlFor="cholesterolHDL">Colesterol HDL (mg/dL)</Label>
-                  <Input
-                    id="cholesterolHDL"
-                    type="number"
-                    placeholder=">40 (hombres), >50 (mujeres)"
-                    value={formData.cholesterolHDL}
-                    onChange={(e) => handleChange("cholesterolHDL", e.target.value)}
-                  />
-                </div>
-                <div className="space-y-2">
-                  <Label htmlFor="cholesterolLDL">Colesterol LDL (mg/dL)</Label>
-                  <Input
-                    id="cholesterolLDL"
-                    type="number"
-                    placeholder="<100"
-                    value={formData.cholesterolLDL}
-                    onChange={(e) => handleChange("cholesterolLDL", e.target.value)}
-                  />
-                </div>
-                <div className="space-y-2">
-                  <Label htmlFor="triglycerides">Triglicéridos (mg/dL)</Label>
-                  <Input
-                    id="triglycerides"
-                    type="number"
-                    placeholder="<150"
-                    value={formData.triglycerides}
-                    onChange={(e) => handleChange("triglycerides", e.target.value)}
-                  />
-                </div>
+                <ParametroInput
+                  id="glucemia"
+                  label="Glucemia"
+                  unit="mg/dL"
+                  value={formData.glucemia}
+                  onChange={(value) => handleChange("glucemia", value)}
+                  configuracion={configuracion}
+                  parametroId="glucemia"
+                />
+                <ParametroInput
+                  id="cholesterol"
+                  label="Colesterol Total"
+                  unit="mg/dL"
+                  value={formData.cholesterol}
+                  onChange={(value) => handleChange("cholesterol", value)}
+                  configuracion={configuracion}
+                  parametroId="cholesterol"
+                />
+                <ParametroInput
+                  id="cholesterolHDL"
+                  label="Colesterol HDL"
+                  unit="mg/dL"
+                  value={formData.cholesterolHDL}
+                  onChange={(value) => handleChange("cholesterolHDL", value)}
+                  configuracion={configuracion}
+                  parametroId="cholesterolHDL"
+                />
+                <ParametroInput
+                  id="cholesterolLDL"
+                  label="Colesterol LDL"
+                  unit="mg/dL"
+                  value={formData.cholesterolLDL}
+                  onChange={(value) => handleChange("cholesterolLDL", value)}
+                  configuracion={configuracion}
+                  parametroId="cholesterolLDL"
+                />
+                <ParametroInput
+                  id="triglycerides"
+                  label="Triglicéridos"
+                  unit="mg/dL"
+                  value={formData.triglycerides}
+                  onChange={(value) => handleChange("triglycerides", value)}
+                  configuracion={configuracion}
+                  parametroId="triglycerides"
+                />
               </div>
             </CardContent>
           </Card>
@@ -272,49 +370,42 @@ export default function ServicioBio() {
             <CardContent className="pt-6">
               <h3 className="text-lg font-semibold mb-4 text-secondary">Parámetros Avanzados</h3>
               <div className="space-y-4">
-                <div className="space-y-2">
-                  <Label htmlFor="hemoglobinaGlucosilada">Hemoglobina Glucosilada - HbA1c (%)</Label>
-                  <Input
-                    id="hemoglobinaGlucosilada"
-                    type="number"
-                    step="0.1"
-                    placeholder="<5.7"
-                    value={formData.hemoglobinaGlucosilada}
-                    onChange={(e) => handleChange("hemoglobinaGlucosilada", e.target.value)}
-                  />
-                </div>
-                <div className="space-y-2">
-                  <Label htmlFor="proteinaCReactiva">Proteína C Reactiva - PCR (mg/L)</Label>
-                  <Input
-                    id="proteinaCReactiva"
-                    type="number"
-                    step="0.1"
-                    placeholder="<3"
-                    value={formData.proteinaCReactiva}
-                    onChange={(e) => handleChange("proteinaCReactiva", e.target.value)}
-                  />
-                </div>
-                <div className="space-y-2">
-                  <Label htmlFor="vitaminaD">Vitamina D (ng/mL)</Label>
-                  <Input
-                    id="vitaminaD"
-                    type="number"
-                    step="0.1"
-                    placeholder="30-100"
-                    value={formData.vitaminaD}
-                    onChange={(e) => handleChange("vitaminaD", e.target.value)}
-                  />
-                </div>
-                <div className="space-y-2">
-                  <Label htmlFor="ferritina">Ferritina (ng/mL)</Label>
-                  <Input
-                    id="ferritina"
-                    type="number"
-                    placeholder="15-200 (hombres), 15-150 (mujeres)"
-                    value={formData.ferritina}
-                    onChange={(e) => handleChange("ferritina", e.target.value)}
-                  />
-                </div>
+                <ParametroInput
+                  id="hemoglobinaGlucosilada"
+                  label="Hemoglobina Glucosilada - HbA1c"
+                  unit="%"
+                  value={formData.hemoglobinaGlucosilada}
+                  onChange={(value) => handleChange("hemoglobinaGlucosilada", value)}
+                  configuracion={configuracion}
+                  parametroId="hemoglobinaGlucosilada"
+                />
+                <ParametroInput
+                  id="proteinaCReactiva"
+                  label="Proteína C Reactiva - PCR"
+                  unit="mg/L"
+                  value={formData.proteinaCReactiva}
+                  onChange={(value) => handleChange("proteinaCReactiva", value)}
+                  configuracion={configuracion}
+                  parametroId="proteinaCReactiva"
+                />
+                <ParametroInput
+                  id="vitaminaD"
+                  label="Vitamina D"
+                  unit="ng/mL"
+                  value={formData.vitaminaD}
+                  onChange={(value) => handleChange("vitaminaD", value)}
+                  configuracion={configuracion}
+                  parametroId="vitaminaD"
+                />
+                <ParametroInput
+                  id="ferritina"
+                  label="Ferritina"
+                  unit="ng/mL"
+                  value={formData.ferritina}
+                  onChange={(value) => handleChange("ferritina", value)}
+                  configuracion={configuracion}
+                  parametroId="ferritina"
+                />
               </div>
             </CardContent>
           </Card>
@@ -328,37 +419,34 @@ export default function ServicioBio() {
               <h3 className="text-lg font-semibold mb-4 text-destructive">Tensión Arterial y Pulsaciones</h3>
               <div className="space-y-4">
                 <div className="grid grid-cols-2 gap-4">
-                  <div className="space-y-2">
-                    <Label htmlFor="systolic">Sistólica (mmHg)</Label>
-                    <Input
-                      id="systolic"
-                      type="number"
-                      placeholder="90-120"
-                      value={formData.systolic}
-                      onChange={(e) => handleChange("systolic", e.target.value)}
-                    />
-                  </div>
-                  <div className="space-y-2">
-                    <Label htmlFor="diastolic">Diastólica (mmHg)</Label>
-                    <Input
-                      id="diastolic"
-                      type="number"
-                      placeholder="60-80"
-                      value={formData.diastolic}
-                      onChange={(e) => handleChange("diastolic", e.target.value)}
-                    />
-                  </div>
-                </div>
-                <div className="space-y-2">
-                  <Label htmlFor="pulsaciones">Pulsaciones (lpm)</Label>
-                  <Input
-                    id="pulsaciones"
-                    type="number"
-                    placeholder="60-100"
-                    value={formData.pulsaciones}
-                    onChange={(e) => handleChange("pulsaciones", e.target.value)}
+                  <ParametroInput
+                    id="systolic"
+                    label="Sistólica"
+                    unit="mmHg"
+                    value={formData.systolic}
+                    onChange={(value) => handleChange("systolic", value)}
+                    configuracion={configuracion}
+                    parametroId="systolic"
+                  />
+                  <ParametroInput
+                    id="diastolic"
+                    label="Diastólica"
+                    unit="mmHg"
+                    value={formData.diastolic}
+                    onChange={(value) => handleChange("diastolic", value)}
+                    configuracion={configuracion}
+                    parametroId="diastolic"
                   />
                 </div>
+                <ParametroInput
+                  id="pulsaciones"
+                  label="Pulsaciones"
+                  unit="lpm"
+                  value={formData.pulsaciones}
+                  onChange={(value) => handleChange("pulsaciones", value)}
+                  configuracion={configuracion}
+                  parametroId="pulsaciones"
+                />
               </div>
             </CardContent>
           </Card>
@@ -395,8 +483,24 @@ export default function ServicioBio() {
                   <div className="pt-4 border-t">
                     <div className="flex items-center justify-between">
                       <div>
-                        <Label className="text-sm font-semibold">Índice de Masa Corporal (IMC)</Label>
-                        <p className="text-2xl font-bold text-primary mt-1">{imc} kg/m²</p>
+                        <div className="flex items-center gap-2">
+                          <Label className="text-sm font-semibold">Índice de Masa Corporal (IMC)</Label>
+                          {configuracion?.valoracionBioActiva && estadoIMC && (
+                            <ValoracionBadge
+                              valor={imc}
+                              parametroId="imc"
+                              referencia={configuracion.parametrosReferencia}
+                            />
+                          )}
+                        </div>
+                        <p className={cn(
+                          "text-2xl font-bold mt-1",
+                          estadoIMC === "normal" && "text-success",
+                          estadoIMC === "advertencia" && "text-warning",
+                          estadoIMC === "critico" && "text-destructive"
+                        )}>
+                          {imc} kg/m²
+                        </p>
                       </div>
                       <div className="text-right">
                         <p className="text-sm text-muted-foreground">

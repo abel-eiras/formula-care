@@ -134,3 +134,22 @@ model Cita {
   @@index([pacienteId])
   @@index([fecha])
 }
+
+// Modelo de Configuración (Singleton - solo un registro)
+model Configuracion {
+  id                    String   @id @default("config") // ID fijo para singleton
+  // Datos de la farmacia
+  farmaciaNombre        String?  @default("Farmacia Pontevea")
+  farmaciaDireccion     String?  @default("Avda. Ignacio Varela 16, Pontevea")
+  farmaciaCiudad        String?  @default("15883 Teo, A Coruña")
+  farmaciaTelefono      String?  @default("981 815 708")
+  farmaciaEmail         String?  @default("farmacia@farmaciapontevea.com")
+  farmaciaWeb           String?  @default("www.farmaciapontevea.com")
+  farmaciaWhatsapp      String?
+  farmaciaLogo          String?  // Ruta al logo
+  // Configuración de valoración bioquímica
+  valoracionBioActiva   Boolean  @default(true) // Activar/desactivar valoración global
+  parametrosReferencia  String   @default("{}") // JSON con valores de referencia por parámetro
+  createdAt             DateTime @default(now())
+  updatedAt             DateTime @updatedAt
+}

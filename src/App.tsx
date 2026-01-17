@@ -16,6 +16,7 @@ const ServicioDermo = lazy(() => import("./pages/ServicioDermo"));
 const ServicioDermoPrint = lazy(() => import("./pages/ServicioDermoPrint"));
 const ServicioBio = lazy(() => import("./pages/ServicioBio"));
 const ServicioBioPrint = lazy(() => import("./pages/ServicioBioPrint"));
+const Configuracion = lazy(() => import("./pages/Configuracion"));
 const Calendario = lazy(() => import("./pages/Calendario"));
 const NotFound = lazy(() => import("./pages/NotFound"));
 
@@ -71,6 +72,7 @@ const App = () => (
             <Route path="calendario" element={<Calendario />} />
             <Route path="servicios/dermo" element={<ServicioDermo />} />
             <Route path="servicios/bio" element={<ServicioBio />} />
+            <Route path="configuracion" element={<Configuracion />} />
             <Route path="*" element={<NotFound />} />
           </Route>
         </Routes>
