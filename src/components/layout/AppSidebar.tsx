@@ -3,6 +3,7 @@ import {
   Users, 
   Sparkles, 
   FlaskConical,
+  CalendarDays,
   Settings,
   LogOut,
   Menu
@@ -22,6 +23,11 @@ const navigationItems = [
     title: "Pacientes",
     url: "/pacientes",
     icon: Users,
+  },
+  {
+    title: "Calendario",
+    url: "/calendario",
+    icon: CalendarDays,
   },
   {
     title: "Dermocosmética",
