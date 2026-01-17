@@ -248,20 +248,14 @@ export default function ServicioDermo() {
       if (analisisId) {
         await actualizarAnalisis.mutateAsync({ id: analisisId, ...datosAnalisis });
         toast.success("Análisis actualizado correctamente");
-        // Después de actualizar, mantener el analisisId para poder imprimir
       } else {
         const nuevoAnalisis = await crearAnalisis.mutateAsync(datosAnalisis);
         toast.success("Análisis guardado correctamente");
-        // Abrir vista de impresión automáticamente después de crear
+        // Actualizar la URL con el ID del análisis para habilitar los botones de imprimir y PDF
         if (nuevoAnalisis?.id) {
-          setTimeout(() => {
-            window.open(`/servicios/dermo/print?id=${nuevoAnalisis.id}`, "_blank");
-          }, 500);
+          navigate(`/servicios/dermo?id=${nuevoAnalisis.id}&pacienteId=${pacienteId}`, { replace: true });
         }
       }
-
-      // No navegar automáticamente, dejar que el usuario decida
-      // navigate(`/pacientes/${pacienteId}`);
     } catch (error) {
       console.error("Error al guardar análisis:", error);
       toast.error("Error al guardar el análisis");

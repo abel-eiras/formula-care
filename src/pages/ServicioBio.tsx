@@ -234,19 +234,15 @@ export default function ServicioBio() {
 
       if (analisisId) {
         await actualizarAnalisis.mutateAsync({ id: analisisId, ...datosAnalisis });
-        toast.success("An?lisis actualizado correctamente");
+        toast.success("Análisis actualizado correctamente");
       } else {
         const nuevoAnalisis = await crearAnalisis.mutateAsync(datosAnalisis);
-        toast.success("An?lisis guardado correctamente");
-        // Abrir vista de impresi?n autom?ticamente despu?s de crear
+        toast.success("Análisis guardado correctamente");
+        // Actualizar la URL con el ID del análisis para habilitar los botones de imprimir y PDF
         if (nuevoAnalisis?.id) {
-          setTimeout(() => {
-            window.open(`/servicios/bio/print?id=${nuevoAnalisis.id}`, "_blank");
-          }, 500);
+          navigate(`/servicios/bio?id=${nuevoAnalisis.id}&pacienteId=${pacienteId}`, { replace: true });
         }
       }
-
-      navigate(`/pacientes/${pacienteId}`);
     } catch (error) {
       console.error("Error al guardar an?lisis:", error);
       toast.error("Error al guardar el an?lisis");
