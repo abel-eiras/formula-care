@@ -11,7 +11,6 @@ import { Alert, AlertDescription } from '@/components/ui/alert';
 import { CheckCircle2, Clock, Calendar as CalendarIcon, User, Mail, Phone, MessageSquare, Loader2 } from 'lucide-react';
 import { format } from 'date-fns';
 import { es } from 'date-fns/locale';
-import { es as esDayPicker } from 'react-day-picker/locale';
 import { useDisponibilidad, useSolicitarCita } from '@/hooks/useSolicitudes';
 import { toast } from 'sonner';
 import { cn } from '@/lib/utils';
@@ -272,8 +271,8 @@ export default function SolicitarCita() {
                           mode="single"
                           selected={fechaSeleccionada}
                           onSelect={setFechaSeleccionada}
-                          locale={esDayPicker}
-                          weekStartsOn={1} // Lunes
+                          locale={es}
+                          weekStartsOn={1} // Lunes (0=domingo, 1=lunes)
                           disabled={(date) => {
                             // Deshabilitar fechas pasadas
                             const hoy = new Date();
