@@ -11,11 +11,12 @@ import {
  */
 export async function iniciarOAuth(req: Request, res: Response) {
   try {
-    const authUrl = getAuthUrl();
+    const authUrl = await getAuthUrl();
     res.json({ authUrl });
   } catch (error) {
     console.error('Error al iniciar OAuth:', error);
-    res.status(500).json({ error: 'Error al iniciar autenticación con Google' });
+    const mensaje = error instanceof Error ? error.message : 'Error al iniciar autenticación con Google';
+    res.status(500).json({ error: mensaje });
   }
 }
 

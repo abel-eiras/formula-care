@@ -62,3 +62,41 @@ export function useActualizarValoracionBio() {
     },
   });
 }
+
+/**
+ * Hook para actualizar credenciales OAuth de Google Calendar
+ */
+export function useActualizarCredencialesGoogle() {
+  const queryClient = useQueryClient();
+
+  return useMutation({
+    mutationFn: async (credenciales: {
+      googleClientId: string;
+      googleClientSecret: string;
+      googleRedirectUri?: string;
+    }) => {
+      return api.put<{ message: string; redirectUri: string }>(
+        '/configuracion/google-credentials',
+        credenciales
+      );
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['configuracion'] });
+      queryClient.invalidateQueries({ queryKey: ['googleCalendar'] });
+    },
+  });
+}
+
+/**
+ * Hook para obtener redirect URI sugerido
+ */
+export function useRedirectUri() {
+  return useQuery({
+    queryKey: ['configuracion', 'redirect-uri'],
+    queryFn: async () => {
+      const response = await api.get<{ redirectUri: string }>('/configuracion/google-redirect-uri');
+      return response.redirectUri;
+    },
+    staleTime: 5 * 60 * 1000, // 5 minutos
+  });
+}

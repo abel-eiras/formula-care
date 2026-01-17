@@ -211,3 +211,66 @@ export async function actualizarValoracionBio(req: Request, res: Response) {
     res.status(500).json({ error: 'Error al actualizar valoración bioquímica' });
   }
 }
+
+/**
+ * Actualizar credenciales OAuth de Google Calendar
+ */
+export async function actualizarCredencialesGoogle(req: Request, res: Response) {
+  try {
+    const schema = z.object({
+      googleClientId: z.string().min(1, 'Client ID es requerido'),
+      googleClientSecret: z.string().min(1, 'Client Secret es requerido'),
+      googleRedirectUri: z.string().url().optional(),
+    });
+
+    const datos = schema.parse(req.body);
+
+    // Si no se proporciona redirectUri, calcularlo automáticamente
+    let redirectUri = datos.googleRedirectUri;
+    if (!redirectUri) {
+      const protocol = req.protocol;
+      const host = req.get('host');
+      redirectUri = `${protocol}://${host}/api/google-calendar/callback`;
+    }
+
+    const config = await prisma.configuracion.update({
+      where: { id: 'config' },
+      data: {
+        googleClientId: datos.googleClientId,
+        googleClientSecret: datos.googleClientSecret,
+        googleRedirectUri: redirectUri,
+      },
+    });
+
+    res.json({
+      message: 'Credenciales guardadas correctamente',
+      redirectUri: redirectUri, // Devolver la URI calculada para mostrarla al usuario
+    });
+  } catch (error) {
+    if (error instanceof z.ZodError) {
+      return res.status(400).json({
+        error: 'Datos inválidos',
+        detalles: error.errors,
+      });
+    }
+
+    console.error('Error al actualizar credenciales Google:', error);
+    res.status(500).json({ error: 'Error al actualizar credenciales de Google Calendar' });
+  }
+}
+
+/**
+ * Obtener redirect URI sugerido
+ */
+export async function obtenerRedirectUri(req: Request, res: Response) {
+  try {
+    const protocol = req.protocol;
+    const host = req.get('host');
+    const redirectUri = `${protocol}://${host}/api/google-calendar/callback`;
+    
+    res.json({ redirectUri });
+  } catch (error) {
+    console.error('Error al obtener redirect URI:', error);
+    res.status(500).json({ error: 'Error al obtener redirect URI' });
+  }
+}

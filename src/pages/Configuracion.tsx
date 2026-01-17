@@ -10,7 +10,7 @@ import { Accordion, AccordionContent, AccordionItem, AccordionTrigger } from "@/
 import { ArrowLeft, Save, Settings, Building2, FlaskConical, Calendar, RefreshCw, CheckCircle2, BookOpen, ExternalLink, ChevronDown } from "lucide-react";
 import { Link } from "react-router-dom";
 import { toast } from "sonner";
-import { useConfiguracion, useActualizarFarmacia, useActualizarParametrosReferencia, useActualizarValoracionBio } from "@/hooks/useConfiguracion";
+import { useConfiguracion, useActualizarFarmacia, useActualizarParametrosReferencia, useActualizarValoracionBio, useActualizarCredencialesGoogle, useRedirectUri } from "@/hooks/useConfiguracion";
 import { useGoogleCalendarEstado, useCalendarios, iniciarOAuth, useConfigurarCalendario, useDesconectarGoogleCalendar, useEstadoSincronizacion, useSincronizarDesdeGoogle } from "@/hooks/useGoogleCalendar";
 import type { ParametroReferencia } from "@/types";
 
@@ -490,13 +490,23 @@ export default function Configuracion() {
  * Componente de configuración de Google Calendar
  */
 function GoogleCalendarConfig() {
+  const { data: config } = useConfiguracion();
   const { data: estado, isLoading: loadingEstado } = useGoogleCalendarEstado();
   const { data: calendarios, refetch: refetchCalendarios } = useCalendarios();
   const { data: estadoSync } = useEstadoSincronizacion();
+  const { data: redirectUriSugerido } = useRedirectUri();
   const configurarCalendario = useConfigurarCalendario();
   const desconectar = useDesconectarGoogleCalendar();
   const sincronizar = useSincronizarDesdeGoogle();
+  const actualizarCredenciales = useActualizarCredencialesGoogle();
+  
   const [calendarioSeleccionado, setCalendarioSeleccionado] = useState<string>("");
+  const [mostrarCredenciales, setMostrarCredenciales] = useState(false);
+  const [credenciales, setCredenciales] = useState({
+    googleClientId: config?.googleClientId || "",
+    googleClientSecret: "",
+    googleRedirectUri: config?.googleRedirectUri || redirectUriSugerido || "",
+  });
 
   const handleConectar = async () => {
     try {
@@ -563,6 +573,17 @@ function GoogleCalendarConfig() {
     }
   };
 
+  // Cargar credenciales cuando se obtiene la configuración
+  useEffect(() => {
+    if (config) {
+      setCredenciales({
+        googleClientId: config.googleClientId || "",
+        googleClientSecret: "", // No mostrar el secreto por seguridad
+        googleRedirectUri: config.googleRedirectUri || redirectUriSugerido || "",
+      });
+    }
+  }, [config, redirectUriSugerido]);
+
   // Verificar si hay parámetro de éxito en la URL
   useEffect(() => {
     const params = new URLSearchParams(window.location.search);
@@ -577,6 +598,30 @@ function GoogleCalendarConfig() {
       window.history.replaceState({}, "", "/configuracion");
     }
   }, []);
+
+  const handleGuardarCredenciales = async () => {
+    if (!credenciales.googleClientId || !credenciales.googleClientSecret) {
+      toast.error("Client ID y Client Secret son requeridos");
+      return;
+    }
+
+    try {
+      const resultado = await actualizarCredenciales.mutateAsync({
+        googleClientId: credenciales.googleClientId,
+        googleClientSecret: credenciales.googleClientSecret,
+        googleRedirectUri: credenciales.googleRedirectUri,
+      });
+      
+      toast.success("Credenciales guardadas correctamente");
+      if (resultado.redirectUri) {
+        setCredenciales(prev => ({ ...prev, googleRedirectUri: resultado.redirectUri }));
+      }
+      setMostrarCredenciales(false);
+    } catch (error) {
+      console.error("Error al guardar credenciales:", error);
+      toast.error("Error al guardar credenciales");
+    }
+  };
 
   if (loadingEstado) {
     return (
@@ -597,6 +642,106 @@ function GoogleCalendarConfig() {
         </CardDescription>
       </CardHeader>
       <CardContent className="space-y-6">
+        {/* Configuración de credenciales OAuth */}
+        {!estado?.connected && (
+          <div className="p-4 rounded-lg border border-orange-200 dark:border-orange-800 bg-orange-50 dark:bg-orange-950/20">
+            <div className="flex items-start justify-between gap-4">
+              <div className="flex-1">
+                <p className="font-semibold text-orange-900 dark:text-orange-100 mb-1">
+                  Configuración de Credenciales OAuth
+                </p>
+                <p className="text-sm text-orange-800 dark:text-orange-200">
+                  Antes de conectar, necesitas configurar tus credenciales de Google Cloud Console.
+                  {!config?.googleClientId && (
+                    <span className="block mt-1 font-medium">
+                      Haz clic en "Configurar Credenciales" para comenzar.
+                    </span>
+                  )}
+                </p>
+                {config?.googleClientId && (
+                  <p className="text-xs text-orange-700 dark:text-orange-300 mt-1">
+                    ✓ Credenciales configuradas. Puedes conectarte ahora.
+                  </p>
+                )}
+              </div>
+              <Button
+                variant={mostrarCredenciales ? "outline" : "default"}
+                onClick={() => setMostrarCredenciales(!mostrarCredenciales)}
+                className="gap-2"
+              >
+                {mostrarCredenciales ? "Ocultar" : "Configurar Credenciales"}
+              </Button>
+            </div>
+
+            {mostrarCredenciales && (
+              <div className="mt-4 space-y-4 p-4 bg-white dark:bg-gray-900 rounded border">
+                <div className="space-y-2">
+                  <Label htmlFor="google-client-id">Client ID de Google *</Label>
+                  <Input
+                    id="google-client-id"
+                    type="text"
+                    placeholder="xxxxx.apps.googleusercontent.com"
+                    value={credenciales.googleClientId}
+                    onChange={(e) =>
+                      setCredenciales({ ...credenciales, googleClientId: e.target.value })
+                    }
+                  />
+                  <p className="text-xs text-muted-foreground">
+                    Obtén este valor desde Google Cloud Console > Credenciales
+                  </p>
+                </div>
+
+                <div className="space-y-2">
+                  <Label htmlFor="google-client-secret">Client Secret de Google *</Label>
+                  <Input
+                    id="google-client-secret"
+                    type="password"
+                    placeholder="GOCSPX-xxxxxxxxxxxxx"
+                    value={credenciales.googleClientSecret}
+                    onChange={(e) =>
+                      setCredenciales({ ...credenciales, googleClientSecret: e.target.value })
+                    }
+                  />
+                  <p className="text-xs text-muted-foreground">
+                    Obtén este valor desde Google Cloud Console > Credenciales
+                  </p>
+                </div>
+
+                <div className="space-y-2">
+                  <Label htmlFor="google-redirect-uri">Redirect URI</Label>
+                  <Input
+                    id="google-redirect-uri"
+                    type="text"
+                    value={credenciales.googleRedirectUri}
+                    onChange={(e) =>
+                      setCredenciales({ ...credenciales, googleRedirectUri: e.target.value })
+                    }
+                    placeholder="Se calculará automáticamente si se deja vacío"
+                  />
+                  <p className="text-xs text-muted-foreground">
+                    Esta URL debe coincidir exactamente con la configurada en Google Cloud Console.
+                    Si se deja vacío, se calculará automáticamente.
+                  </p>
+                  {redirectUriSugerido && (
+                    <div className="p-2 bg-muted rounded text-xs font-mono">
+                      URI sugerida: <code className="text-primary">{redirectUriSugerido}</code>
+                    </div>
+                  )}
+                </div>
+
+                <Button
+                  onClick={handleGuardarCredenciales}
+                  disabled={actualizarCredenciales.isPending || !credenciales.googleClientId || !credenciales.googleClientSecret}
+                  className="w-full gap-2"
+                >
+                  <Save className="h-4 w-4" />
+                  {actualizarCredenciales.isPending ? "Guardando..." : "Guardar Credenciales"}
+                </Button>
+              </div>
+            )}
+          </div>
+        )}
+
         {/* Estado de conexión */}
         <div className="p-4 rounded-lg border bg-muted/50">
           <div className="flex items-center justify-between">
@@ -609,13 +754,22 @@ function GoogleCalendarConfig() {
                   Calendario: {estado.calendarId === "primary" ? "Principal" : estado.calendarId}
                 </p>
               )}
+              {!estado?.connected && config?.googleClientId && (
+                <p className="text-sm text-muted-foreground mt-1">
+                  Credenciales configuradas. Listo para conectar.
+                </p>
+              )}
             </div>
             {estado?.connected ? (
               <Button variant="destructive" onClick={handleDesconectar} disabled={desconectar.isPending}>
                 Desconectar
               </Button>
             ) : (
-              <Button onClick={handleConectar} className="gap-2">
+              <Button 
+                onClick={handleConectar} 
+                className="gap-2"
+                disabled={!config?.googleClientId}
+              >
                 <Calendar className="h-4 w-4" />
                 Conectar con Google
               </Button>
@@ -903,10 +1057,44 @@ function TutorialGoogleCalendar() {
             4
           </div>
           <div className="flex-1 space-y-2">
-            <h3 className="font-semibold text-base">Crear Credenciales OAuth 2.0</h3>
+            <h3 className="font-semibold text-base">Obtener Redirect URI de la Aplicación</h3>
+            <p className="text-muted-foreground text-xs mb-2">
+              Primero necesitas saber cuál es la URL de redirección de tu aplicación desplegada.
+            </p>
             <ol className="list-decimal list-inside space-y-2 text-muted-foreground ml-2">
               <li>
-                En el menú lateral, ve a <strong>"APIs y servicios"</strong> →{" "}
+                En esta misma página (arriba, en la sección naranja), haz clic en{" "}
+                <strong>"Configurar Credenciales"</strong>
+              </li>
+              <li>
+                Se desplegará un formulario. En el campo <strong>"Redirect URI"</strong> verás una URL 
+                que se calcula automáticamente (o haz clic en "Actualizar" si no aparece)
+              </li>
+              <li>
+                <strong>Copia esa URL completa</strong> - la necesitarás en el siguiente paso
+              </li>
+              <li>
+                La URL será algo como: <code className="bg-muted px-1 rounded">https://tu-dominio.com/api/google-calendar/callback</code>
+              </li>
+              <li>
+                <strong>No cierres esta página</strong> - volverás aquí después de configurar Google Cloud Console
+              </li>
+            </ol>
+          </div>
+        </div>
+      </div>
+
+      {/* Paso 5 */}
+      <div className="space-y-3">
+        <div className="flex items-start gap-3">
+          <div className="flex-shrink-0 w-8 h-8 rounded-full bg-primary text-primary-foreground flex items-center justify-center font-bold text-sm">
+            5
+          </div>
+          <div className="flex-1 space-y-2">
+            <h3 className="font-semibold text-base">Crear Credenciales OAuth 2.0 en Google Cloud Console</h3>
+            <ol className="list-decimal list-inside space-y-2 text-muted-foreground ml-2">
+              <li>
+                En el menú lateral de Google Cloud Console, ve a <strong>"APIs y servicios"</strong> →{" "}
                 <strong>"Credenciales"</strong> o{" "}
                 <strong>"Credentials"</strong>
               </li>
@@ -936,19 +1124,17 @@ function TutorialGoogleCalendar() {
                   <li>
                     <strong>URI de redirección autorizadas:</strong>
                     <div className="mt-1 space-y-1">
-                      <div className="bg-muted p-2 rounded text-xs font-mono">
-                        Para desarrollo:
+                      <div className="bg-muted p-2 rounded text-xs">
+                        <strong>Pega aquí la URL que copiaste en el paso 4</strong>
                         <br />
-                        <code>http://localhost:5000/api/google-calendar/callback</code>
-                      </div>
-                      <div className="bg-muted p-2 rounded text-xs font-mono mt-1">
-                        Para producción (cuando despliegues):
-                        <br />
-                        <code>https://tu-dominio.com/api/google-calendar/callback</code>
+                        <span className="text-muted-foreground">
+                          Debe ser exactamente igual, incluyendo https:// y sin espacios
+                        </span>
                       </div>
                     </div>
                     <p className="text-xs text-muted-foreground mt-1">
-                      ⚠️ <strong>Importante:</strong> Copia exactamente estas URLs, incluyendo http/https y sin espacios al final
+                      ⚠️ <strong>Importante:</strong> Esta URL debe coincidir EXACTAMENTE con la que viste en la aplicación.
+                      Si no coincide, la conexión fallará.
                     </p>
                   </li>
                 </ul>
@@ -961,10 +1147,10 @@ function TutorialGoogleCalendar() {
                 <strong className="text-foreground">¡IMPORTANTE!</strong> Se abrirá una ventana con tus credenciales:
                 <ul className="list-disc list-inside ml-4 mt-1 space-y-1">
                   <li>
-                    <strong>ID de cliente:</strong> Copia este valor (lo necesitarás)
+                    <strong>ID de cliente:</strong> Copia este valor completo (lo necesitarás en el siguiente paso)
                   </li>
                   <li>
-                    <strong>Secreto de cliente:</strong> Copia este valor (lo necesitarás)
+                    <strong>Secreto de cliente:</strong> Copia este valor completo (lo necesitarás en el siguiente paso)
                   </li>
                 </ul>
                 <div className="bg-yellow-50 dark:bg-yellow-950/20 border border-yellow-200 dark:border-yellow-800 rounded p-2 mt-2">
@@ -979,62 +1165,6 @@ function TutorialGoogleCalendar() {
         </div>
       </div>
 
-      {/* Paso 5 */}
-      <div className="space-y-3">
-        <div className="flex items-start gap-3">
-          <div className="flex-shrink-0 w-8 h-8 rounded-full bg-primary text-primary-foreground flex items-center justify-center font-bold text-sm">
-            5
-          </div>
-          <div className="flex-1 space-y-2">
-            <h3 className="font-semibold text-base">Configurar Variables de Entorno</h3>
-            <ol className="list-decimal list-inside space-y-2 text-muted-foreground ml-2">
-              <li>
-                Abre el archivo <code className="bg-muted px-1 rounded">.env</code> en la carpeta{" "}
-                <code className="bg-muted px-1 rounded">backend</code> de tu proyecto
-              </li>
-              <li>
-                Si no existe, créalo en la carpeta <code className="bg-muted px-1 rounded">backend</code>
-              </li>
-              <li>
-                Agrega las siguientes líneas (reemplaza los valores con los que copiaste):
-                <div className="bg-muted p-3 rounded mt-2 font-mono text-xs overflow-x-auto">
-                  <div className="space-y-1">
-                    <div>
-                      <span className="text-muted-foreground"># Google Calendar OAuth</span>
-                    </div>
-                    <div>
-                      <span className="text-blue-600 dark:text-blue-400">GOOGLE_CLIENT_ID</span>=
-                      <span className="text-green-600 dark:text-green-400">tu-client-id-aqui</span>
-                    </div>
-                    <div>
-                      <span className="text-blue-600 dark:text-blue-400">GOOGLE_CLIENT_SECRET</span>=
-                      <span className="text-green-600 dark:text-green-400">tu-client-secret-aqui</span>
-                    </div>
-                    <div>
-                      <span className="text-blue-600 dark:text-blue-400">GOOGLE_REDIRECT_URI</span>=
-                      <span className="text-green-600 dark:text-green-400">http://localhost:5000/api/google-calendar/callback</span>
-                    </div>
-                    <div className="mt-2">
-                      <span className="text-muted-foreground"># URL del frontend</span>
-                    </div>
-                    <div>
-                      <span className="text-blue-600 dark:text-blue-400">FRONTEND_URL</span>=
-                      <span className="text-green-600 dark:text-green-400">http://localhost:5173</span>
-                    </div>
-                  </div>
-                </div>
-              </li>
-              <li>
-                <strong>Guarda el archivo</strong> (Ctrl+S o Cmd+S)
-              </li>
-              <li>
-                <strong>Reinicia el servidor backend</strong> si estaba corriendo para que cargue las nuevas variables
-              </li>
-            </ol>
-          </div>
-        </div>
-      </div>
-
       {/* Paso 6 */}
       <div className="space-y-3">
         <div className="flex items-start gap-3">
@@ -1042,14 +1172,64 @@ function TutorialGoogleCalendar() {
             6
           </div>
           <div className="flex-1 space-y-2">
-            <h3 className="font-semibold text-base">Conectar en la Aplicación</h3>
+            <h3 className="font-semibold text-base">Configurar Credenciales en la Aplicación</h3>
             <ol className="list-decimal list-inside space-y-2 text-muted-foreground ml-2">
               <li>
-                Asegúrate de que el backend esté corriendo (deberías ver mensajes en la consola)
+                Vuelve a esta página (si la cerraste) y haz clic en el botón{" "}
+                <strong>"Configurar Credenciales"</strong> (arriba, en la sección naranja)
+              </li>
+              <li>
+                Se desplegará un formulario con tres campos:
+                <ul className="list-disc list-inside ml-4 mt-1 space-y-1">
+                  <li>
+                    <strong>Client ID:</strong> Pega el <strong>ID de cliente</strong> que copiaste del paso 5
+                  </li>
+                  <li>
+                    <strong>Client Secret:</strong> Pega el <strong>Secreto de cliente</strong> que copiaste del paso 5
+                  </li>
+                  <li>
+                    <strong>Redirect URI:</strong> Ya debería estar rellenado automáticamente con la URL correcta.
+                    Si no, cópiala del paso 4.
+                  </li>
+                </ul>
+              </li>
+              <li>
+                Haz clic en <strong>"Guardar Credenciales"</strong>
+              </li>
+              <li>
+                Verás un mensaje de confirmación: <strong>"Credenciales guardadas correctamente"</strong>
+              </li>
+              <li>
+                El formulario se ocultará y verás que ahora puedes hacer clic en{" "}
+                <strong>"Conectar con Google"</strong>
+              </li>
+            </ol>
+            <div className="bg-blue-50 dark:bg-blue-950/20 border border-blue-200 dark:border-blue-800 rounded p-3 mt-2">
+              <p className="text-xs text-blue-900 dark:text-blue-100">
+                💡 <strong>Tip:</strong> La Redirect URI se calcula automáticamente basándose en la URL
+                de tu aplicación desplegada. Si cambias de servidor o dominio, actualiza también
+                la Redirect URI en Google Cloud Console.
+              </p>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      {/* Paso 7 */}
+      <div className="space-y-3">
+        <div className="flex items-start gap-3">
+          <div className="flex-shrink-0 w-8 h-8 rounded-full bg-primary text-primary-foreground flex items-center justify-center font-bold text-sm">
+            7
+          </div>
+          <div className="flex-1 space-y-2">
+            <h3 className="font-semibold text-base">Conectar con Google Calendar</h3>
+            <ol className="list-decimal list-inside space-y-2 text-muted-foreground ml-2">
+              <li>
+                Asegúrate de haber completado los pasos anteriores (especialmente el paso 6)
               </li>
               <li>
                 En esta misma página, haz clic en el botón{" "}
-                <strong>"Conectar con Google"</strong> (arriba)
+                <strong>"Conectar con Google"</strong> (arriba, en la sección de estado)
               </li>
               <li>
                 Se abrirá una nueva ventana o pestaña con la autorización de Google

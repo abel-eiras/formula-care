@@ -4,6 +4,8 @@ import {
   actualizarFarmacia,
   actualizarParametrosReferencia,
   actualizarValoracionBio,
+  actualizarCredencialesGoogle,
+  obtenerRedirectUri,
 } from '../controllers/configuracion.js';
 
 export const configuracionRouter = Router();
@@ -19,3 +21,7 @@ configuracionRouter.put('/parametros', actualizarParametrosReferencia);
 
 // Actualizar estado de valoración bioquímica
 configuracionRouter.put('/valoracion-bio', actualizarValoracionBio);
+
+// Google Calendar - Credenciales OAuth
+configuracionRouter.put('/google-credentials', actualizarCredencialesGoogle);
+configuracionRouter.get('/google-redirect-uri', obtenerRedirectUri);

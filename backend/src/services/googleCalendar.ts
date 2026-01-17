@@ -3,24 +3,35 @@ import { prisma } from '../lib/prisma.js';
 
 /**
  * Obtener cliente OAuth2 configurado
+ * Usa las credenciales de la base de datos si est?n disponibles, sino las de variables de entorno
  */
-export function getOAuth2Client() {
-  const clientId = process.env.GOOGLE_CLIENT_ID;
-  const clientSecret = process.env.GOOGLE_CLIENT_SECRET;
-  const redirectUri = process.env.GOOGLE_REDIRECT_URI || 'http://localhost:5000/api/google-calendar/callback';
+export async function getOAuth2Client() {
+  // Intentar obtener de la base de datos primero
+  const config = await prisma.configuracion.findUnique({
+    where: { id: 'config' },
+    select: {
+      googleClientId: true,
+      googleClientSecret: true,
+      googleRedirectUri: true,
+    },
+  });
+
+  const clientId = config?.googleClientId || process.env.GOOGLE_CLIENT_ID;
+  const clientSecret = config?.googleClientSecret || process.env.GOOGLE_CLIENT_SECRET;
+  const redirectUri = config?.googleRedirectUri || process.env.GOOGLE_REDIRECT_URI || 'http://localhost:5000/api/google-calendar/callback';
 
   if (!clientId || !clientSecret) {
-    throw new Error('GOOGLE_CLIENT_ID y GOOGLE_CLIENT_SECRET deben estar configurados en .env');
+    throw new Error('GOOGLE_CLIENT_ID y GOOGLE_CLIENT_SECRET deben estar configurados. Ve a Configuraci?n > Google Calendar para configurarlos.');
   }
 
   return new google.auth.OAuth2(clientId, clientSecret, redirectUri);
 }
 
 /**
- * Obtener URL de autorización OAuth
+ * Obtener URL de autorizaci?n OAuth
  */
-export function getAuthUrl(): string {
-  const oauth2Client = getOAuth2Client();
+export async function getAuthUrl(): Promise<string> {
+  const oauth2Client = await getOAuth2Client();
   
   const scopes = [
     'https://www.googleapis.com/auth/calendar',
@@ -35,10 +46,10 @@ export function getAuthUrl(): string {
 }
 
 /**
- * Intercambiar código de autorización por tokens
+ * Intercambiar c?digo de autorizaci?n por tokens
  */
 export async function exchangeCodeForTokens(code: string) {
-  const oauth2Client = getOAuth2Client();
+  const oauth2Client = await getOAuth2Client();
   const { tokens } = await oauth2Client.getToken(code);
   
   return {
@@ -62,17 +73,17 @@ export async function getCalendarClient() {
   });
 
   if (!config?.googleAccessToken || !config?.googleRefreshToken) {
-    throw new Error('Google Calendar no está configurado. Por favor, vincula tu cuenta primero.');
+    throw new Error('Google Calendar no est? configurado. Por favor, vincula tu cuenta primero.');
   }
 
-  const oauth2Client = getOAuth2Client();
+  const oauth2Client = await getOAuth2Client();
   oauth2Client.setCredentials({
     access_token: config.googleAccessToken,
     refresh_token: config.googleRefreshToken,
     expiry_date: config.googleTokenExpiry?.getTime(),
   });
 
-  // Refrescar token si está expirado
+  // Refrescar token si est? expirado
   if (config.googleTokenExpiry && config.googleTokenExpiry <= new Date()) {
     const { credentials } = await oauth2Client.refreshAccessToken();
     
@@ -109,7 +120,7 @@ export async function crearEventoEnCalendar(
   });
 
   if (!config?.googleCalendarEnabled || !config.googleCalendarId) {
-    throw new Error('Google Calendar no está habilitado o no hay calendario configurado');
+    throw new Error('Google Calendar no est? habilitado o no hay calendario configurado');
   }
 
   const calendar = await getCalendarClient();
@@ -117,9 +128,9 @@ export async function crearEventoEnCalendar(
   // Combinar fecha y hora
   const fechaHora = new Date(`${fecha}T${hora}:00`);
   const fechaHoraFin = new Date(fechaHora);
-  fechaHoraFin.setHours(fechaHoraFin.getHours() + 1); // Duración de 1 hora por defecto
+  fechaHoraFin.setHours(fechaHoraFin.getHours() + 1); // Duraci?n de 1 hora por defecto
 
-  // Colores según tipo de servicio
+  // Colores seg?n tipo de servicio
   const colorMap: Record<string, number> = {
     dermo: 9, // Azul
     bio: 10, // Verde
@@ -153,7 +164,7 @@ export async function crearEventoEnCalendar(
   });
 
   if (!response.data.id) {
-    throw new Error('No se recibió eventId de Google Calendar');
+    throw new Error('No se recibi? eventId de Google Calendar');
   }
 
   return response.data.id;
@@ -178,7 +189,7 @@ export async function actualizarEventoEnCalendar(
   });
 
   if (!config?.googleCalendarEnabled || !config.googleCalendarId) {
-    throw new Error('Google Calendar no está habilitado');
+    throw new Error('Google Calendar no est? habilitado');
   }
 
   const calendar = await getCalendarClient();
@@ -232,7 +243,7 @@ export async function eliminarEventoEnCalendar(eventId: string): Promise<void> {
   });
 
   if (!config?.googleCalendarEnabled || !config.googleCalendarId) {
-    throw new Error('Google Calendar no está habilitado');
+    throw new Error('Google Calendar no est? habilitado');
   }
 
   const calendar = await getCalendarClient();
@@ -253,7 +264,7 @@ export async function obtenerEventoDeCalendar(eventId: string) {
   });
 
   if (!config?.googleCalendarEnabled || !config.googleCalendarId) {
-    throw new Error('Google Calendar no está habilitado');
+    throw new Error('Google Calendar no est? habilitado');
   }
 
   const calendar = await getCalendarClient();
@@ -276,7 +287,7 @@ export async function listarEventosDeCalendar(fechaDesde: Date, fechaHasta: Date
   });
 
   if (!config?.googleCalendarEnabled || !config.googleCalendarId) {
-    throw new Error('Google Calendar no está habilitado');
+    throw new Error('Google Calendar no est? habilitado');
   }
 
   const calendar = await getCalendarClient();

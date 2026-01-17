@@ -10,6 +10,12 @@ export interface Configuracion {
   farmaciaLogo?: string;
   valoracionBioActiva: boolean;
   parametrosReferencia: Record<string, ParametroReferencia>;
+  // Google Calendar
+  googleCalendarEnabled?: boolean;
+  googleCalendarId?: string;
+  googleClientId?: string;
+  googleClientSecret?: string;
+  googleRedirectUri?: string;
   createdAt?: string;
   updatedAt?: string;
 }
