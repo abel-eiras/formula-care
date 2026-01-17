@@ -6,8 +6,8 @@ import { prisma } from '../lib/prisma.js';
 const eventoSchema = z.object({
   nombre: z.string().min(1, 'El nombre es requerido'),
   activo: z.boolean().optional().default(true),
-  fechas: z.array(z.string().regex(/^\d{4}-\d{2}-\d{2}$/, 'Formato de fecha inválido (YYYY-MM-DD)')).default([]),
-  horas: z.array(z.string().regex(/^([0-1]?[0-9]|2[0-3]):[0-5][0-9]-([0-1]?[0-9]|2[0-3]):[0-5][0-9]$/, 'Formato inválido: debe ser HH:mm-HH:mm')).default([]),
+  fechas: z.array(z.string().regex(/^\d{4}-\d{2}-\d{2}$/, 'Formato de fecha inválido (YYYY-MM-DD)')).min(1, 'Debe haber al menos una fecha'),
+  horas: z.array(z.string().regex(/^([0-1]?[0-9]|2[0-3]):[0-5][0-9]-([0-1]?[0-9]|2[0-3]):[0-5][0-9]$/, 'Formato inválido: debe ser HH:mm-HH:mm')).min(1, 'Debe haber al menos un horario'),
   duracion: z.number().int().positive('La duración debe ser un número positivo'),
   maxAsistentes: z.number().int().positive('El número de asistentes debe ser positivo'),
   descripcion: z.string().optional(),
@@ -128,7 +128,14 @@ export async function crearEvento(req: Request, res: Response) {
       });
     }
     console.error('Error al crear evento:', error);
-    res.status(500).json({ error: 'Error al crear evento' });
+    // Incluir más detalles del error para debugging
+    const errorMessage = error instanceof Error ? error.message : 'Error desconocido';
+    const errorStack = error instanceof Error ? error.stack : undefined;
+    console.error('Detalles del error:', { errorMessage, errorStack, body: req.body });
+    res.status(500).json({ 
+      error: 'Error al crear evento',
+      detalles: process.env.NODE_ENV === 'development' ? errorMessage : undefined
+    });
   }
 }
 

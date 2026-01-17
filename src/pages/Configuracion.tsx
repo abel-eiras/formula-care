@@ -585,11 +585,25 @@ function CalendarioTab() {
 
   const handleCrearEvento = async () => {
     try {
+      // Validar que haya fechas y horas
+      const fechasValidas = nuevoEvento.fechas.filter(f => f && f.trim() !== '');
+      const horasValidas = nuevoEvento.horas.filter(h => h && h.trim() !== '');
+
+      if (fechasValidas.length === 0) {
+        toast.error('Debes añadir al menos una fecha');
+        return;
+      }
+
+      if (horasValidas.length === 0) {
+        toast.error('Debes añadir al menos un horario');
+        return;
+      }
+
       await crearEvento.mutateAsync({
         nombre: nuevoEvento.nombre,
         descripcion: nuevoEvento.descripcion || undefined,
-        fechas: nuevoEvento.fechas,
-        horas: nuevoEvento.horas.filter(h => h.trim() !== ''),
+        fechas: fechasValidas,
+        horas: horasValidas,
         duracion: nuevoEvento.duracion,
         maxAsistentes: nuevoEvento.maxAsistentes,
         activo: nuevoEvento.activo,
@@ -604,9 +618,11 @@ function CalendarioTab() {
         maxAsistentes: 1,
         activo: true,
       });
-    } catch (error) {
+    } catch (error: any) {
       console.error('Error al crear evento:', error);
-      toast.error('Error al crear el evento');
+      const errorMessage = error?.response?.data?.error || error?.message || 'Error al crear el evento';
+      const detalles = error?.response?.data?.detalles;
+      toast.error(detalles ? `${errorMessage}: ${JSON.stringify(detalles)}` : errorMessage);
     }
   };
 
@@ -821,7 +837,13 @@ function CalendarioTab() {
                 </div>
                 <Button 
                   onClick={handleCrearEvento} 
-                  disabled={crearEvento.isPending || !nuevoEvento.nombre || nuevoEvento.fechas.length === 0 || nuevoEvento.fechas.some(f => !f)}
+                  disabled={
+                    crearEvento.isPending || 
+                    !nuevoEvento.nombre || 
+                    nuevoEvento.fechas.length === 0 || 
+                    nuevoEvento.fechas.some(f => !f || f.trim() === '') ||
+                    nuevoEvento.horas.filter(h => h && h.trim() !== '').length === 0
+                  }
                 >
                   <Save className="h-4 w-4 mr-2" />
                   Crear Evento
