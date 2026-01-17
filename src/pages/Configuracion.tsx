@@ -1048,6 +1048,7 @@ function CalComConfig() {
                 <p className="text-xs text-muted-foreground">
                   Secret para verificar la autenticidad de los webhooks. 
                   Debe ser el mismo que configures en Cal.com. Puede ser cualquier texto aleatorio que elijas.
+                  Ver el paso 4 del manual para más detalles.
                 </p>
               </div>
 
