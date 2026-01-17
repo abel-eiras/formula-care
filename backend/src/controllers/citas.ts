@@ -112,6 +112,7 @@ export async function crearCita(req: Request, res: Response) {
     });
 
     // Sincronizar con Google Calendar si está habilitado
+    let googleEventId: string | null = null;
     try {
       const config = await prisma.configuracion.findUnique({
         where: { id: 'config' },
@@ -119,7 +120,7 @@ export async function crearCita(req: Request, res: Response) {
       });
 
       if (config?.googleCalendarEnabled) {
-        await crearEventoEnCalendar(
+        googleEventId = await crearEventoEnCalendar(
           datos.titulo,
           datos.fecha,
           datos.hora,
@@ -127,6 +128,15 @@ export async function crearCita(req: Request, res: Response) {
           paciente.name,
           datos.notas
         );
+
+        // Actualizar la cita con el eventId de Google
+        if (googleEventId) {
+          await prisma.cita.update({
+            where: { id: cita.id },
+            data: { googleEventId },
+          });
+          cita.googleEventId = googleEventId;
+        }
       }
     } catch (calendarError) {
       console.error('Error al sincronizar con Google Calendar (no crítico):', calendarError);
@@ -166,6 +176,25 @@ export async function actualizarCita(req: Request, res: Response) {
       }
     }
 
+    // Obtener datos actuales de la cita para sincronización
+    const citaAnterior = await prisma.cita.findUnique({
+      where: { id },
+      include: { paciente: true },
+    });
+
+    if (!citaAnterior) {
+      return res.status(404).json({ error: 'Cita no encontrada' });
+    }
+
+    // Obtener paciente (puede haber cambiado)
+    const pacienteActual = datos.pacienteId
+      ? await prisma.paciente.findUnique({ where: { id: datos.pacienteId } })
+      : citaAnterior.paciente;
+
+    if (!pacienteActual) {
+      return res.status(404).json({ error: 'Paciente no encontrado' });
+    }
+
     const cita = await prisma.cita.update({
       where: { id },
       data: datos,
@@ -179,6 +208,30 @@ export async function actualizarCita(req: Request, res: Response) {
         },
       },
     });
+
+    // Sincronizar con Google Calendar si está habilitado y tiene eventId
+    if (cita.googleEventId) {
+      try {
+        const config = await prisma.configuracion.findUnique({
+          where: { id: 'config' },
+          select: { googleCalendarEnabled: true },
+        });
+
+        if (config?.googleCalendarEnabled) {
+          await actualizarEventoEnCalendar(
+            cita.googleEventId,
+            datos.titulo || citaAnterior.titulo,
+            datos.fecha || citaAnterior.fecha,
+            datos.hora || citaAnterior.hora,
+            (datos.tipo || citaAnterior.tipo) as 'dermo' | 'bio' | 'consulta' | 'seguimiento',
+            pacienteActual.name,
+            datos.notas || citaAnterior.notas || undefined
+          );
+        }
+      } catch (calendarError) {
+        console.error('Error al sincronizar actualización con Google Calendar (no crítico):', calendarError);
+      }
+    }
 
     res.json(cita);
   } catch (error) {
@@ -204,6 +257,29 @@ export async function actualizarCita(req: Request, res: Response) {
 export async function eliminarCita(req: Request, res: Response) {
   try {
     const { id } = req.params;
+
+    // Obtener la cita antes de eliminarla para sincronizar con Google Calendar
+    const cita = await prisma.cita.findUnique({
+      where: { id },
+      select: { googleEventId: true },
+    });
+
+    // Sincronizar eliminación con Google Calendar si tiene eventId
+    if (cita?.googleEventId) {
+      try {
+        const config = await prisma.configuracion.findUnique({
+          where: { id: 'config' },
+          select: { googleCalendarEnabled: true },
+        });
+
+        if (config?.googleCalendarEnabled) {
+          await eliminarEventoEnCalendar(cita.googleEventId);
+        }
+      } catch (calendarError) {
+        console.error('Error al sincronizar eliminación con Google Calendar (no crítico):', calendarError);
+        // Continuar con la eliminación aunque falle la sincronización
+      }
+    }
 
     await prisma.cita.delete({
       where: { id },

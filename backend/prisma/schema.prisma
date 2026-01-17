@@ -130,6 +130,7 @@ model Cita {
   tipo       String   // "dermo", "bio", "consulta", "seguimiento"
   notas      String?
   recordatorioEnviado Boolean @default(false) // Si se ha enviado recordatorio
+  googleEventId String? // ID del evento en Google Calendar para sincronización bidireccional
   createdAt  DateTime @default(now())
   updatedAt  DateTime @updatedAt
 
@@ -139,6 +140,7 @@ model Cita {
 
   @@index([pacienteId])
   @@index([fecha])
+  @@index([googleEventId])
 }
 
 // Modelo de Notificación

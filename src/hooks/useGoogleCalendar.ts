@@ -78,3 +78,43 @@ export function useDesconectarGoogleCalendar() {
     },
   });
 }
+
+interface EstadoSincronizacion {
+  enabled: boolean;
+  citasSincronizadas: number;
+  totalCitas: number;
+  porcentaje: number;
+}
+
+/**
+ * Hook para obtener estado de sincronización
+ */
+export function useEstadoSincronizacion() {
+  return useQuery({
+    queryKey: ['googleCalendar', 'sincronizacion'],
+    queryFn: async () => {
+      return api.get<EstadoSincronizacion>('/google-calendar/sincronizacion/estado');
+    },
+    staleTime: 30 * 1000,
+  });
+}
+
+/**
+ * Hook para sincronizar manualmente desde Google Calendar
+ */
+export function useSincronizarDesdeGoogle() {
+  const queryClient = useQueryClient();
+
+  return useMutation({
+    mutationFn: async () => {
+      return api.post<{ message: string; cambios: number; detalles: string[] }>(
+        '/google-calendar/sincronizar',
+        {}
+      );
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['googleCalendar'] });
+      queryClient.invalidateQueries({ queryKey: ['citas'] });
+    },
+  });
+}

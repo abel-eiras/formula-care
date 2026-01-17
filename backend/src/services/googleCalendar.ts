@@ -93,6 +93,7 @@ export async function getCalendarClient() {
 
 /**
  * Crear evento en Google Calendar
+ * Retorna el eventId para guardarlo en la base de datos
  */
 export async function crearEventoEnCalendar(
   titulo: string,
@@ -101,7 +102,7 @@ export async function crearEventoEnCalendar(
   tipo: 'dermo' | 'bio' | 'consulta' | 'seguimiento',
   pacienteNombre: string,
   notas?: string
-) {
+): Promise<string> {
   const config = await prisma.configuracion.findUnique({
     where: { id: 'config' },
     select: { googleCalendarId: true },
@@ -151,21 +152,26 @@ export async function crearEventoEnCalendar(
     requestBody: evento,
   });
 
-  return response.data;
+  if (!response.data.id) {
+    throw new Error('No se recibió eventId de Google Calendar');
+  }
+
+  return response.data.id;
 }
 
 /**
  * Actualizar evento en Google Calendar
+ * @param eventId - ID del evento en Google Calendar (no el ID de la cita en nuestra BD)
  */
 export async function actualizarEventoEnCalendar(
-  eventId: string,
+  eventId: string, // Google Calendar eventId
   titulo: string,
   fecha: string,
   hora: string,
   tipo: 'dermo' | 'bio' | 'consulta' | 'seguimiento',
   pacienteNombre: string,
   notas?: string
-) {
+): Promise<void> {
   const config = await prisma.configuracion.findUnique({
     where: { id: 'config' },
     select: { googleCalendarId: true },
@@ -208,19 +214,18 @@ export async function actualizarEventoEnCalendar(
     },
   };
 
-  const response = await calendar.events.update({
+  await calendar.events.update({
     calendarId: config.googleCalendarId,
     eventId: eventId,
     requestBody: evento,
   });
-
-  return response.data;
 }
 
 /**
  * Eliminar evento de Google Calendar
+ * @param eventId - ID del evento en Google Calendar (no el ID de la cita en nuestra BD)
  */
-export async function eliminarEventoEnCalendar(eventId: string) {
+export async function eliminarEventoEnCalendar(eventId: string): Promise<void> {
   const config = await prisma.configuracion.findUnique({
     where: { id: 'config' },
     select: { googleCalendarId: true },
@@ -236,6 +241,55 @@ export async function eliminarEventoEnCalendar(eventId: string) {
     calendarId: config.googleCalendarId,
     eventId: eventId,
   });
+}
+
+/**
+ * Obtener evento de Google Calendar por ID
+ */
+export async function obtenerEventoDeCalendar(eventId: string) {
+  const config = await prisma.configuracion.findUnique({
+    where: { id: 'config' },
+    select: { googleCalendarId: true },
+  });
+
+  if (!config?.googleCalendarEnabled || !config.googleCalendarId) {
+    throw new Error('Google Calendar no está habilitado');
+  }
+
+  const calendar = await getCalendarClient();
+  
+  const response = await calendar.events.get({
+    calendarId: config.googleCalendarId,
+    eventId: eventId,
+  });
+
+  return response.data;
+}
+
+/**
+ * Listar eventos de Google Calendar en un rango de fechas
+ */
+export async function listarEventosDeCalendar(fechaDesde: Date, fechaHasta: Date) {
+  const config = await prisma.configuracion.findUnique({
+    where: { id: 'config' },
+    select: { googleCalendarId: true },
+  });
+
+  if (!config?.googleCalendarEnabled || !config.googleCalendarId) {
+    throw new Error('Google Calendar no está habilitado');
+  }
+
+  const calendar = await getCalendarClient();
+  
+  const response = await calendar.events.list({
+    calendarId: config.googleCalendarId,
+    timeMin: fechaDesde.toISOString(),
+    timeMax: fechaHasta.toISOString(),
+    singleEvents: true,
+    orderBy: 'startTime',
+  });
+
+  return response.data.items || [];
 }
 
 /**

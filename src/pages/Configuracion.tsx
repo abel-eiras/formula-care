@@ -6,11 +6,11 @@ import { Label } from "@/components/ui/label";
 import { Switch } from "@/components/ui/switch";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import { ArrowLeft, Save, Settings, Building2, FlaskConical, Calendar } from "lucide-react";
+import { ArrowLeft, Save, Settings, Building2, FlaskConical, Calendar, RefreshCw, CheckCircle2 } from "lucide-react";
 import { Link } from "react-router-dom";
 import { toast } from "sonner";
 import { useConfiguracion, useActualizarFarmacia, useActualizarParametrosReferencia, useActualizarValoracionBio } from "@/hooks/useConfiguracion";
-import { useGoogleCalendarEstado, useCalendarios, iniciarOAuth, useConfigurarCalendario, useDesconectarGoogleCalendar } from "@/hooks/useGoogleCalendar";
+import { useGoogleCalendarEstado, useCalendarios, iniciarOAuth, useConfigurarCalendario, useDesconectarGoogleCalendar, useEstadoSincronizacion, useSincronizarDesdeGoogle } from "@/hooks/useGoogleCalendar";
 import type { ParametroReferencia } from "@/types";
 
 // Mapeo de parámetros con sus etiquetas y unidades
@@ -491,8 +491,10 @@ export default function Configuracion() {
 function GoogleCalendarConfig() {
   const { data: estado, isLoading: loadingEstado } = useGoogleCalendarEstado();
   const { data: calendarios, refetch: refetchCalendarios } = useCalendarios();
+  const { data: estadoSync } = useEstadoSincronizacion();
   const configurarCalendario = useConfigurarCalendario();
   const desconectar = useDesconectarGoogleCalendar();
+  const sincronizar = useSincronizarDesdeGoogle();
   const [calendarioSeleccionado, setCalendarioSeleccionado] = useState<string>("");
 
   const handleConectar = async () => {
@@ -540,6 +542,23 @@ function GoogleCalendarConfig() {
     } catch (error) {
       console.error("Error al desconectar:", error);
       toast.error("Error al desconectar Google Calendar");
+    }
+  };
+
+  const handleSincronizar = async () => {
+    try {
+      const resultado = await sincronizar.mutateAsync();
+      toast.success(
+        `Sincronización completada: ${resultado.cambios} cambio(s) detectado(s)`,
+        {
+          description: resultado.detalles.length > 0 
+            ? resultado.detalles.slice(0, 3).join(", ") + (resultado.detalles.length > 3 ? "..." : "")
+            : "No se detectaron cambios",
+        }
+      );
+    } catch (error) {
+      console.error("Error al sincronizar:", error);
+      toast.error("Error al sincronizar con Google Calendar");
     }
   };
 
@@ -649,6 +668,38 @@ function GoogleCalendarConfig() {
           </div>
         )}
 
+        {/* Estado de sincronización */}
+        {estado?.connected && estadoSync && (
+          <div className="p-4 rounded-lg border border-muted bg-muted/30">
+            <div className="flex items-center justify-between mb-3">
+              <div>
+                <p className="font-semibold">Estado de Sincronización</p>
+                <p className="text-sm text-muted-foreground">
+                  {estadoSync.citasSincronizadas} de {estadoSync.totalCitas} citas sincronizadas ({estadoSync.porcentaje}%)
+                </p>
+              </div>
+              <Button
+                variant="outline"
+                size="sm"
+                onClick={handleSincronizar}
+                disabled={sincronizar.isPending}
+                className="gap-2"
+              >
+                <RefreshCw className={`h-4 w-4 ${sincronizar.isPending ? "animate-spin" : ""}`} />
+                Sincronizar
+              </Button>
+            </div>
+            {estadoSync.porcentaje < 100 && estadoSync.totalCitas > 0 && (
+              <div className="w-full bg-muted rounded-full h-2 mt-2">
+                <div
+                  className="bg-primary h-2 rounded-full transition-all"
+                  style={{ width: `${estadoSync.porcentaje}%` }}
+                />
+              </div>
+            )}
+          </div>
+        )}
+
         {/* Información sobre colores */}
         <div className="p-4 rounded-lg border border-primary/20 bg-primary/5">
           <p className="font-semibold mb-2">Colores de las citas:</p>
@@ -680,7 +731,18 @@ function GoogleCalendarConfig() {
             <li>Selecciona tu cuenta de Google y otorga los permisos necesarios</li>
             <li>Selecciona el calendario que quieres usar para las citas</li>
             <li>Las citas creadas en el sistema se sincronizarán automáticamente</li>
+            <li>Usa el botón "Sincronizar" para traer cambios desde Google Calendar</li>
           </ol>
+          <div className="mt-3 p-3 bg-primary/10 rounded border border-primary/20">
+            <p className="text-sm font-semibold text-primary mb-1 flex items-center gap-2">
+              <CheckCircle2 className="h-4 w-4" />
+              Sincronización Bidireccional
+            </p>
+            <p className="text-xs text-muted-foreground">
+              Los cambios en el sistema se reflejan en Google Calendar automáticamente. 
+              Los cambios en Google Calendar se pueden traer manualmente con el botón "Sincronizar".
+            </p>
+          </div>
         </div>
       </CardContent>
     </Card>
