@@ -6,7 +6,7 @@ import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Checkbox } from "@/components/ui/checkbox";
-import { ArrowLeft, Save, FileDown, Sparkles } from "lucide-react";
+import { ArrowLeft, Save, Printer, Sparkles } from "lucide-react";
 import { Link, useNavigate, useSearchParams } from "react-router-dom";
 import { toast } from "sonner";
 import { usePacientes } from "@/hooks/usePacientes";
@@ -261,9 +261,9 @@ export default function ServicioDermo() {
     }
   };
 
-  const handleGenerarPDF = () => {
+  const handleImprimir = () => {
     if (!analisisId) {
-      toast.info("Guarde el análisis primero para generar el PDF");
+      toast.info("Guarde el análisis primero para imprimir");
       return;
     }
     
@@ -293,9 +293,9 @@ export default function ServicioDermo() {
           </div>
         </div>
         <div className="flex gap-2">
-          <Button variant="outline" onClick={handleGenerarPDF} className="gap-2" disabled={isLoading}>
-            <FileDown className="h-4 w-4" />
-            Generar PDF
+          <Button variant="outline" onClick={handleImprimir} className="gap-2" disabled={isLoading || !analisisId}>
+            <Printer className="h-4 w-4" />
+            Imprimir
           </Button>
           <Button size="lg" onClick={handleSubmit} className="shadow-md gap-2" disabled={isLoading}>
             <Save className="h-5 w-5" />

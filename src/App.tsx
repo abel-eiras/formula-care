@@ -15,6 +15,7 @@ const NuevoPaciente = lazy(() => import("./pages/NuevoPaciente"));
 const ServicioDermo = lazy(() => import("./pages/ServicioDermo"));
 const ServicioDermoPrint = lazy(() => import("./pages/ServicioDermoPrint"));
 const ServicioBio = lazy(() => import("./pages/ServicioBio"));
+const ServicioBioPrint = lazy(() => import("./pages/ServicioBioPrint"));
 const Calendario = lazy(() => import("./pages/Calendario"));
 const NotFound = lazy(() => import("./pages/NotFound"));
 
@@ -35,12 +36,20 @@ const App = () => (
       <Sonner />
       <BrowserRouter>
         <Routes>
-          {/* Ruta de impresión sin layout - debe ir antes */}
+          {/* Rutas de impresión sin layout - deben ir antes */}
           <Route
             path="/servicios/dermo/print"
             element={
               <Suspense fallback={<LoadingSpinner />}>
                 <ServicioDermoPrint />
+              </Suspense>
+            }
+          />
+          <Route
+            path="/servicios/bio/print"
+            element={
+              <Suspense fallback={<LoadingSpinner />}>
+                <ServicioBioPrint />
               </Suspense>
             }
           />
