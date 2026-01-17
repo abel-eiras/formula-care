@@ -98,5 +98,7 @@ export function useRedirectUri() {
       return response.redirectUri;
     },
     staleTime: 5 * 60 * 1000, // 5 minutos
+    retry: 1, // Solo reintentar una vez si falla
+    refetchOnWindowFocus: false, // No refetch al enfocar la ventana
   });
 }

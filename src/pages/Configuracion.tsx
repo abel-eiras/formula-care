@@ -494,7 +494,7 @@ function GoogleCalendarConfig() {
   const { data: estado, isLoading: loadingEstado } = useGoogleCalendarEstado();
   const { data: calendarios, refetch: refetchCalendarios } = useCalendarios();
   const { data: estadoSync } = useEstadoSincronizacion();
-  const { data: redirectUriSugerido } = useRedirectUri();
+  const { data: redirectUriSugerido, error: redirectUriError } = useRedirectUri();
   const configurarCalendario = useConfigurarCalendario();
   const desconectar = useDesconectarGoogleCalendar();
   const sincronizar = useSincronizarDesdeGoogle();
@@ -503,9 +503,9 @@ function GoogleCalendarConfig() {
   const [calendarioSeleccionado, setCalendarioSeleccionado] = useState<string>("");
   const [mostrarCredenciales, setMostrarCredenciales] = useState(false);
   const [credenciales, setCredenciales] = useState({
-    googleClientId: config?.googleClientId || "",
+    googleClientId: "",
     googleClientSecret: "",
-    googleRedirectUri: config?.googleRedirectUri || redirectUriSugerido || "",
+    googleRedirectUri: "",
   });
 
   const handleConectar = async () => {
@@ -576,11 +576,16 @@ function GoogleCalendarConfig() {
   // Cargar credenciales cuando se obtiene la configuración
   useEffect(() => {
     if (config) {
-      setCredenciales({
-        googleClientId: config.googleClientId || "",
-        googleClientSecret: "", // No mostrar el secreto por seguridad
-        googleRedirectUri: config.googleRedirectUri || redirectUriSugerido || "",
-      });
+      setCredenciales(prev => ({
+        googleClientId: config.googleClientId || prev.googleClientId || "",
+        googleClientSecret: prev.googleClientSecret || "", // No mostrar el secreto por seguridad
+        googleRedirectUri: config.googleRedirectUri || redirectUriSugerido || prev.googleRedirectUri || "",
+      }));
+    } else if (redirectUriSugerido && !credenciales.googleRedirectUri) {
+      setCredenciales(prev => ({
+        ...prev,
+        googleRedirectUri: redirectUriSugerido,
+      }));
     }
   }, [config, redirectUriSugerido]);
 
@@ -627,7 +632,7 @@ function GoogleCalendarConfig() {
     return (
       <Card className="shadow-sm border-border/50">
         <CardContent className="pt-6">
-          <p>Cargando estado de Google Calendar...</p>
+          <p className="text-muted-foreground">Cargando estado de Google Calendar...</p>
         </CardContent>
       </Card>
     );
@@ -687,7 +692,7 @@ function GoogleCalendarConfig() {
                     }
                   />
                   <p className="text-xs text-muted-foreground">
-                    Obtén este valor desde Google Cloud Console > Credenciales
+                    Obtén este valor desde Google Cloud Console &gt; Credenciales
                   </p>
                 </div>
 
@@ -703,7 +708,7 @@ function GoogleCalendarConfig() {
                     }
                   />
                   <p className="text-xs text-muted-foreground">
-                    Obtén este valor desde Google Cloud Console > Credenciales
+                    Obtén este valor desde Google Cloud Console &gt; Credenciales
                   </p>
                 </div>
 
@@ -722,10 +727,15 @@ function GoogleCalendarConfig() {
                     Esta URL debe coincidir exactamente con la configurada en Google Cloud Console.
                     Si se deja vacío, se calculará automáticamente.
                   </p>
-                  {redirectUriSugerido && (
+                  {(redirectUriSugerido || credenciales.googleRedirectUri) && (
                     <div className="p-2 bg-muted rounded text-xs font-mono">
-                      URI sugerida: <code className="text-primary">{redirectUriSugerido}</code>
+                      URI sugerida: <code className="text-primary">{redirectUriSugerido || credenciales.googleRedirectUri}</code>
                     </div>
+                  )}
+                  {redirectUriError && (
+                    <p className="text-xs text-muted-foreground text-orange-600 dark:text-orange-400">
+                      No se pudo obtener la URI automáticamente. Puedes dejarla vacía o ingresarla manualmente.
+                    </p>
                   )}
                 </div>
 
