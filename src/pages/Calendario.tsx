@@ -14,8 +14,7 @@ import { format, isSameDay } from "date-fns";
 import { es } from "date-fns/locale";
 import { cn } from "@/lib/utils";
 import { useToast } from "@/hooks/use-toast";
-import { useConfiguracion } from "@/hooks/useConfiguracion";
-import CalBookingWidget from "@/components/calendario/CalBookingWidget";
+// Calendario simple integrado - sin integraciones externas
 
 interface Cita {
   id: string;
@@ -105,13 +104,6 @@ export default function Calendario() {
     toast({
       title: "Cita creada",
       description: `Cita programada para el ${format(date, "d 'de' MMMM", { locale: es })} a las ${nuevaCita.hora}`
-    });
-  };
-
-  const handleSyncGoogle = () => {
-    toast({
-      title: "Sincronización con Google Calendar",
-      description: "Para sincronizar con Google Calendar, es necesario conectar Lovable Cloud y configurar la integración.",
     });
   };
 
@@ -220,46 +212,6 @@ export default function Calendario() {
           </Dialog>
         </div>
       </div>
-
-      {/* Google Calendar Banner */}
-      <Card className="border-secondary/30 bg-secondary/5">
-        <CardContent className="py-4">
-          <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
-            <div className="flex items-center gap-3">
-              <div className="p-2 bg-secondary/20 rounded-lg">
-                <Link2 className="h-5 w-5 text-secondary" />
-              </div>
-              <div>
-                <p className="font-medium text-foreground">Sincroniza tu calendario</p>
-                <p className="text-sm text-muted-foreground">
-                  Conecta con Google Calendar para sincronizar tus citas automáticamente
-                </p>
-              </div>
-            </div>
-            <Button 
-              variant="outline" 
-              size="sm" 
-              onClick={handleSyncGoogle}
-              className="border-secondary text-secondary hover:bg-secondary/10"
-            >
-              Conectar Google Calendar
-            </Button>
-          </div>
-        </CardContent>
-      </Card>
-
-      {/* Cal.com Widget si está habilitado */}
-      {config?.calComEnabled && config.calComLink && (
-        <Card className="border-primary/30 bg-primary/5">
-          <CardContent className="py-4">
-            <CalBookingWidget 
-              calLink={config.calComLink}
-              brandColor="#79438f"
-              theme="light"
-            />
-          </CardContent>
-        </Card>
-      )}
 
       {/* Main Content */}
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">

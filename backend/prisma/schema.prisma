@@ -130,7 +130,6 @@ model Cita {
   tipo       String   // "dermo", "bio", "consulta", "seguimiento"
   notas      String?
   recordatorioEnviado Boolean @default(false) // Si se ha enviado recordatorio
-  googleEventId String? // ID del evento en Google Calendar para sincronización bidireccional
   createdAt  DateTime @default(now())
   updatedAt  DateTime @updatedAt
 
@@ -140,7 +139,6 @@ model Cita {
 
   @@index([pacienteId])
   @@index([fecha])
-  @@index([googleEventId])
 }
 
 // Modelo de Notificación
@@ -185,20 +183,6 @@ model Configuracion {
   // Configuración de valoración bioquímica
   valoracionBioActiva   Boolean  @default(true) // Activar/desactivar valoración global
   parametrosReferencia  String   @default("{}") // JSON con valores de referencia por parámetro
-  // Integración Google Calendar
-  googleCalendarEnabled Boolean  @default(false) // Si está habilitada la sincronización
-  googleCalendarId      String?  // ID del calendario de Google (ej: "primary" o ID específico)
-  googleClientId        String?  // Client ID de OAuth (configurado por el usuario)
-  googleClientSecret    String?  // Client Secret de OAuth (configurado por el usuario)
-  googleRedirectUri     String?  // Redirect URI configurada (se calcula automáticamente)
-  googleAccessToken     String?  // Access token de OAuth
-  googleRefreshToken    String?  // Refresh token de OAuth
-  googleTokenExpiry     DateTime? // Fecha de expiración del access token
-  // Integración Cal.com
-  calComEnabled         Boolean  @default(false) // Si está habilitada la integración
-  calComLink            String?  // Enlace de Cal.com (ej: "usuario/consulta-dermo")
-  calComApiKey          String?  // API Key de Cal.com para webhooks
-  calComWebhookSecret   String?  // Secret para verificar webhooks
   createdAt             DateTime @default(now())
   updatedAt             DateTime @updatedAt
 }
