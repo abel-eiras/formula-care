@@ -1,5 +1,5 @@
 import { Router } from 'express';
-import { crearAnalisisDermo, obtenerAnalisisDermo, actualizarAnalisisDermo, obtenerAnalisisDermoPorPaciente, crearAnalisisBio, obtenerAnalisisBio } from '../controllers/servicios.js';
+import { crearAnalisisDermo, obtenerAnalisisDermo, actualizarAnalisisDermo, obtenerAnalisisDermoPorPaciente, crearAnalisisBio, obtenerAnalisisBio, obtenerAnalisisBioPorPaciente, actualizarAnalisisBio } from '../controllers/servicios.js';
 
 export const serviciosRouter = Router();
 
@@ -12,3 +12,5 @@ serviciosRouter.get('/dermo/paciente/:pacienteId', obtenerAnalisisDermoPorPacien
 // Rutas para análisis bioquímico
 serviciosRouter.post('/bio', crearAnalisisBio);
 serviciosRouter.get('/bio/:id', obtenerAnalisisBio);
+serviciosRouter.put('/bio/:id', actualizarAnalisisBio);
+serviciosRouter.get('/bio/paciente/:pacienteId', obtenerAnalisisBioPorPaciente);

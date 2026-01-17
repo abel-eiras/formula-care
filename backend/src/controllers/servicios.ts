@@ -52,13 +52,26 @@ const crearAnalisisDermoSchema = z.object({
 const crearAnalisisBioSchema = z.object({
   pacienteId: z.string().min(1, 'El ID del paciente es requerido'),
   fecha: z.string(),
-  glucose: z.number().positive().optional(),
+  // Parámetros básicos
+  glucemia: z.number().positive().optional(),
   cholesterol: z.number().positive().optional(),
+  cholesterolHDL: z.number().positive().optional(),
+  cholesterolLDL: z.number().positive().optional(),
   triglycerides: z.number().positive().optional(),
+  // Parámetros avanzados
+  hemoglobinaGlucosilada: z.number().positive().optional(),
+  proteinaCReactiva: z.number().positive().optional(),
+  vitaminaD: z.number().positive().optional(),
+  ferritina: z.number().positive().optional(),
+  // Tensión arterial y pulsaciones
   systolic: z.number().int().positive().optional(),
   diastolic: z.number().int().positive().optional(),
+  pulsaciones: z.number().int().positive().optional(),
+  // Medidas corporales
   weight: z.number().positive().optional(),
   height: z.number().positive().optional(),
+  // Campo legacy para compatibilidad
+  glucose: z.number().positive().optional(),
 });
 
 /**
@@ -276,9 +289,14 @@ export async function crearAnalisisBio(req: Request, res: Response) {
       imc = Number((datos.weight / (heightM * heightM)).toFixed(1));
     }
 
+    // Manejar compatibilidad: si viene glucose, usar como glucemia
+    const glucemia = datos.glucemia || datos.glucose;
+
     const analisis = await prisma.analisisBio.create({
       data: {
         ...datos,
+        glucemia,
+        glucose: undefined, // No guardar el campo legacy
         imc,
       },
       include: {
@@ -286,6 +304,8 @@ export async function crearAnalisisBio(req: Request, res: Response) {
           select: {
             id: true,
             name: true,
+            email: true,
+            phone: true,
           },
         },
       },
@@ -327,5 +347,88 @@ export async function obtenerAnalisisBio(req: Request, res: Response) {
   } catch (error) {
     console.error('Error al obtener análisis bio:', error);
     res.status(500).json({ error: 'Error al obtener análisis bioquímico' });
+  }
+}
+
+/**
+ * Obtener todos los análisis bioquímicos de un paciente
+ */
+export async function obtenerAnalisisBioPorPaciente(req: Request, res: Response) {
+  try {
+    const { pacienteId } = req.params;
+
+    const analisis = await prisma.analisisBio.findMany({
+      where: { pacienteId },
+      include: {
+        paciente: true,
+      },
+      orderBy: { fecha: 'desc' },
+    });
+
+    res.json(analisis);
+  } catch (error) {
+    console.error('Error al obtener análisis bio por paciente:', error);
+    res.status(500).json({ error: 'Error al obtener análisis bioquímico' });
+  }
+}
+
+/**
+ * Actualizar un análisis bioquímico
+ */
+export async function actualizarAnalisisBio(req: Request, res: Response) {
+  try {
+    const { id } = req.params;
+    const datos = crearAnalisisBioSchema.partial().parse(req.body);
+
+    // Verificar que el análisis existe
+    const analisisExistente = await prisma.analisisBio.findUnique({
+      where: { id },
+    });
+
+    if (!analisisExistente) {
+      return res.status(404).json({ error: 'Análisis no encontrado' });
+    }
+
+    // Calcular IMC si hay peso y altura
+    let imc: number | undefined;
+    if (datos.weight && datos.height) {
+      const heightM = datos.height / 100;
+      imc = Number((datos.weight / (heightM * heightM)).toFixed(1));
+    }
+
+    // Manejar compatibilidad: si viene glucose, usar como glucemia
+    const glucemia = datos.glucemia || datos.glucose;
+
+    const analisis = await prisma.analisisBio.update({
+      where: { id },
+      data: {
+        ...datos,
+        glucemia: glucemia !== undefined ? glucemia : undefined,
+        glucose: undefined, // No actualizar el campo legacy
+        imc: imc !== undefined ? imc : undefined,
+      },
+      include: {
+        paciente: {
+          select: {
+            id: true,
+            name: true,
+            email: true,
+            phone: true,
+          },
+        },
+      },
+    });
+
+    res.json(analisis);
+  } catch (error) {
+    if (error instanceof z.ZodError) {
+      return res.status(400).json({
+        error: 'Datos inválidos',
+        detalles: error.errors,
+      });
+    }
+
+    console.error('Error al actualizar análisis bio:', error);
+    res.status(500).json({ error: 'Error al actualizar análisis bioquímico' });
   }
 }
