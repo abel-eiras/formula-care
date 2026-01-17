@@ -27,10 +27,45 @@ export interface Paciente {
   };
 }
 
+// Tipos para rutinas y cuidados
+export interface RutinaDia {
+  higiene?: string;
+  contornoOjos?: string;
+  productoIntensivo?: string;
+  hidratacion?: string;
+  proteccionSolar?: string;
+}
+
+export interface RutinaNoche {
+  limpieza?: string;
+  contornoOjos?: string;
+  productoIntensivo?: string;
+  hidratacion?: string;
+}
+
+export interface CuidadosSemanales {
+  exfoliante?: string;
+  mascarilla?: string;
+}
+
 export interface AnalisisDermo {
   id: string;
   pacienteId: string;
   fecha: string;
+  // Nuevos campos de la plantilla
+  motivoConsulta?: string;
+  valoracionPiel: string[];
+  habitos: string[];
+  medicacionHabitual?: string;
+  patologias?: string;
+  etapaHormonal?: string;
+  rutinaDia?: RutinaDia;
+  rutinaNoche?: RutinaNoche;
+  cuidadosSemanales?: CuidadosSemanales;
+  suplementacionOral?: string;
+  proximaRevision?: string;
+  farmaceutico?: string;
+  // Campos legacy (mantener para compatibilidad)
   skinType?: string;
   phototype?: string;
   concerns: string[];
@@ -44,6 +79,9 @@ export interface AnalisisDermo {
   sunProtection?: string;
   supplements?: string;
   createdAt?: string;
+  updatedAt?: string;
+  // Relación
+  paciente?: Paciente;
 }
 
 export interface AnalisisBio {
