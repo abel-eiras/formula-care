@@ -11,6 +11,7 @@ import { Alert, AlertDescription } from '@/components/ui/alert';
 import { CheckCircle2, Clock, Calendar as CalendarIcon, User, Mail, Phone, MessageSquare, Loader2 } from 'lucide-react';
 import { format } from 'date-fns';
 import { es } from 'date-fns/locale';
+import { es as esDayPicker } from 'react-day-picker/locale';
 import { useDisponibilidad, useSolicitarCita } from '@/hooks/useSolicitudes';
 import { toast } from 'sonner';
 import { cn } from '@/lib/utils';
@@ -271,6 +272,8 @@ export default function SolicitarCita() {
                           mode="single"
                           selected={fechaSeleccionada}
                           onSelect={setFechaSeleccionada}
+                          locale={esDayPicker}
+                          weekStartsOn={1} // Lunes
                           disabled={(date) => {
                             // Deshabilitar fechas pasadas
                             const hoy = new Date();
@@ -319,8 +322,13 @@ export default function SolicitarCita() {
                       ) : horasDisponibles.length === 0 ? (
                         <Alert>
                           <AlertDescription>
-                            No hay horas disponibles para esta fecha. Por favor, selecciona otra
-                            fecha.
+                            No hay horas disponibles para esta fecha. Esto puede deberse a que:
+                            <ul className="list-disc list-inside mt-2 space-y-1">
+                              <li>No hay horarios configurados para este tipo de servicio</li>
+                              <li>La fecha está bloqueada</li>
+                              <li>Todas las horas están ocupadas</li>
+                            </ul>
+                            Por favor, selecciona otra fecha o contacta con la farmacia.
                           </AlertDescription>
                         </Alert>
                       ) : (

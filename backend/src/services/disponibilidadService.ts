@@ -143,9 +143,10 @@ export async function obtenerDisponibilidad(tipo: string, fecha: string): Promis
   const diaSemana = obtenerDiaSemana(fecha);
   const rangosHorarios = horariosTipo[diaSemana] || [];
 
-  // Si no hay horarios configurados para este día, no hay disponibilidad
+  // Si no hay horarios configurados para este día, usar horario por defecto (9:00-18:00)
+  // Esto permite que el sistema funcione aunque no se hayan configurado horarios
   if (rangosHorarios.length === 0) {
-    return [];
+    rangosHorarios.push('09:00-18:00'); // Horario por defecto
   }
 
   // Obtener duración del servicio (default: 30 minutos)
