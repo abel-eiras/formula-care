@@ -84,18 +84,30 @@ model AnalisisDermo {
 
 // Modelo de Análisis Bioquímico
 model AnalisisBio {
-  id           String   @id @default(cuid())
-  pacienteId   String
-  fecha        String   // Fecha en formato ISO
-  glucose      Float?
-  cholesterol  Float?
-  triglycerides Float?
-  systolic     Int?
-  diastolic    Int?
-  weight       Float?
-  height       Float?
-  imc          Float?   // Calculado automáticamente
-  createdAt    DateTime @default(now())
+  id                    String   @id @default(cuid())
+  pacienteId            String
+  fecha                 String   // Fecha en formato ISO
+  // Parámetros básicos
+  glucemia              Float?   // Antes "glucose"
+  cholesterol           Float?   // Colesterol total
+  cholesterolHDL        Float?   // Colesterol HDL
+  cholesterolLDL        Float?   // Colesterol LDL
+  triglycerides         Float?
+  // Parámetros avanzados
+  hemoglobinaGlucosilada Float?  // HbA1c
+  proteinaCReactiva     Float?   // PCR
+  vitaminaD             Float?
+  ferritina             Float?
+  // Tensión arterial y pulsaciones
+  systolic              Int?
+  diastolic             Int?
+  pulsaciones           Int?
+  // Medidas corporales
+  weight                Float?
+  height                Float?
+  imc                   Float?   // Calculado automáticamente
+  createdAt             DateTime @default(now())
+  updatedAt             DateTime @updatedAt
 
   // Relación
   paciente Paciente @relation(fields: [pacienteId], references: [id], onDelete: Cascade)
