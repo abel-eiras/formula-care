@@ -75,11 +75,29 @@ Las citas se sincronizan con colores diferentes según el tipo:
 - **Lavanda**: Consulta General
 - **Amarillo**: Seguimiento
 
-### Sincronización Automática
+### Sincronización Bidireccional
 
-- Las citas creadas en el sistema se crean automáticamente en Google Calendar
-- Las citas actualizadas se actualizan en Google Calendar
-- Las citas eliminadas se eliminan de Google Calendar
+#### Del Sistema hacia Google Calendar (Automática)
+
+- ✅ Las citas creadas en el sistema se crean automáticamente en Google Calendar
+- ✅ Las citas actualizadas se actualizan automáticamente en Google Calendar
+- ✅ Las citas eliminadas se eliminan automáticamente de Google Calendar
+- ✅ Se guarda el `eventId` de Google Calendar para mantener la sincronización
+
+#### De Google Calendar hacia el Sistema (Manual)
+
+- 🔄 Usa el botón "Sincronizar" en Configuración > Google Calendar
+- 🔄 Detecta cambios en Google Calendar (fecha, hora, título, descripción)
+- 🔄 Actualiza las citas locales con los cambios de Google Calendar
+- 🔄 Elimina citas locales si el evento fue eliminado en Google Calendar
+- 🔄 Muestra un resumen de los cambios detectados
+
+### Estado de Sincronización
+
+En la interfaz de configuración puedes ver:
+- Número de citas sincronizadas vs total
+- Porcentaje de sincronización
+- Botón para sincronizar manualmente
 
 ## Solución de Problemas
 
