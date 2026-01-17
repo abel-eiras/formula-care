@@ -8,6 +8,7 @@ import { configuracionRouter } from './routes/configuracion.js';
 import { estadisticasRouter } from './routes/estadisticas.js';
 import { notificacionesRouter } from './routes/notificaciones.js';
 import { googleCalendarRouter } from './routes/googleCalendar.js';
+import { calcomRouter } from './routes/calcom.js';
 
 // Cargar variables de entorno
 dotenv.config();
