@@ -305,7 +305,16 @@ export async function rechazarSolicitud(req: Request, res: Response) {
       });
     }
 
-    // TODO: Opcional - enviar email al cliente informando del rechazo
+    // Opcional - enviar email al cliente informando del rechazo
+    // (Comentado por defecto, descomentar si se desea activar)
+    // const { enviarRechazoSolicitud } = await import('../services/emailService.js');
+    // await enviarRechazoSolicitud(solicitud.emailCliente, {
+    //   tipo: solicitud.tipo,
+    //   fecha: solicitud.fecha,
+    //   hora: solicitud.hora,
+    //   nombreCliente: solicitud.nombreCliente,
+    //   motivo: motivo,
+    // });
 
     res.json({
       solicitud: solicitudActualizada,

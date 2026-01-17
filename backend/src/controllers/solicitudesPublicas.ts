@@ -159,7 +159,14 @@ export async function solicitarCita(req: Request, res: Response) {
         },
       });
 
-      // TODO: Enviar email de confirmación (se implementará en Fase 5)
+      // Enviar email de confirmación
+      const { enviarConfirmacionCita } = await import('../services/emailService.js');
+      await enviarConfirmacionCita(datos.emailCliente, {
+        tipo: datos.tipo,
+        fecha: datos.fecha,
+        hora: datos.hora,
+        nombreCliente: datos.nombreCliente,
+      });
     } else {
       // Crear solicitud como pendiente
       solicitud = await prisma.solicitudCita.create({
