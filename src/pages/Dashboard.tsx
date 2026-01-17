@@ -3,8 +3,20 @@ import { RecentPatients } from "@/components/dashboard/RecentPatients";
 import { EvolutionChart } from "@/components/dashboard/EvolutionChart";
 import { QuickActions } from "@/components/dashboard/QuickActions";
 import { Users, Sparkles, FlaskConical, TrendingUp } from "lucide-react";
+import { useEstadisticas } from "@/hooks/useEstadisticas";
+import { LoadingSpinner } from "@/components/ui/LoadingSpinner";
 
 export default function Dashboard() {
+  const { data: estadisticas, isLoading } = useEstadisticas();
+
+  if (isLoading) {
+    return (
+      <div className="flex items-center justify-center min-h-[400px]">
+        <LoadingSpinner />
+      </div>
+    );
+  }
+
   return (
     <div className="space-y-8 animate-fade-in">
       {/* Header */}
@@ -21,33 +33,42 @@ export default function Dashboard() {
       <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
         <StatCard
           title="Total Pacientes"
-          value={156}
-          subtitle="Registrados este mes"
+          value={estadisticas?.pacientes.total || 0}
+          subtitle={`${estadisticas?.pacientes.esteMes || 0} registrados este mes`}
           icon={Users}
-          trend={{ value: 12, isPositive: true }}
+          trend={{
+            value: estadisticas?.pacientes.tendencia || 0,
+            isPositive: (estadisticas?.pacientes.tendencia || 0) >= 0,
+          }}
           variant="primary"
         />
         <StatCard
           title="Análisis Dermo"
-          value={45}
+          value={estadisticas?.analisisDermo.esteMes || 0}
           subtitle="Este mes"
           icon={Sparkles}
-          trend={{ value: 8, isPositive: true }}
+          trend={{
+            value: estadisticas?.analisisDermo.tendencia || 0,
+            isPositive: (estadisticas?.analisisDermo.tendencia || 0) >= 0,
+          }}
           variant="secondary"
         />
         <StatCard
           title="Análisis Bio"
-          value={32}
+          value={estadisticas?.analisisBio.esteMes || 0}
           subtitle="Este mes"
           icon={FlaskConical}
-          trend={{ value: 5, isPositive: true }}
+          trend={{
+            value: estadisticas?.analisisBio.tendencia || 0,
+            isPositive: (estadisticas?.analisisBio.tendencia || 0) >= 0,
+          }}
         />
         <StatCard
           title="Tasa Retorno"
-          value="78%"
-          subtitle="Pacientes recurrentes"
+          value={`${estadisticas?.tasaRetorno.valor || 0}%`}
+          subtitle={`${estadisticas?.tasaRetorno.pacientesRecurrentes || 0} de ${estadisticas?.tasaRetorno.totalPacientes || 0} pacientes`}
           icon={TrendingUp}
-          trend={{ value: 3, isPositive: true }}
+          trend={{ value: 0, isPositive: true }}
         />
       </div>
 

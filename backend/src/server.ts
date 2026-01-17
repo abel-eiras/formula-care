@@ -5,6 +5,7 @@ import { pacientesRouter } from './routes/pacientes.js';
 import { citasRouter } from './routes/citas.js';
 import { serviciosRouter } from './routes/servicios.js';
 import { configuracionRouter } from './routes/configuracion.js';
+import { estadisticasRouter } from './routes/estadisticas.js';
 
 // Cargar variables de entorno
 dotenv.config();
@@ -31,6 +32,7 @@ app.use('/api/pacientes', pacientesRouter);
 app.use('/api/citas', citasRouter);
 app.use('/api/servicios', serviciosRouter);
 app.use('/api/configuracion', configuracionRouter);
+app.use('/api/estadisticas', estadisticasRouter);
 
 // Ruta de salud
 app.get('/api/health', (req, res) => {
