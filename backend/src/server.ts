@@ -7,6 +7,7 @@ import { serviciosRouter } from './routes/servicios.js';
 import { configuracionRouter } from './routes/configuracion.js';
 import { estadisticasRouter } from './routes/estadisticas.js';
 import { notificacionesRouter } from './routes/notificaciones.js';
+import { publicRouter } from './routes/public.js';
 
 // Cargar variables de entorno
 dotenv.config();
