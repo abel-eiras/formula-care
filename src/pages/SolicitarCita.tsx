@@ -13,16 +13,11 @@ import { format } from 'date-fns';
 import { es } from 'date-fns/locale';
 import { useDisponibilidad, useSolicitarCita } from '@/hooks/useSolicitudes';
 import { useEventosActivos } from '@/hooks/useEventos';
+import { useConfiguracion } from '@/hooks/useConfiguracion';
 import type { Evento } from '@/types';
 import { toast } from 'sonner';
 import { cn } from '@/lib/utils';
-
-// Tipos de servicio disponibles
-const TIPOS_SERVICIO = [
-  { value: 'dermo', label: 'Dermocosmética' },
-  { value: 'bio', label: 'Análisis Bioquímico' },
-  { value: 'evento', label: 'Otros eventos' },
-] as const;
+import { MessageCircle } from 'lucide-react';
 
 export default function SolicitarCita() {
   // Estados del formulario
@@ -43,28 +38,32 @@ export default function SolicitarCita() {
     mensaje: string;
   } | null>(null);
 
-  // Hook para obtener eventos activos
+  // Hook para obtener eventos activos y configuración de farmacia
   const { data: eventosActivos = [] } = useEventosActivos();
+  const { data: configFarmacia } = useConfiguracion();
+
+  // Determinar tipo y eventoId para disponibilidad
+  const tipoParaDisponibilidad = tipoServicio?.startsWith('evento:') ? 'evento' : tipoServicio;
+  const eventoIdParaDisponibilidad = tipoServicio?.startsWith('evento:') 
+    ? tipoServicio.split(':')[1] 
+    : null;
 
   // Hook para obtener disponibilidad
   const fechaString = fechaSeleccionada ? format(fechaSeleccionada, 'yyyy-MM-dd') : null;
   const { data: disponibilidad, isLoading: cargandoDisponibilidad, refetch: refetchDisponibilidad } = useDisponibilidad(
-    tipoServicio,
+    tipoParaDisponibilidad,
     fechaString,
-    tipoServicio === 'evento' ? eventoSeleccionado?.id : null
+    eventoIdParaDisponibilidad
   );
 
-  // Recargar disponibilidad cuando cambia la fecha o el evento
+  // Recargar disponibilidad cuando cambia la fecha o el tipo de servicio
   useEffect(() => {
-    if (fechaSeleccionada && tipoServicio) {
-      if (tipoServicio === 'evento' && !eventoSeleccionado) {
-        return; // No cargar disponibilidad si es evento pero no hay evento seleccionado
-      }
+    if (fechaSeleccionada && tipoParaDisponibilidad) {
       refetchDisponibilidad();
       // Resetear hora seleccionada si cambia la fecha
       setHoraSeleccionada('');
     }
-  }, [fechaSeleccionada, tipoServicio, eventoSeleccionado, refetchDisponibilidad]);
+  }, [fechaSeleccionada, tipoParaDisponibilidad, refetchDisponibilidad]);
 
   // Hook para crear solicitud
   const solicitarCita = useSolicitarCita();
@@ -72,8 +71,19 @@ export default function SolicitarCita() {
   // Obtener horas disponibles
   const horasDisponibles = disponibilidad?.horasDisponibles || [];
 
+  // Construir lista de tipos de servicio: dermo, bio, y eventos activos
+  const tiposServicioDisponibles = [
+    { value: 'dermo', label: 'Dermocosmética' },
+    { value: 'bio', label: 'Análisis Bioquímico' },
+    ...eventosActivos.map(evento => ({
+      value: `evento:${evento.id}`,
+      label: evento.nombre,
+      evento: evento,
+    })),
+  ];
+
   // Validar si se puede avanzar al siguiente paso
-  const puedeAvanzarPaso1 = tipoServicio !== null && (tipoServicio !== 'evento' || eventoSeleccionado !== null);
+  const puedeAvanzarPaso1 = tipoServicio !== null;
   const puedeAvanzarPaso2 = fechaSeleccionada !== undefined;
   const puedeAvanzarPaso3 = horaSeleccionada !== '';
   const puedeAvanzarPaso4 =
@@ -92,15 +102,18 @@ export default function SolicitarCita() {
     if (!tipoServicio || !fechaSeleccionada || !horaSeleccionada) return;
 
     try {
+      const tipoFinal = tipoServicio?.startsWith('evento:') ? 'evento' : tipoServicio;
+      const eventoIdFinal = tipoServicio?.startsWith('evento:') ? tipoServicio.split(':')[1] : undefined;
+
       const resultado = await solicitarCita.mutateAsync({
         nombreCliente: datosCliente.nombre,
         emailCliente: datosCliente.email,
         telefonoCliente: datosCliente.telefono,
-        tipo: tipoServicio as 'dermo' | 'bio' | 'evento',
+        tipo: tipoFinal as 'dermo' | 'bio' | 'evento',
         fecha: format(fechaSeleccionada, 'yyyy-MM-dd'),
         hora: horaSeleccionada,
         notas: datosCliente.notas || undefined,
-        eventoId: tipoServicio === 'evento' ? eventoSeleccionado?.id : undefined,
+        eventoId: eventoIdFinal,
       });
 
       setResultadoSolicitud({
@@ -131,6 +144,7 @@ export default function SolicitarCita() {
   const handleResetear = () => {
     setPaso(1);
     setTipoServicio(null);
+    setEventoSeleccionado(null);
     setFechaSeleccionada(undefined);
     setHoraSeleccionada('');
     setDatosCliente({ nombre: '', email: '', telefono: '', notas: '' });
@@ -138,9 +152,60 @@ export default function SolicitarCita() {
     setResultadoSolicitud(null);
   };
 
+  // Obtener evento seleccionado si el tipoServicio es un evento
+  const eventoActual = tipoServicio?.startsWith('evento:') 
+    ? eventosActivos.find(e => e.id === tipoServicio.split(':')[1])
+    : null;
+
+  // Función para abrir WhatsApp
+  const handleWhatsApp = () => {
+    if (configFarmacia?.farmaciaWhatsapp) {
+      const numero = configFarmacia.farmaciaWhatsapp.replace(/\s/g, ''); // Eliminar espacios
+      const mensaje = encodeURIComponent('Hola, me gustaría solicitar información sobre sus servicios.');
+      window.open(`https://wa.me/${numero}?text=${mensaje}`, '_blank');
+    }
+  };
+
   return (
     <div className="min-h-screen bg-gradient-to-br from-purple-50 via-white to-blue-50 py-8 px-4 sm:px-6 lg:px-8">
       <div className="max-w-4xl mx-auto">
+        {/* Encabezado con logo y datos de contacto */}
+        <div className="text-center mb-8 bg-white rounded-lg shadow-sm p-6">
+          {configFarmacia?.farmaciaLogo && (
+            <div className="mb-4 flex justify-center">
+              <img
+                src={configFarmacia.farmaciaLogo.startsWith('data:') 
+                  ? configFarmacia.farmaciaLogo 
+                  : `/microcaya/${configFarmacia.farmaciaLogo}`}
+                alt={configFarmacia.farmaciaNombre || 'Logo'}
+                className="h-16 object-contain"
+                onError={(e) => {
+                  (e.target as HTMLImageElement).style.display = 'none';
+                }}
+              />
+            </div>
+          )}
+          {configFarmacia?.farmaciaNombre && (
+            <h2 className="text-xl font-bold text-gray-900 mb-2">
+              {configFarmacia.farmaciaNombre}
+            </h2>
+          )}
+          <div className="text-sm text-gray-600 space-y-1">
+            {configFarmacia?.farmaciaDireccion && (
+              <p>{configFarmacia.farmaciaDireccion}</p>
+            )}
+            {configFarmacia?.farmaciaCiudad && (
+              <p>{configFarmacia.farmaciaCiudad}</p>
+            )}
+            {configFarmacia?.farmaciaTelefono && (
+              <p>Tel: {configFarmacia.farmaciaTelefono}</p>
+            )}
+            {configFarmacia?.farmaciaEmail && (
+              <p>Email: {configFarmacia.farmaciaEmail}</p>
+            )}
+          </div>
+        </div>
+
         {/* Header */}
         <div className="text-center mb-8">
           <h1 className="text-3xl sm:text-4xl font-bold text-gray-900 mb-2">
@@ -241,66 +306,57 @@ export default function SolicitarCita() {
                         Selecciona el tipo de servicio
                       </Label>
                       <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-                        {TIPOS_SERVICIO.map((tipo) => (
-                          <button
-                            key={tipo.value}
-                            onClick={() => {
-                              setTipoServicio(tipo.value);
-                              if (tipo.value !== 'evento') {
-                                setEventoSeleccionado(null);
-                              }
-                            }}
-                            className={cn(
-                              'p-6 rounded-lg border-2 text-left transition-all hover:shadow-md',
-                              tipoServicio === tipo.value
-                                ? 'border-[#79438f] bg-purple-50'
-                                : 'border-gray-200 hover:border-gray-300'
-                            )}
-                          >
-                            <div className="font-semibold text-gray-900">{tipo.label}</div>
-                          </button>
-                        ))}
+                        {tiposServicioDisponibles.map((tipo) => {
+                          const esEvento = tipo.value.startsWith('evento:');
+                          const evento = esEvento ? tipo.evento : null;
+                          
+                          return (
+                            <button
+                              key={tipo.value}
+                              onClick={() => {
+                                setTipoServicio(tipo.value);
+                                if (esEvento && evento) {
+                                  setEventoSeleccionado(evento);
+                                } else {
+                                  setEventoSeleccionado(null);
+                                }
+                              }}
+                              className={cn(
+                                'p-6 rounded-lg border-2 text-left transition-all hover:shadow-md',
+                                tipoServicio === tipo.value
+                                  ? 'border-[#79438f] bg-purple-50'
+                                  : 'border-gray-200 hover:border-gray-300'
+                              )}
+                            >
+                              <div className="font-semibold text-gray-900 mb-2">{tipo.label}</div>
+                              {esEvento && evento && (
+                                <>
+                                  {evento.descripcion && (
+                                    <div className="text-sm text-gray-600 mb-2">{evento.descripcion}</div>
+                                  )}
+                                  <div className="text-xs text-gray-500 space-y-1">
+                                    {evento.fechas.length > 0 && (
+                                      <p>
+                                        Fechas: {evento.fechas.map(f => {
+                                          try {
+                                            return format(new Date(f + 'T00:00:00'), 'dd-MM-yyyy', { locale: es });
+                                          } catch {
+                                            return f;
+                                          }
+                                        }).join(', ')}
+                                      </p>
+                                    )}
+                                    {evento.horas.length > 0 && (
+                                      <p>Horarios: {evento.horas.join(', ')}</p>
+                                    )}
+                                  </div>
+                                </>
+                              )}
+                            </button>
+                          );
+                        })}
                       </div>
                     </div>
-
-                    {/* Mostrar eventos si se selecciona "Otros eventos" */}
-                    {tipoServicio === 'evento' && (
-                      <div className="mt-6">
-                        <Label className="text-lg font-semibold mb-4 block">
-                          Selecciona un evento
-                        </Label>
-                        {eventosActivos.length === 0 ? (
-                          <Alert>
-                            <AlertDescription>
-                              No hay eventos disponibles en este momento.
-                            </AlertDescription>
-                          </Alert>
-                        ) : (
-                          <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-                            {eventosActivos.map((evento) => (
-                              <button
-                                key={evento.id}
-                                onClick={() => setEventoSeleccionado(evento)}
-                                className={cn(
-                                  'p-6 rounded-lg border-2 text-left transition-all hover:shadow-md',
-                                  eventoSeleccionado?.id === evento.id
-                                    ? 'border-[#79438f] bg-purple-50'
-                                    : 'border-gray-200 hover:border-gray-300'
-                                )}
-                              >
-                                <div className="font-semibold text-gray-900 mb-2">{evento.nombre}</div>
-                                {evento.descripcion && (
-                                  <div className="text-sm text-gray-600 mb-2">{evento.descripcion}</div>
-                                )}
-                                <div className="text-xs text-gray-500">
-                                  Duración: {evento.duracion} min • Máx. {evento.maxAsistentes} personas
-                                </div>
-                              </button>
-                            ))}
-                          </div>
-                        )}
-                      </div>
-                    )}
 
                     <div className="flex justify-end">
                       <Button
@@ -535,6 +591,21 @@ export default function SolicitarCita() {
             )}
           </CardContent>
         </Card>
+
+        {/* Botón de WhatsApp */}
+        {configFarmacia?.farmaciaWhatsapp && (
+          <div className="mt-6 text-center">
+            <Button
+              onClick={handleWhatsApp}
+              variant="outline"
+              className="bg-green-500 hover:bg-green-600 text-white border-green-500"
+              size="lg"
+            >
+              <MessageCircle className="h-5 w-5 mr-2" />
+              Contacta con nosotros por WhatsApp
+            </Button>
+          </div>
+        )}
       </div>
     </div>
   );
