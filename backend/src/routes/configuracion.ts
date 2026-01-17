@@ -4,6 +4,10 @@ import {
   actualizarFarmacia,
   actualizarParametrosReferencia,
   actualizarValoracionBio,
+  obtenerConfiguracionCalendario,
+  actualizarConfiguracionCalendario,
+  bloquearFechaHora,
+  desbloquearFechaHora,
 } from '../controllers/configuracion.js';
 
 export const configuracionRouter = Router();
@@ -19,3 +23,9 @@ configuracionRouter.put('/parametros', actualizarParametrosReferencia);
 
 // Actualizar estado de valoración bioquímica
 configuracionRouter.put('/valoracion-bio', actualizarValoracionBio);
+
+// Configuración del calendario
+configuracionRouter.get('/calendario', obtenerConfiguracionCalendario);
+configuracionRouter.put('/calendario', actualizarConfiguracionCalendario);
+configuracionRouter.post('/calendario/bloquear', bloquearFechaHora);
+configuracionRouter.delete('/calendario/desbloquear', desbloquearFechaHora);
