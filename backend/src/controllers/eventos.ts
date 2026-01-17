@@ -6,7 +6,7 @@ import { prisma } from '../lib/prisma.js';
 const eventoSchema = z.object({
   nombre: z.string().min(1, 'El nombre es requerido'),
   activo: z.boolean().optional().default(true),
-  dias: z.array(z.enum(['lunes', 'martes', 'miercoles', 'jueves', 'viernes', 'sabado', 'domingo'])).default([]),
+  fechas: z.array(z.string().regex(/^\d{4}-\d{2}-\d{2}$/, 'Formato de fecha inválido (YYYY-MM-DD)')).default([]),
   horas: z.array(z.string().regex(/^([0-1]?[0-9]|2[0-3]):[0-5][0-9]-([0-1]?[0-9]|2[0-3]):[0-5][0-9]$/, 'Formato inválido: debe ser HH:mm-HH:mm')).default([]),
   duracion: z.number().int().positive('La duración debe ser un número positivo'),
   maxAsistentes: z.number().int().positive('El número de asistentes debe ser positivo'),
@@ -26,7 +26,7 @@ export async function obtenerEventos(req: Request, res: Response) {
     // Parsear JSON fields
     const eventosParsed = eventos.map((evento) => ({
       ...evento,
-      dias: typeof evento.dias === 'string' ? JSON.parse(evento.dias) : evento.dias,
+      fechas: typeof evento.fechas === 'string' ? JSON.parse(evento.fechas) : evento.fechas,
       horas: typeof evento.horas === 'string' ? JSON.parse(evento.horas) : evento.horas,
     }));
 
@@ -51,7 +51,7 @@ export async function obtenerEventosActivos(req: Request, res: Response) {
     // Parsear JSON fields
     const eventosParsed = eventos.map((evento) => ({
       ...evento,
-      dias: typeof evento.dias === 'string' ? JSON.parse(evento.dias) : evento.dias,
+      fechas: typeof evento.fechas === 'string' ? JSON.parse(evento.fechas) : evento.fechas,
       horas: typeof evento.horas === 'string' ? JSON.parse(evento.horas) : evento.horas,
     }));
 
@@ -154,7 +154,7 @@ export async function actualizarEvento(req: Request, res: Response) {
     const datosActualizar: any = {};
     if (datos.nombre !== undefined) datosActualizar.nombre = datos.nombre;
     if (datos.activo !== undefined) datosActualizar.activo = datos.activo;
-    if (datos.dias !== undefined) datosActualizar.dias = JSON.stringify(datos.dias);
+    if (datos.fechas !== undefined) datosActualizar.fechas = JSON.stringify(datos.fechas);
     if (datos.horas !== undefined) datosActualizar.horas = JSON.stringify(datos.horas);
     if (datos.duracion !== undefined) datosActualizar.duracion = datos.duracion;
     if (datos.maxAsistentes !== undefined) datosActualizar.maxAsistentes = datos.maxAsistentes;

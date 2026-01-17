@@ -232,7 +232,7 @@ model Evento {
   id                String   @id @default(cuid())
   nombre            String   // Ej: "Taller de automaquillaje"
   activo            Boolean  @default(true) // Si está activo y visible para solicitudes
-  dias              String   @default("[]") // JSON: ["lunes", "martes", "miercoles"] - días de la semana disponibles
+  fechas            String   @default("[]") // JSON: ["2026-01-20", "2026-01-21", "2026-01-22"] - fechas específicas disponibles
   horas             String   @default("[]") // JSON: ["09:00-14:00", "16:00-19:00"] - rangos horarios
   duracion          Int      @default(60) // Duración en minutos
   maxAsistentes     Int      @default(1) // Número máximo de asistentes simultáneos

@@ -506,7 +506,7 @@ function CalendarioTab() {
   const [nuevoEvento, setNuevoEvento] = useState({
     nombre: '',
     descripcion: '',
-    dias: [] as string[],
+    fechas: [] as string[], // Array de fechas en formato YYYY-MM-DD
     horas: [''] as string[],
     duracion: 60,
     maxAsistentes: 1,
@@ -541,7 +541,7 @@ function CalendarioTab() {
       await crearEvento.mutateAsync({
         nombre: nuevoEvento.nombre,
         descripcion: nuevoEvento.descripcion || undefined,
-        dias: nuevoEvento.dias as any,
+        fechas: nuevoEvento.fechas,
         horas: nuevoEvento.horas.filter(h => h.trim() !== ''),
         duracion: nuevoEvento.duracion,
         maxAsistentes: nuevoEvento.maxAsistentes,
@@ -551,7 +551,7 @@ function CalendarioTab() {
       setNuevoEvento({
         nombre: '',
         descripcion: '',
-        dias: [],
+        fechas: [],
         horas: [''],
         duracion: 60,
         maxAsistentes: 1,
@@ -677,28 +677,47 @@ function CalendarioTab() {
                   </div>
                 </div>
                 <div className="space-y-2">
-                  <Label>Días de la Semana Disponibles *</Label>
-                  <div className="grid grid-cols-4 gap-2">
-                    {DIAS_SEMANA.map((dia) => (
-                      <div key={dia} className="flex items-center space-x-2">
-                        <input
-                          type="checkbox"
-                          id={`nuevo-${dia}`}
-                          checked={nuevoEvento.dias.includes(dia)}
+                  <Label>Fechas Disponibles (formato: YYYY-MM-DD) *</Label>
+                  <div className="space-y-2">
+                    {nuevoEvento.fechas.map((fecha, index) => (
+                      <div key={index} className="flex gap-2">
+                        <Input
+                          type="date"
+                          value={fecha}
                           onChange={(e) => {
-                            if (e.target.checked) {
-                              setNuevoEvento({ ...nuevoEvento, dias: [...nuevoEvento.dias, dia] });
-                            } else {
-                              setNuevoEvento({ ...nuevoEvento, dias: nuevoEvento.dias.filter(d => d !== dia) });
-                            }
+                            const nuevasFechas = [...nuevoEvento.fechas];
+                            nuevasFechas[index] = e.target.value;
+                            setNuevoEvento({ ...nuevoEvento, fechas: nuevasFechas });
                           }}
                         />
-                        <Label htmlFor={`nuevo-${dia}`} className="text-sm font-normal capitalize">
-                          {dia}
-                        </Label>
+                        <Button
+                          type="button"
+                          variant="outline"
+                          size="icon"
+                          onClick={() => {
+                            setNuevoEvento({
+                              ...nuevoEvento,
+                              fechas: nuevoEvento.fechas.filter((_, i) => i !== index),
+                            });
+                          }}
+                        >
+                          <Trash2 className="h-4 w-4" />
+                        </Button>
                       </div>
                     ))}
+                    <Button
+                      type="button"
+                      variant="outline"
+                      onClick={() => setNuevoEvento({ ...nuevoEvento, fechas: [...nuevoEvento.fechas, ''] })}
+                      className="w-full"
+                    >
+                      <Plus className="h-4 w-4 mr-2" />
+                      Añadir Fecha
+                    </Button>
                   </div>
+                  <p className="text-xs text-muted-foreground">
+                    Puedes añadir múltiples fechas para eventos de varios días, semanas completas o días específicos del mes.
+                  </p>
                 </div>
                 <div className="space-y-2">
                   <Label>Horarios Disponibles (formato: HH:mm-HH:mm) *</Label>
@@ -725,7 +744,10 @@ function CalendarioTab() {
                     </div>
                   ))}
                 </div>
-                <Button onClick={handleCrearEvento} disabled={crearEvento.isPending || !nuevoEvento.nombre}>
+                <Button 
+                  onClick={handleCrearEvento} 
+                  disabled={crearEvento.isPending || !nuevoEvento.nombre || nuevoEvento.fechas.length === 0 || nuevoEvento.fechas.some(f => !f)}
+                >
                   <Save className="h-4 w-4 mr-2" />
                   Crear Evento
                 </Button>
@@ -758,7 +780,7 @@ function CalendarioTab() {
                         <div className="text-sm text-muted-foreground space-y-1">
                           <p>Duración: {evento.duracion} minutos</p>
                           <p>Máx. asistentes: {evento.maxAsistentes}</p>
-                          <p>Días: {evento.dias.join(', ')}</p>
+                          <p>Fechas: {evento.fechas.length > 0 ? evento.fechas.join(', ') : 'Sin fechas'}</p>
                           <p>Horarios: {evento.horas.join(', ')}</p>
                         </div>
                       </div>

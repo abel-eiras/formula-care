@@ -129,12 +129,11 @@ export async function obtenerDisponibilidad(tipo: string, fecha: string, eventoI
       throw new Error('Evento no encontrado o inactivo');
     }
 
-    const diasEvento: string[] = typeof evento.dias === 'string' ? JSON.parse(evento.dias) : evento.dias;
+    const fechasEvento: string[] = typeof evento.fechas === 'string' ? JSON.parse(evento.fechas) : evento.fechas;
     const horasEvento: string[] = typeof evento.horas === 'string' ? JSON.parse(evento.horas) : evento.horas;
-    const diaSemana = obtenerDiaSemana(fecha);
 
-    // Verificar si el evento está disponible este día
-    if (!diasEvento.includes(diaSemana)) {
+    // Verificar si el evento está disponible en esta fecha específica
+    if (!fechasEvento.includes(fecha)) {
       return [];
     }
 
