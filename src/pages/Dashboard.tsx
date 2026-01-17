@@ -2,6 +2,8 @@ import { StatCard } from "@/components/dashboard/StatCard";
 import { RecentPatients } from "@/components/dashboard/RecentPatients";
 import { EvolutionChart } from "@/components/dashboard/EvolutionChart";
 import { QuickActions } from "@/components/dashboard/QuickActions";
+import { NotificacionesWidget } from "@/components/dashboard/NotificacionesWidget";
+import { ProximasRevisiones } from "@/components/dashboard/ProximasRevisiones";
 import { Users, Sparkles, FlaskConical, TrendingUp } from "lucide-react";
 import { useEstadisticas } from "@/hooks/useEstadisticas";
 import { LoadingSpinner } from "@/components/ui/LoadingSpinner";
@@ -80,13 +82,17 @@ export default function Dashboard() {
         </div>
         
         {/* Quick Actions */}
-        <div className="lg:col-span-1">
+        <div className="lg:col-span-1 space-y-6">
           <QuickActions />
+          <NotificacionesWidget />
         </div>
       </div>
 
-      {/* Recent Patients */}
-      <RecentPatients />
+      {/* Second Row: Recent Patients and Upcoming Reviews */}
+      <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+        <RecentPatients />
+        <ProximasRevisiones />
+      </div>
     </div>
   );
 }

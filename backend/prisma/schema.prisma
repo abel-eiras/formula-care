@@ -29,6 +29,7 @@ model Paciente {
   analisisDermo AnalisisDermo[]
   analisisBio   AnalisisBio[]
   citas         Cita[]
+  notificaciones Notificacion[]
 
   @@index([name])
   @@index([phone])
@@ -128,14 +129,43 @@ model Cita {
   hora       String   // Formato "HH:mm"
   tipo       String   // "dermo", "bio", "consulta", "seguimiento"
   notas      String?
+  recordatorioEnviado Boolean @default(false) // Si se ha enviado recordatorio
   createdAt  DateTime @default(now())
   updatedAt  DateTime @updatedAt
 
-  // Relación
+  // Relaciones
   paciente Paciente @relation(fields: [pacienteId], references: [id], onDelete: Cascade)
+  notificaciones Notificacion[]
 
   @@index([pacienteId])
   @@index([fecha])
+}
+
+// Modelo de Notificación
+model Notificacion {
+  id          String   @id @default(cuid())
+  tipo        String   // "cita", "revision", "recordatorio"
+  pacienteId  String?
+  citaId      String?
+  analisisId  String?  // ID del análisis (dermo o bio)
+  titulo      String
+  mensaje     String
+  canal       String   // "email", "sms", "whatsapp", "interno"
+  enviada     Boolean  @default(false)
+  fechaEnvio  DateTime?
+  leida       Boolean  @default(false)
+  fechaLectura DateTime?
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  // Relaciones opcionales
+  paciente Paciente? @relation(fields: [pacienteId], references: [id], onDelete: Cascade)
+  cita     Cita?     @relation(fields: [citaId], references: [id], onDelete: Cascade)
+
+  @@index([pacienteId])
+  @@index([citaId])
+  @@index([enviada])
+  @@index([leida])
 }
 
 // Modelo de Configuración (Singleton - solo un registro)

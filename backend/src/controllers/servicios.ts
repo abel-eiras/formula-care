@@ -116,6 +116,13 @@ export async function crearAnalisisDermo(req: Request, res: Response) {
       },
     });
 
+    // Crear notificación si hay próxima revisión
+    if (analisis.proximaRevision) {
+      crearNotificacionRevision(analisis.id, analisis.pacienteId, analisis.proximaRevision).catch(
+        (err) => console.error('Error al crear notificación:', err)
+      );
+    }
+
     // Parsear JSON strings de vuelta a objetos/arrays
     res.status(201).json({
       ...analisis,
@@ -245,6 +252,13 @@ export async function actualizarAnalisisDermo(req: Request, res: Response) {
         },
       },
     });
+
+    // Crear notificación si hay próxima revisión nueva o actualizada
+    if (analisis.proximaRevision) {
+      crearNotificacionRevision(analisis.id, analisis.pacienteId, analisis.proximaRevision).catch(
+        (err) => console.error('Error al crear notificación:', err)
+      );
+    }
 
     // Parsear JSON strings de vuelta a objetos/arrays
     res.json({

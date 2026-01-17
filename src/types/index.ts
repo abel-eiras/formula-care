@@ -77,3 +77,27 @@ export interface Paciente {
   createdAt?: string;
   updatedAt?: string;
 }
+
+export interface Notificacion {
+  id: string;
+  tipo: 'cita' | 'revision' | 'recordatorio' | 'alerta';
+  pacienteId?: string;
+  citaId?: string;
+  analisisId?: string;
+  titulo: string;
+  mensaje: string;
+  canal: 'email' | 'sms' | 'whatsapp' | 'interno';
+  enviada: boolean;
+  fechaEnvio?: string;
+  leida: boolean;
+  fechaLectura?: string;
+  createdAt?: string;
+  updatedAt?: string;
+  paciente?: Paciente;
+  cita?: {
+    id: string;
+    titulo: string;
+    fecha: string;
+    hora: string;
+  };
+}
