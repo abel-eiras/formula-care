@@ -88,15 +88,31 @@ export interface AnalisisBio {
   id: string;
   pacienteId: string;
   fecha: string;
-  glucose?: number;
-  cholesterol?: number;
+  // Parámetros básicos
+  glucemia?: number; // Antes "glucose"
+  cholesterol?: number; // Colesterol total
+  cholesterolHDL?: number; // Colesterol HDL
+  cholesterolLDL?: number; // Colesterol LDL
   triglycerides?: number;
+  // Parámetros avanzados
+  hemoglobinaGlucosilada?: number; // HbA1c
+  proteinaCReactiva?: number; // PCR
+  vitaminaD?: number;
+  ferritina?: number;
+  // Tensión arterial y pulsaciones
   systolic?: number;
   diastolic?: number;
+  pulsaciones?: number;
+  // Medidas corporales
   weight?: number;
   height?: number;
-  imc?: number;
+  imc?: number; // Calculado automáticamente
   createdAt?: string;
+  updatedAt?: string;
+  // Relación
+  paciente?: Paciente;
+  // Campo legacy para compatibilidad
+  glucose?: number;
 }
 
 export interface Cita {
