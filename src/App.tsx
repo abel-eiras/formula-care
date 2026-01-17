@@ -18,6 +18,7 @@ const ServicioBio = lazy(() => import("./pages/ServicioBio"));
 const ServicioBioPrint = lazy(() => import("./pages/ServicioBioPrint"));
 const Configuracion = lazy(() => import("./pages/Configuracion"));
 const Calendario = lazy(() => import("./pages/Calendario"));
+const SolicitarCita = lazy(() => import("./pages/SolicitarCita"));
 const NotFound = lazy(() => import("./pages/NotFound"));
 
 const queryClient = new QueryClient({
@@ -37,7 +38,16 @@ const App = () => (
       <Sonner />
       <BrowserRouter>
         <Routes>
-          {/* Rutas de impresión sin layout - deben ir antes */}
+          {/* Rutas públicas sin layout - deben ir antes */}
+          <Route
+            path="/solicitar-cita"
+            element={
+              <Suspense fallback={<LoadingSpinner />}>
+                <SolicitarCita />
+              </Suspense>
+            }
+          />
+          {/* Rutas de impresión sin layout */}
           <Route
             path="/servicios/dermo/print"
             element={
