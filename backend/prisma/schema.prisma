@@ -222,7 +222,24 @@ model ConfiguracionCalendario {
   fechasBloqueadas  String   @default("[]") // JSON: ["2026-01-20", "2026-01-21"]
   horasBloqueadas   String   @default("{}") // JSON: { "2026-01-20": ["10:00", "11:00"] }
   autoAceptar       Boolean  @default(false) // Auto-aceptar solicitudes en horarios habilitados
-  duracionPorTipo   String   @default("{}") // JSON: { "dermo": 30, "bio": 45, "consulta": 30, "seguimiento": 20 } (minutos)
+  duracionPorTipo   String   @default("{}") // JSON: { "dermo": 45, "bio": 20, "evento": 60 } (minutos)
   createdAt         DateTime @default(now())
   updatedAt         DateTime @updatedAt
+}
+
+// Modelo de Evento Personalizado
+model Evento {
+  id                String   @id @default(cuid())
+  nombre            String   // Ej: "Taller de automaquillaje"
+  activo            Boolean  @default(true) // Si está activo y visible para solicitudes
+  dias              String   @default("[]") // JSON: ["lunes", "martes", "miercoles"] - días de la semana disponibles
+  horas             String   @default("[]") // JSON: ["09:00-14:00", "16:00-19:00"] - rangos horarios
+  duracion          Int      @default(60) // Duración en minutos
+  maxAsistentes     Int      @default(1) // Número máximo de asistentes simultáneos
+  descripcion       String?  // Descripción opcional del evento
+  createdAt         DateTime @default(now())
+  updatedAt         DateTime @updatedAt
+
+  @@index([activo])
+  @@index([nombre])
 }

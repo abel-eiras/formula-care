@@ -107,7 +107,7 @@ export interface SolicitudCita {
   nombreCliente: string;
   emailCliente: string;
   telefonoCliente: string;
-  tipo: 'dermo' | 'bio' | 'consulta' | 'seguimiento';
+  tipo: 'dermo' | 'bio' | 'evento';
   fecha: string; // Formato ISO
   hora: string; // Formato "HH:mm"
   estado: 'pendiente' | 'aprobada' | 'rechazada';

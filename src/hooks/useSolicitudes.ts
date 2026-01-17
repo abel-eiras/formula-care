@@ -35,7 +35,8 @@ export function useSolicitarCita() {
       nombreCliente: string;
       emailCliente: string;
       telefonoCliente: string;
-      tipo: 'dermo' | 'bio' | 'consulta' | 'seguimiento';
+      tipo: 'dermo' | 'bio' | 'evento';
+      eventoId?: string;
       fecha: string;
       hora: string;
       notas?: string;

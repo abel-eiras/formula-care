@@ -232,10 +232,8 @@ export async function obtenerConfiguracionCalendario(req: Request, res: Response
           horasBloqueadas: '{}',
           autoAceptar: false,
           duracionPorTipo: JSON.stringify({
-            dermo: 30,
-            bio: 45,
-            consulta: 30,
-            seguimiento: 20,
+            dermo: 45,
+            bio: 20,
           }),
         },
       });
@@ -385,10 +383,8 @@ export async function actualizarConfiguracionCalendario(req: Request, res: Respo
           horasBloqueadas: datosActualizar.horasBloqueadas || '{}',
           autoAceptar: datosActualizar.autoAceptar ?? false,
           duracionPorTipo: datosActualizar.duracionPorTipo || JSON.stringify({
-            dermo: 30,
-            bio: 45,
-            consulta: 30,
-            seguimiento: 20,
+            dermo: 45,
+            bio: 20,
           }),
         },
       });
@@ -472,10 +468,8 @@ export async function bloquearFechaHora(req: Request, res: Response) {
           horasBloqueadas: '{}',
           autoAceptar: false,
           duracionPorTipo: JSON.stringify({
-            dermo: 30,
-            bio: 45,
-            consulta: 30,
-            seguimiento: 20,
+            dermo: 45,
+            bio: 20,
           }),
         },
       });

@@ -63,3 +63,45 @@ export function useActualizarValoracionBio() {
   });
 }
 
+/**
+ * Hook para obtener configuración del calendario
+ */
+export function useConfiguracionCalendario() {
+  return useQuery({
+    queryKey: ['configuracion', 'calendario'],
+    queryFn: async () => {
+      return api.get<{
+        id: string;
+        horariosPorTipo: Record<string, Record<string, string[]>>;
+        fechasBloqueadas: string[];
+        horasBloqueadas: Record<string, string[]>;
+        autoAceptar: boolean;
+        duracionPorTipo: Record<string, number>;
+      }>('/configuracion/calendario');
+    },
+    staleTime: 5 * 60 * 1000, // 5 minutos
+  });
+}
+
+/**
+ * Hook para actualizar configuración del calendario
+ */
+export function useActualizarConfiguracionCalendario() {
+  const queryClient = useQueryClient();
+
+  return useMutation({
+    mutationFn: async (datos: {
+      horariosPorTipo?: Record<string, Record<string, string[]>>;
+      fechasBloqueadas?: string[];
+      horasBloqueadas?: Record<string, string[]>;
+      autoAceptar?: boolean;
+      duracionPorTipo?: Record<string, number>;
+    }) => {
+      return api.put('/configuracion/calendario', datos);
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['configuracion', 'calendario'] });
+    },
+  });
+}
+

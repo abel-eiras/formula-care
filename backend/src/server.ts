@@ -9,6 +9,7 @@ import { estadisticasRouter } from './routes/estadisticas.js';
 import { notificacionesRouter } from './routes/notificaciones.js';
 import { publicRouter } from './routes/public.js';
 import { solicitudesRouter } from './routes/solicitudes.js';
+import { eventosRouter } from './routes/eventos.js';
 
 // Cargar variables de entorno
 dotenv.config();
@@ -38,6 +39,7 @@ app.use('/api/configuracion', configuracionRouter);
 app.use('/api/estadisticas', estadisticasRouter);
 app.use('/api/notificaciones', notificacionesRouter);
 app.use('/api/solicitudes', solicitudesRouter);
+app.use('/api/eventos', eventosRouter);
 
 // Rutas públicas (sin autenticación)
 app.use('/api/public', publicRouter);

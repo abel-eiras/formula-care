@@ -12,6 +12,8 @@ import { CheckCircle2, Clock, Calendar as CalendarIcon, User, Mail, Phone, Messa
 import { format } from 'date-fns';
 import { es } from 'date-fns/locale';
 import { useDisponibilidad, useSolicitarCita } from '@/hooks/useSolicitudes';
+import { useEventosActivos } from '@/hooks/useEventos';
+import type { Evento } from '@/types';
 import { toast } from 'sonner';
 import { cn } from '@/lib/utils';
 
@@ -19,14 +21,14 @@ import { cn } from '@/lib/utils';
 const TIPOS_SERVICIO = [
   { value: 'dermo', label: 'Dermocosmética' },
   { value: 'bio', label: 'Análisis Bioquímico' },
-  { value: 'consulta', label: 'Consulta General' },
-  { value: 'seguimiento', label: 'Seguimiento' },
+  { value: 'evento', label: 'Otros eventos' },
 ] as const;
 
 export default function SolicitarCita() {
   // Estados del formulario
   const [paso, setPaso] = useState<1 | 2 | 3 | 4 | 5>(1);
   const [tipoServicio, setTipoServicio] = useState<string | null>(null);
+  const [eventoSeleccionado, setEventoSeleccionado] = useState<Evento | null>(null);
   const [fechaSeleccionada, setFechaSeleccionada] = useState<Date | undefined>(undefined);
   const [horaSeleccionada, setHoraSeleccionada] = useState<string>('');
   const [datosCliente, setDatosCliente] = useState({
@@ -41,21 +43,28 @@ export default function SolicitarCita() {
     mensaje: string;
   } | null>(null);
 
+  // Hook para obtener eventos activos
+  const { data: eventosActivos = [] } = useEventosActivos();
+
   // Hook para obtener disponibilidad
   const fechaString = fechaSeleccionada ? format(fechaSeleccionada, 'yyyy-MM-dd') : null;
   const { data: disponibilidad, isLoading: cargandoDisponibilidad, refetch: refetchDisponibilidad } = useDisponibilidad(
     tipoServicio,
-    fechaString
+    fechaString,
+    tipoServicio === 'evento' ? eventoSeleccionado?.id : null
   );
 
-  // Recargar disponibilidad cuando cambia la fecha
+  // Recargar disponibilidad cuando cambia la fecha o el evento
   useEffect(() => {
     if (fechaSeleccionada && tipoServicio) {
+      if (tipoServicio === 'evento' && !eventoSeleccionado) {
+        return; // No cargar disponibilidad si es evento pero no hay evento seleccionado
+      }
       refetchDisponibilidad();
       // Resetear hora seleccionada si cambia la fecha
       setHoraSeleccionada('');
     }
-  }, [fechaSeleccionada, tipoServicio, refetchDisponibilidad]);
+  }, [fechaSeleccionada, tipoServicio, eventoSeleccionado, refetchDisponibilidad]);
 
   // Hook para crear solicitud
   const solicitarCita = useSolicitarCita();
@@ -64,7 +73,7 @@ export default function SolicitarCita() {
   const horasDisponibles = disponibilidad?.horasDisponibles || [];
 
   // Validar si se puede avanzar al siguiente paso
-  const puedeAvanzarPaso1 = tipoServicio !== null;
+  const puedeAvanzarPaso1 = tipoServicio !== null && (tipoServicio !== 'evento' || eventoSeleccionado !== null);
   const puedeAvanzarPaso2 = fechaSeleccionada !== undefined;
   const puedeAvanzarPaso3 = horaSeleccionada !== '';
   const puedeAvanzarPaso4 =
@@ -87,10 +96,11 @@ export default function SolicitarCita() {
         nombreCliente: datosCliente.nombre,
         emailCliente: datosCliente.email,
         telefonoCliente: datosCliente.telefono,
-        tipo: tipoServicio as 'dermo' | 'bio' | 'consulta' | 'seguimiento',
+        tipo: tipoServicio as 'dermo' | 'bio' | 'evento',
         fecha: format(fechaSeleccionada, 'yyyy-MM-dd'),
         hora: horaSeleccionada,
         notas: datosCliente.notas || undefined,
+        eventoId: tipoServicio === 'evento' ? eventoSeleccionado?.id : undefined,
       });
 
       setResultadoSolicitud({
@@ -234,7 +244,12 @@ export default function SolicitarCita() {
                         {TIPOS_SERVICIO.map((tipo) => (
                           <button
                             key={tipo.value}
-                            onClick={() => setTipoServicio(tipo.value)}
+                            onClick={() => {
+                              setTipoServicio(tipo.value);
+                              if (tipo.value !== 'evento') {
+                                setEventoSeleccionado(null);
+                              }
+                            }}
                             className={cn(
                               'p-6 rounded-lg border-2 text-left transition-all hover:shadow-md',
                               tipoServicio === tipo.value
@@ -247,6 +262,46 @@ export default function SolicitarCita() {
                         ))}
                       </div>
                     </div>
+
+                    {/* Mostrar eventos si se selecciona "Otros eventos" */}
+                    {tipoServicio === 'evento' && (
+                      <div className="mt-6">
+                        <Label className="text-lg font-semibold mb-4 block">
+                          Selecciona un evento
+                        </Label>
+                        {eventosActivos.length === 0 ? (
+                          <Alert>
+                            <AlertDescription>
+                              No hay eventos disponibles en este momento.
+                            </AlertDescription>
+                          </Alert>
+                        ) : (
+                          <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                            {eventosActivos.map((evento) => (
+                              <button
+                                key={evento.id}
+                                onClick={() => setEventoSeleccionado(evento)}
+                                className={cn(
+                                  'p-6 rounded-lg border-2 text-left transition-all hover:shadow-md',
+                                  eventoSeleccionado?.id === evento.id
+                                    ? 'border-[#79438f] bg-purple-50'
+                                    : 'border-gray-200 hover:border-gray-300'
+                                )}
+                              >
+                                <div className="font-semibold text-gray-900 mb-2">{evento.nombre}</div>
+                                {evento.descripcion && (
+                                  <div className="text-sm text-gray-600 mb-2">{evento.descripcion}</div>
+                                )}
+                                <div className="text-xs text-gray-500">
+                                  Duración: {evento.duracion} min • Máx. {evento.maxAsistentes} personas
+                                </div>
+                              </button>
+                            ))}
+                          </div>
+                        )}
+                      </div>
+                    )}
+
                     <div className="flex justify-end">
                       <Button
                         onClick={() => setPaso(2)}

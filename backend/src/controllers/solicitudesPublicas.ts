@@ -8,7 +8,8 @@ const solicitarCitaSchema = z.object({
   nombreCliente: z.string().min(1, 'El nombre es requerido'),
   emailCliente: z.string().email('Email inválido'),
   telefonoCliente: z.string().min(1, 'El teléfono es requerido'),
-  tipo: z.enum(['dermo', 'bio', 'consulta', 'seguimiento']),
+  tipo: z.enum(['dermo', 'bio', 'evento']),
+  eventoId: z.string().optional(), // Requerido si tipo === 'evento'
   fecha: z.string().regex(/^\d{4}-\d{2}-\d{2}$/, 'Formato de fecha inválido (YYYY-MM-DD)'),
   hora: z.string().regex(/^([0-1]?[0-9]|2[0-3]):[0-5][0-9]$/, 'Formato de hora inválido (HH:mm)'),
   notas: z.string().optional(),
@@ -20,7 +21,7 @@ const solicitarCitaSchema = z.object({
  */
 export async function obtenerDisponibilidadPublica(req: Request, res: Response) {
   try {
-    const { tipo, fecha } = req.query;
+    const { tipo, fecha, eventoId } = req.query;
 
     if (!tipo || !fecha) {
       return res.status(400).json({
@@ -28,7 +29,18 @@ export async function obtenerDisponibilidadPublica(req: Request, res: Response) 
       });
     }
 
-    const horasDisponibles = await obtenerDisponibilidad(tipo as string, fecha as string);
+    // Si es evento, eventoId es requerido
+    if (tipo === 'evento' && !eventoId) {
+      return res.status(400).json({
+        error: 'eventoId es requerido para tipo evento',
+      });
+    }
+
+    const horasDisponibles = await obtenerDisponibilidad(
+      tipo as string,
+      fecha as string,
+      eventoId as string | undefined
+    );
 
     res.json({
       disponible: horasDisponibles.length > 0,
@@ -118,7 +130,7 @@ export async function solicitarCita(req: Request, res: Response) {
           nombreCliente: datos.nombreCliente,
           emailCliente: datos.emailCliente,
           telefonoCliente: datos.telefonoCliente,
-          tipo: datos.tipo,
+          tipo: datos.tipo === 'evento' && datos.eventoId ? `evento:${datos.eventoId}` : datos.tipo,
           fecha: datos.fecha,
           hora: datos.hora,
           estado: 'aprobada',
@@ -134,7 +146,7 @@ export async function solicitarCita(req: Request, res: Response) {
           pacienteId: paciente.id,
           fecha: datos.fecha,
           hora: datos.hora,
-          tipo: datos.tipo,
+          tipo: datos.tipo === 'evento' && datos.eventoId ? `evento:${datos.eventoId}` : datos.tipo,
           notas: datos.notas || `Solicitud auto-aprobada desde página pública`,
         },
       });
@@ -174,7 +186,7 @@ export async function solicitarCita(req: Request, res: Response) {
           nombreCliente: datos.nombreCliente,
           emailCliente: datos.emailCliente,
           telefonoCliente: datos.telefonoCliente,
-          tipo: datos.tipo,
+          tipo: datos.tipo === 'evento' && datos.eventoId ? `evento:${datos.eventoId}` : datos.tipo,
           fecha: datos.fecha,
           hora: datos.hora,
           estado: 'pendiente',

@@ -7,10 +7,13 @@ import { Switch } from "@/components/ui/switch";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Accordion, AccordionContent, AccordionItem, AccordionTrigger } from "@/components/ui/accordion";
-import { ArrowLeft, Save, Settings, Building2, FlaskConical, Calendar, RefreshCw, CheckCircle2, BookOpen, ExternalLink, ChevronDown } from "lucide-react";
+import { Badge } from "@/components/ui/badge";
+import { ArrowLeft, Save, Settings, Building2, FlaskConical, Calendar, RefreshCw, CheckCircle2, BookOpen, ExternalLink, ChevronDown, Plus, Trash2 } from "lucide-react";
 import { Link } from "react-router-dom";
 import { toast } from "sonner";
-import { useConfiguracion, useActualizarFarmacia, useActualizarParametrosReferencia, useActualizarValoracionBio } from "@/hooks/useConfiguracion";
+import { useConfiguracion, useActualizarFarmacia, useActualizarParametrosReferencia, useActualizarValoracionBio, useConfiguracionCalendario, useActualizarConfiguracionCalendario } from "@/hooks/useConfiguracion";
+import { useEventos, useCrearEvento, useActualizarEvento, useEliminarEvento } from "@/hooks/useEventos";
+import type { Evento } from "@/types";
 import type { ParametroReferencia } from "@/types";
 
 // Mapeo de parámetros con sus etiquetas y unidades
@@ -149,6 +152,10 @@ export default function Configuracion() {
           <TabsTrigger value="parametros" className="gap-2">
             <FlaskConical className="h-4 w-4" />
             Parámetros Bioquímicos
+          </TabsTrigger>
+          <TabsTrigger value="calendario" className="gap-2">
+            <Calendar className="h-4 w-4" />
+            Calendario
           </TabsTrigger>
         </TabsList>
 
@@ -472,7 +479,313 @@ export default function Configuracion() {
           </div>
         </TabsContent>
 
+        {/* Tab: Calendario */}
+        <TabsContent value="calendario">
+          <CalendarioTab />
+        </TabsContent>
+
       </Tabs>
+    </div>
+  );
+}
+
+// Componente para el tab de Calendario
+function CalendarioTab() {
+  const { data: configCalendario, isLoading: cargandoConfig } = useConfiguracionCalendario();
+  const actualizarConfig = useActualizarConfiguracionCalendario();
+  const { data: eventos = [], isLoading: cargandoEventos } = useEventos();
+  const crearEvento = useCrearEvento();
+  const actualizarEvento = useActualizarEvento();
+  const eliminarEvento = useEliminarEvento();
+
+  const [duraciones, setDuraciones] = useState({
+    dermo: 45,
+    bio: 20,
+  });
+
+  const [nuevoEvento, setNuevoEvento] = useState({
+    nombre: '',
+    descripcion: '',
+    dias: [] as string[],
+    horas: [''] as string[],
+    duracion: 60,
+    maxAsistentes: 1,
+    activo: true,
+  });
+
+  const [editandoEvento, setEditandoEvento] = useState<Evento | null>(null);
+
+  useEffect(() => {
+    if (configCalendario) {
+      setDuraciones({
+        dermo: configCalendario.duracionPorTipo?.dermo || 45,
+        bio: configCalendario.duracionPorTipo?.bio || 20,
+      });
+    }
+  }, [configCalendario]);
+
+  const handleGuardarDuraciones = async () => {
+    try {
+      await actualizarConfig.mutateAsync({
+        duracionPorTipo: duraciones,
+      });
+      toast.success('Duraciones actualizadas correctamente');
+    } catch (error) {
+      console.error('Error al guardar:', error);
+      toast.error('Error al guardar las duraciones');
+    }
+  };
+
+  const handleCrearEvento = async () => {
+    try {
+      await crearEvento.mutateAsync({
+        nombre: nuevoEvento.nombre,
+        descripcion: nuevoEvento.descripcion || undefined,
+        dias: nuevoEvento.dias as any,
+        horas: nuevoEvento.horas.filter(h => h.trim() !== ''),
+        duracion: nuevoEvento.duracion,
+        maxAsistentes: nuevoEvento.maxAsistentes,
+        activo: nuevoEvento.activo,
+      });
+      toast.success('Evento creado correctamente');
+      setNuevoEvento({
+        nombre: '',
+        descripcion: '',
+        dias: [],
+        horas: [''],
+        duracion: 60,
+        maxAsistentes: 1,
+        activo: true,
+      });
+    } catch (error) {
+      console.error('Error al crear evento:', error);
+      toast.error('Error al crear el evento');
+    }
+  };
+
+  const handleEliminarEvento = async (id: string) => {
+    if (!confirm('¿Estás seguro de que quieres eliminar este evento?')) return;
+    try {
+      await eliminarEvento.mutateAsync(id);
+      toast.success('Evento eliminado correctamente');
+    } catch (error) {
+      console.error('Error al eliminar evento:', error);
+      toast.error('Error al eliminar el evento');
+    }
+  };
+
+  const DIAS_SEMANA = ['lunes', 'martes', 'miercoles', 'jueves', 'viernes', 'sabado', 'domingo'] as const;
+
+  if (cargandoConfig || cargandoEventos) {
+    return <div className="text-center py-8">Cargando configuración del calendario...</div>;
+  }
+
+  return (
+    <div className="space-y-6">
+      {/* Duraciones por tipo de servicio */}
+      <Card>
+        <CardHeader>
+          <CardTitle>Duración de Servicios</CardTitle>
+          <CardDescription>
+            Configura la duración en minutos para cada tipo de servicio
+          </CardDescription>
+        </CardHeader>
+        <CardContent className="space-y-4">
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+            <div className="space-y-2">
+              <Label htmlFor="duracionDermo">Dermocosmética (minutos)</Label>
+              <Input
+                id="duracionDermo"
+                type="number"
+                min="1"
+                value={duraciones.dermo}
+                onChange={(e) => setDuraciones({ ...duraciones, dermo: parseInt(e.target.value) || 45 })}
+              />
+            </div>
+            <div className="space-y-2">
+              <Label htmlFor="duracionBio">Análisis Bioquímico (minutos)</Label>
+              <Input
+                id="duracionBio"
+                type="number"
+                min="1"
+                value={duraciones.bio}
+                onChange={(e) => setDuraciones({ ...duraciones, bio: parseInt(e.target.value) || 20 })}
+              />
+            </div>
+          </div>
+          <div className="flex justify-end">
+            <Button onClick={handleGuardarDuraciones} disabled={actualizarConfig.isPending}>
+              <Save className="h-4 w-4 mr-2" />
+              Guardar Duraciones
+            </Button>
+          </div>
+        </CardContent>
+      </Card>
+
+      {/* Gestión de Eventos */}
+      <Card>
+        <CardHeader>
+          <CardTitle>Eventos Personalizados</CardTitle>
+          <CardDescription>
+            Crea y gestiona eventos personalizados que aparecerán en la página de solicitud de citas
+          </CardDescription>
+        </CardHeader>
+        <CardContent className="space-y-6">
+          {/* Formulario para nuevo evento */}
+          <Accordion type="single" collapsible>
+            <AccordionItem value="nuevo-evento">
+              <AccordionTrigger>Crear Nuevo Evento</AccordionTrigger>
+              <AccordionContent className="space-y-4 pt-4">
+                <div className="space-y-2">
+                  <Label htmlFor="eventoNombre">Nombre del Evento *</Label>
+                  <Input
+                    id="eventoNombre"
+                    value={nuevoEvento.nombre}
+                    onChange={(e) => setNuevoEvento({ ...nuevoEvento, nombre: e.target.value })}
+                    placeholder="Ej: Taller de automaquillaje"
+                  />
+                </div>
+                <div className="space-y-2">
+                  <Label htmlFor="eventoDescripcion">Descripción</Label>
+                  <Input
+                    id="eventoDescripcion"
+                    value={nuevoEvento.descripcion}
+                    onChange={(e) => setNuevoEvento({ ...nuevoEvento, descripcion: e.target.value })}
+                    placeholder="Descripción opcional del evento"
+                  />
+                </div>
+                <div className="grid grid-cols-2 gap-4">
+                  <div className="space-y-2">
+                    <Label htmlFor="eventoDuracion">Duración (minutos) *</Label>
+                    <Input
+                      id="eventoDuracion"
+                      type="number"
+                      min="1"
+                      value={nuevoEvento.duracion}
+                      onChange={(e) => setNuevoEvento({ ...nuevoEvento, duracion: parseInt(e.target.value) || 60 })}
+                    />
+                  </div>
+                  <div className="space-y-2">
+                    <Label htmlFor="eventoMaxAsistentes">Máx. Asistentes *</Label>
+                    <Input
+                      id="eventoMaxAsistentes"
+                      type="number"
+                      min="1"
+                      value={nuevoEvento.maxAsistentes}
+                      onChange={(e) => setNuevoEvento({ ...nuevoEvento, maxAsistentes: parseInt(e.target.value) || 1 })}
+                    />
+                  </div>
+                </div>
+                <div className="space-y-2">
+                  <Label>Días de la Semana Disponibles *</Label>
+                  <div className="grid grid-cols-4 gap-2">
+                    {DIAS_SEMANA.map((dia) => (
+                      <div key={dia} className="flex items-center space-x-2">
+                        <input
+                          type="checkbox"
+                          id={`nuevo-${dia}`}
+                          checked={nuevoEvento.dias.includes(dia)}
+                          onChange={(e) => {
+                            if (e.target.checked) {
+                              setNuevoEvento({ ...nuevoEvento, dias: [...nuevoEvento.dias, dia] });
+                            } else {
+                              setNuevoEvento({ ...nuevoEvento, dias: nuevoEvento.dias.filter(d => d !== dia) });
+                            }
+                          }}
+                        />
+                        <Label htmlFor={`nuevo-${dia}`} className="text-sm font-normal capitalize">
+                          {dia}
+                        </Label>
+                      </div>
+                    ))}
+                  </div>
+                </div>
+                <div className="space-y-2">
+                  <Label>Horarios Disponibles (formato: HH:mm-HH:mm) *</Label>
+                  {nuevoEvento.horas.map((hora, index) => (
+                    <div key={index} className="flex gap-2">
+                      <Input
+                        value={hora}
+                        onChange={(e) => {
+                          const nuevasHoras = [...nuevoEvento.horas];
+                          nuevasHoras[index] = e.target.value;
+                          setNuevoEvento({ ...nuevoEvento, horas: nuevasHoras });
+                        }}
+                        placeholder="09:00-14:00"
+                      />
+                      {index === nuevoEvento.horas.length - 1 && (
+                        <Button
+                          type="button"
+                          variant="outline"
+                          onClick={() => setNuevoEvento({ ...nuevoEvento, horas: [...nuevoEvento.horas, ''] })}
+                        >
+                          +
+                        </Button>
+                      )}
+                    </div>
+                  ))}
+                </div>
+                <Button onClick={handleCrearEvento} disabled={crearEvento.isPending || !nuevoEvento.nombre}>
+                  <Save className="h-4 w-4 mr-2" />
+                  Crear Evento
+                </Button>
+              </AccordionContent>
+            </AccordionItem>
+          </Accordion>
+
+          {/* Lista de eventos existentes */}
+          <div className="space-y-4">
+            <h3 className="font-semibold text-lg">Eventos Existentes</h3>
+            {eventos.length === 0 ? (
+              <p className="text-muted-foreground text-sm">No hay eventos creados aún</p>
+            ) : (
+              <div className="space-y-3">
+                {eventos.map((evento) => (
+                  <Card key={evento.id} className="p-4">
+                    <div className="flex justify-between items-start">
+                      <div className="flex-1">
+                        <div className="flex items-center gap-2 mb-2">
+                          <h4 className="font-semibold">{evento.nombre}</h4>
+                          {evento.activo ? (
+                            <Badge variant="default" className="bg-green-500">Activo</Badge>
+                          ) : (
+                            <Badge variant="secondary">Inactivo</Badge>
+                          )}
+                        </div>
+                        {evento.descripcion && (
+                          <p className="text-sm text-muted-foreground mb-2">{evento.descripcion}</p>
+                        )}
+                        <div className="text-sm text-muted-foreground space-y-1">
+                          <p>Duración: {evento.duracion} minutos</p>
+                          <p>Máx. asistentes: {evento.maxAsistentes}</p>
+                          <p>Días: {evento.dias.join(', ')}</p>
+                          <p>Horarios: {evento.horas.join(', ')}</p>
+                        </div>
+                      </div>
+                      <div className="flex gap-2">
+                        <Button
+                          variant="outline"
+                          size="sm"
+                          onClick={() => setEditandoEvento(evento)}
+                        >
+                          Editar
+                        </Button>
+                        <Button
+                          variant="destructive"
+                          size="sm"
+                          onClick={() => handleEliminarEvento(evento.id)}
+                        >
+                          Eliminar
+                        </Button>
+                      </div>
+                    </div>
+                  </Card>
+                ))}
+              </div>
+            )}
+          </div>
+        </CardContent>
+      </Card>
     </div>
   );
 }

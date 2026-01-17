@@ -99,10 +99,8 @@ async function obtenerConfiguracionCalendario() {
         horasBloqueadas: '{}',
         autoAceptar: false,
         duracionPorTipo: JSON.stringify({
-          dermo: 30,
-          bio: 45,
-          consulta: 30,
-          seguimiento: 20,
+          dermo: 45,
+          bio: 20,
         }),
       },
     });
@@ -112,13 +110,69 @@ async function obtenerConfiguracionCalendario() {
 }
 
 /**
- * Obtiene todas las horas disponibles para un tipo de servicio en una fecha específica
+ * Obtiene todas las horas disponibles para un tipo de servicio o evento en una fecha específica
  */
-export async function obtenerDisponibilidad(tipo: string, fecha: string): Promise<string[]> {
+export async function obtenerDisponibilidad(tipo: string, fecha: string, eventoId?: string): Promise<string[]> {
   // Validar tipo
-  const tiposValidos = ['dermo', 'bio', 'consulta', 'seguimiento'];
+  const tiposValidos = ['dermo', 'bio', 'evento'];
   if (!tiposValidos.includes(tipo)) {
     throw new Error(`Tipo de servicio inválido: ${tipo}`);
+  }
+
+  // Si es un evento, obtener configuración del evento
+  if (tipo === 'evento' && eventoId) {
+    const evento = await prisma.evento.findUnique({
+      where: { id: eventoId, activo: true },
+    });
+
+    if (!evento) {
+      throw new Error('Evento no encontrado o inactivo');
+    }
+
+    const diasEvento: string[] = typeof evento.dias === 'string' ? JSON.parse(evento.dias) : evento.dias;
+    const horasEvento: string[] = typeof evento.horas === 'string' ? JSON.parse(evento.horas) : evento.horas;
+    const diaSemana = obtenerDiaSemana(fecha);
+
+    // Verificar si el evento está disponible este día
+    if (!diasEvento.includes(diaSemana)) {
+      return [];
+    }
+
+    // Usar horarios del evento
+    const todasLasHoras: string[] = [];
+    for (const rango of horasEvento) {
+      const [inicio, fin] = rango.split('-');
+      if (inicio && fin) {
+        const horas = generarHorasEnRango(inicio, fin, evento.duracion);
+        todasLasHoras.push(...horas);
+      }
+    }
+
+    // Obtener solicitudes existentes para este evento en esta fecha
+    const solicitudesEvento = await prisma.solicitudCita.findMany({
+      where: {
+        fecha,
+        tipo: `evento:${eventoId}`,
+        estado: { in: ['pendiente', 'aprobada'] },
+      },
+      select: {
+        hora: true,
+      },
+    });
+
+    // Contar asistentes por hora
+    const asistentesPorHora: Record<string, number> = {};
+    solicitudesEvento.forEach((s) => {
+      asistentesPorHora[s.hora] = (asistentesPorHora[s.hora] || 0) + 1;
+    });
+
+    // Filtrar horas disponibles (considerando maxAsistentes)
+    const horasDisponibles = todasLasHoras.filter((hora) => {
+      const asistentes = asistentesPorHora[hora] || 0;
+      return asistentes < evento.maxAsistentes;
+    });
+
+    return [...new Set(horasDisponibles)].sort();
   }
 
   // Validar formato de fecha (ISO: YYYY-MM-DD)
@@ -163,10 +217,11 @@ export async function obtenerDisponibilidad(tipo: string, fecha: string): Promis
   }
 
   // Obtener citas existentes del mismo tipo en esa fecha
+  // Si el tipo es un evento (formato: "evento:ID"), buscar por ese tipo exacto
   const citasExistentes = await prisma.cita.findMany({
     where: {
       fecha,
-      tipo,
+      tipo: tipo.startsWith('evento:') ? tipo : tipo,
     },
     select: {
       hora: true,
@@ -177,7 +232,7 @@ export async function obtenerDisponibilidad(tipo: string, fecha: string): Promis
   const solicitudesAprobadas = await prisma.solicitudCita.findMany({
     where: {
       fecha,
-      tipo,
+      tipo: tipo.startsWith('evento:') ? tipo : tipo,
       estado: 'aprobada',
     },
     select: {
