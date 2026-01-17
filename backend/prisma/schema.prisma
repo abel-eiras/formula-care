@@ -30,6 +30,7 @@ model Paciente {
   analisisBio   AnalisisBio[]
   citas         Cita[]
   notificaciones Notificacion[]
+  solicitudesCita SolicitudCita[]
 
   @@index([name])
   @@index([phone])
@@ -136,6 +137,7 @@ model Cita {
   // Relaciones
   paciente Paciente @relation(fields: [pacienteId], references: [id], onDelete: Cascade)
   notificaciones Notificacion[]
+  solicitudesCita SolicitudCita[]
 
   @@index([pacienteId])
   @@index([fecha])
@@ -185,4 +187,42 @@ model Configuracion {
   parametrosReferencia  String   @default("{}") // JSON con valores de referencia por parámetro
   createdAt             DateTime @default(now())
   updatedAt             DateTime @updatedAt
+}
+
+// Modelo de Solicitud de Cita (desde página pública)
+model SolicitudCita {
+  id            String   @id @default(cuid())
+  nombreCliente String
+  emailCliente  String
+  telefonoCliente String
+  tipo          String   // "dermo", "bio", "consulta", "seguimiento"
+  fecha         String   // Fecha en formato ISO
+  hora          String   // Formato "HH:mm"
+  estado        String   @default("pendiente") // "pendiente", "aprobada", "rechazada"
+  notas         String?  // Mensaje opcional del cliente
+  pacienteId    String?  // Si el cliente ya existe en BD
+  citaId        String?  // Si se convierte en cita aprobada
+  createdAt     DateTime @default(now())
+  updatedAt     DateTime @updatedAt
+
+  // Relaciones opcionales
+  paciente Paciente? @relation(fields: [pacienteId], references: [id], onDelete: SetNull)
+  cita     Cita?     @relation(fields: [citaId], references: [id], onDelete: SetNull)
+
+  @@index([fecha])
+  @@index([estado])
+  @@index([tipo])
+  @@index([emailCliente])
+}
+
+// Modelo de Configuración de Calendario (Singleton - solo un registro)
+model ConfiguracionCalendario {
+  id                String   @id @default("calendario") // ID fijo para singleton
+  horariosPorTipo   String   @default("{}") // JSON: { "dermo": { "lunes": ["09:00-14:00"], ... }, "bio": {...} }
+  fechasBloqueadas  String   @default("[]") // JSON: ["2026-01-20", "2026-01-21"]
+  horasBloqueadas   String   @default("{}") // JSON: { "2026-01-20": ["10:00", "11:00"] }
+  autoAceptar       Boolean  @default(false) // Auto-aceptar solicitudes en horarios habilitados
+  duracionPorTipo   String   @default("{}") // JSON: { "dermo": 30, "bio": 45, "consulta": 30, "seguimiento": 20 } (minutos)
+  createdAt         DateTime @default(now())
+  updatedAt         DateTime @updatedAt
 }

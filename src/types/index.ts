@@ -101,3 +101,50 @@ export interface Notificacion {
     hora: string;
   };
 }
+
+export interface SolicitudCita {
+  id: string;
+  nombreCliente: string;
+  emailCliente: string;
+  telefonoCliente: string;
+  tipo: 'dermo' | 'bio' | 'consulta' | 'seguimiento';
+  fecha: string; // Formato ISO
+  hora: string; // Formato "HH:mm"
+  estado: 'pendiente' | 'aprobada' | 'rechazada';
+  notas?: string;
+  pacienteId?: string;
+  citaId?: string;
+  createdAt?: string;
+  updatedAt?: string;
+  paciente?: Paciente;
+  cita?: {
+    id: string;
+    titulo: string;
+    fecha: string;
+    hora: string;
+  };
+}
+
+export interface ConfiguracionCalendario {
+  id: string;
+  horariosPorTipo: string; // JSON: { "dermo": { "lunes": ["09:00-14:00"], ... }, "bio": {...} }
+  fechasBloqueadas: string; // JSON: ["2026-01-20", "2026-01-21"]
+  horasBloqueadas: string; // JSON: { "2026-01-20": ["10:00", "11:00"] }
+  autoAceptar: boolean;
+  duracionPorTipo: string; // JSON: { "dermo": 30, "bio": 45, "consulta": 30, "seguimiento": 20 }
+  createdAt?: string;
+  updatedAt?: string;
+}
+
+// Tipos auxiliares para ConfiguracionCalendario
+export type DiaSemana = 'lunes' | 'martes' | 'miercoles' | 'jueves' | 'viernes' | 'sabado' | 'domingo';
+
+export interface HorariosPorTipo {
+  [tipo: string]: {
+    [dia in DiaSemana]?: string[]; // Array de rangos horarios: ["09:00-14:00", "16:00-19:00"]
+  };
+}
+
+export interface DuracionPorTipo {
+  [tipo: string]: number; // Duración en minutos
+}
