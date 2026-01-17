@@ -1,54 +1,264 @@
-import { useState } from "react";
+import { useState, useMemo } from "react";
 import { Button } from "@/components/ui/button";
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { Card, CardContent } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Checkbox } from "@/components/ui/checkbox";
-import { Accordion, AccordionContent, AccordionItem, AccordionTrigger } from "@/components/ui/accordion";
-import { ArrowLeft, Save, Sparkles, ClipboardList, TestTube, Pill } from "lucide-react";
-import { Link } from "react-router-dom";
+import { ArrowLeft, Save, FileDown, Sparkles } from "lucide-react";
+import { Link, useNavigate, useSearchParams } from "react-router-dom";
 import { toast } from "sonner";
+import { usePacientes } from "@/hooks/usePacientes";
+import { useCrearAnalisisDermo, useAnalisisDermo, useActualizarAnalisisDermo } from "@/hooks/useAnalisisDermo";
+import type { AnalisisDermo, RutinaDia, RutinaNoche, CuidadosSemanales } from "@/types";
 
-const skinTypes = ["Normal", "Seca", "Grasa", "Mixta", "Sensible"];
-const phototypes = ["I - Muy clara", "II - Clara", "III - Intermedia", "IV - Mate", "V - Morena", "VI - Oscura"];
-const concerns = [
-  { id: "acne", label: "Acné" },
-  { id: "manchas", label: "Manchas" },
-  { id: "arrugas", label: "Arrugas" },
-  { id: "rojeces", label: "Rojeces" },
-  { id: "deshidratacion", label: "Deshidratación" },
-  { id: "poros", label: "Poros dilatados" },
-  { id: "flacidez", label: "Flacidez" },
-  { id: "ojeras", label: "Ojeras" },
-];
+// Opciones de valoración de la piel
+const VALORACION_PIEL_OPCIONES = [
+  "piel_grasa",
+  "flacidez",
+  "sensibilidad_rojeces",
+  "piel_seca",
+  "arrugas",
+  "pigmentacion_manchas",
+  "piel_mixta",
+  "falta_elasticidad",
+  "poros_abiertos",
+  "piel_deshidratada",
+] as const;
+
+const VALORACION_PIEL_LABELS: Record<string, string> = {
+  piel_grasa: "Piel grasa",
+  flacidez: "Flacidez",
+  sensibilidad_rojeces: "Sensibilidad / Rojeces",
+  piel_seca: "Piel seca",
+  arrugas: "Arrugas",
+  pigmentacion_manchas: "Pigmentación / Manchas",
+  piel_mixta: "Piel mixta",
+  falta_elasticidad: "Falta de elasticidad",
+  poros_abiertos: "Poros abiertos",
+  piel_deshidratada: "Piel deshidratada",
+};
+
+// Opciones de hábitos
+const HABITOS_OPCIONES = [
+  "sueño_irregular",
+  "estrés",
+  "problemas_digestivos",
+  "ejercicio",
+  "dieta_equilibrada",
+  "tabaco_alcohol",
+] as const;
+
+const HABITOS_LABELS: Record<string, string> = {
+  sueño_irregular: "Sueño irregular",
+  estrés: "Estrés",
+  problemas_digestivos: "Problemas digestivos",
+  ejercicio: "Ejercicio",
+  dieta_equilibrada: "Dieta equilibrada",
+  tabaco_alcohol: "Tabaco / Alcohol",
+};
+
+/**
+ * Formatea una fecha ISO a formato dd/mm/aaaa
+ */
+const formatearFecha = (fecha: string): string => {
+  if (!fecha) return "";
+  try {
+    const date = new Date(fecha);
+    const dia = String(date.getDate()).padStart(2, "0");
+    const mes = String(date.getMonth() + 1).padStart(2, "0");
+    const año = date.getFullYear();
+    return `${dia} / ${mes} / ${año}`;
+  } catch {
+    return fecha;
+  }
+};
+
+/**
+ * Parsea una fecha en formato dd/mm/aaaa a ISO
+ */
+const parsearFecha = (fecha: string): string => {
+  if (!fecha) return "";
+  const partes = fecha.split("/").map((p) => p.trim());
+  if (partes.length === 3) {
+    const [dia, mes, año] = partes;
+    return `${año}-${mes.padStart(2, "0")}-${dia.padStart(2, "0")}`;
+  }
+  return fecha;
+};
 
 export default function ServicioDermo() {
-  const [selectedConcerns, setSelectedConcerns] = useState<string[]>([]);
+  const navigate = useNavigate();
+  const [searchParams] = useSearchParams();
+  const analisisId = searchParams.get("id");
+  const pacienteIdParam = searchParams.get("pacienteId");
+
+  const { data: pacientes = [] } = usePacientes();
+  const { data: analisisExistente } = useAnalisisDermo(analisisId || undefined);
+  const crearAnalisis = useCrearAnalisisDermo();
+  const actualizarAnalisis = useActualizarAnalisisDermo();
+
+  // Estado del formulario
+  const [pacienteId, setPacienteId] = useState<string>(pacienteIdParam || "");
   const [formData, setFormData] = useState({
-    skinType: "",
-    phototype: "",
-    hydration: "",
-    sebum: "",
-    elasticity: "",
-    spots: "",
-    ph: "",
-    treatment: "",
-    cleaning: "",
-    sunProtection: "",
-    supplements: "",
+    fecha: new Date().toISOString().split("T")[0],
+    motivoConsulta: "",
+    valoracionPiel: [] as string[],
+    valoracionPielOtro: "",
+    habitos: [] as string[],
+    medicacionHabitual: "",
+    patologias: "",
+    etapaHormonal: "",
+    rutinaDia: {
+      higiene: "",
+      contornoOjos: "",
+      productoIntensivo: "",
+      hidratacion: "",
+      proteccionSolar: "",
+    } as RutinaDia,
+    rutinaNoche: {
+      limpieza: "",
+      contornoOjos: "",
+      productoIntensivo: "",
+      hidratacion: "",
+    } as RutinaNoche,
+    cuidadosSemanales: {
+      exfoliante: "",
+      mascarilla: "",
+    } as CuidadosSemanales,
+    suplementacionOral: "",
+    proximaRevision: "",
+    farmaceutico: "",
   });
 
-  const handleConcernChange = (concernId: string, checked: boolean) => {
-    setSelectedConcerns(prev =>
-      checked ? [...prev, concernId] : prev.filter(id => id !== concernId)
-    );
+  // Cargar datos existentes si estamos editando
+  useMemo(() => {
+    if (analisisExistente) {
+      setPacienteId(analisisExistente.pacienteId);
+      setFormData({
+        fecha: analisisExistente.fecha.split("T")[0] || new Date().toISOString().split("T")[0],
+        motivoConsulta: analisisExistente.motivoConsulta || "",
+        valoracionPiel: analisisExistente.valoracionPiel || [],
+        valoracionPielOtro: "",
+        habitos: analisisExistente.habitos || [],
+        medicacionHabitual: analisisExistente.medicacionHabitual || "",
+        patologias: analisisExistente.patologias || "",
+        etapaHormonal: analisisExistente.etapaHormonal || "",
+        rutinaDia: analisisExistente.rutinaDia || {
+          higiene: "",
+          contornoOjos: "",
+          productoIntensivo: "",
+          hidratacion: "",
+          proteccionSolar: "",
+        },
+        rutinaNoche: analisisExistente.rutinaNoche || {
+          limpieza: "",
+          contornoOjos: "",
+          productoIntensivo: "",
+          hidratacion: "",
+        },
+        cuidadosSemanales: analisisExistente.cuidadosSemanales || {
+          exfoliante: "",
+          mascarilla: "",
+        },
+        suplementacionOral: analisisExistente.suplementacionOral || "",
+        proximaRevision: analisisExistente.proximaRevision || "",
+        farmaceutico: analisisExistente.farmaceutico || "",
+      });
+    }
+  }, [analisisExistente]);
+
+  const pacienteSeleccionado = useMemo(
+    () => pacientes.find((p) => p.id === pacienteId),
+    [pacientes, pacienteId]
+  );
+
+  const handleValoracionPielChange = (valor: string, checked: boolean) => {
+    setFormData((prev) => ({
+      ...prev,
+      valoracionPiel: checked
+        ? [...prev.valoracionPiel, valor]
+        : prev.valoracionPiel.filter((v) => v !== valor),
+    }));
   };
 
-  const handleSave = () => {
-    toast.success("Análisis dermocosmético guardado correctamente");
+  const handleHabitosChange = (valor: string, checked: boolean) => {
+    setFormData((prev) => ({
+      ...prev,
+      habitos: checked
+        ? [...prev.habitos, valor]
+        : prev.habitos.filter((v) => v !== valor),
+    }));
   };
+
+  const handleRutinaDiaChange = (campo: keyof RutinaDia, valor: string) => {
+    setFormData((prev) => ({
+      ...prev,
+      rutinaDia: { ...prev.rutinaDia, [campo]: valor },
+    }));
+  };
+
+  const handleRutinaNocheChange = (campo: keyof RutinaNoche, valor: string) => {
+    setFormData((prev) => ({
+      ...prev,
+      rutinaNoche: { ...prev.rutinaNoche, [campo]: valor },
+    }));
+  };
+
+  const handleCuidadosSemanalesChange = (campo: keyof CuidadosSemanales, valor: string) => {
+    setFormData((prev) => ({
+      ...prev,
+      cuidadosSemanales: { ...prev.cuidadosSemanales, [campo]: valor },
+    }));
+  };
+
+  const handleSubmit = async () => {
+    if (!pacienteId) {
+      toast.error("Debe seleccionar un paciente");
+      return;
+    }
+
+    try {
+      const datosAnalisis: Omit<AnalisisDermo, "id" | "createdAt" | "updatedAt" | "paciente"> = {
+        pacienteId,
+        fecha: new Date(formData.fecha).toISOString(),
+        motivoConsulta: formData.motivoConsulta,
+        valoracionPiel: formData.valoracionPiel,
+        habitos: formData.habitos,
+        medicacionHabitual: formData.medicacionHabitual,
+        patologias: formData.patologias,
+        etapaHormonal: formData.etapaHormonal,
+        rutinaDia: formData.rutinaDia,
+        rutinaNoche: formData.rutinaNoche,
+        cuidadosSemanales: formData.cuidadosSemanales,
+        suplementacionOral: formData.suplementacionOral,
+        proximaRevision: formData.proximaRevision ? parsearFecha(formData.proximaRevision) : undefined,
+        farmaceutico: formData.farmaceutico,
+        concerns: [], // Mantener compatibilidad
+      };
+
+      if (analisisId) {
+        await actualizarAnalisis.mutateAsync({ id: analisisId, ...datosAnalisis });
+        toast.success("Análisis actualizado correctamente");
+      } else {
+        await crearAnalisis.mutateAsync(datosAnalisis);
+        toast.success("Análisis guardado correctamente");
+      }
+
+      navigate(`/pacientes/${pacienteId}`);
+    } catch (error) {
+      console.error("Error al guardar análisis:", error);
+      toast.error("Error al guardar el análisis");
+    }
+  };
+
+  const handleGenerarPDF = () => {
+    // TODO: Implementar generación de PDF
+    toast.info("Generación de PDF próximamente");
+  };
+
+  const isLoading = crearAnalisis.isPending || actualizarAnalisis.isPending;
 
   return (
     <div className="space-y-6 animate-fade-in">
@@ -64,240 +274,352 @@ export default function ServicioDermo() {
           <div>
             <h1 className="text-2xl font-bold text-foreground flex items-center gap-2">
               <Sparkles className="h-6 w-6 text-primary" />
-              Análisis Dermocosmético
+              Consulta Dermocosmética
             </h1>
-            <p className="text-muted-foreground">Evaluación completa de piel</p>
+            <p className="text-muted-foreground">Análisis completo de piel</p>
           </div>
         </div>
-        <Button size="lg" onClick={handleSave} className="shadow-md gap-2">
-          <Save className="h-5 w-5" />
-          Guardar Análisis
-        </Button>
+        <div className="flex gap-2">
+          <Button variant="outline" onClick={handleGenerarPDF} className="gap-2" disabled={isLoading}>
+            <FileDown className="h-4 w-4" />
+            Generar PDF
+          </Button>
+          <Button size="lg" onClick={handleSubmit} className="shadow-md gap-2" disabled={isLoading}>
+            <Save className="h-5 w-5" />
+            {isLoading ? "Guardando..." : analisisId ? "Actualizar" : "Guardar Análisis"}
+          </Button>
+        </div>
       </div>
 
-      {/* Form Accordion */}
-      <Accordion type="multiple" defaultValue={["entrevista", "analisis", "plan"]} className="space-y-4">
-        {/* Section 1: Interview */}
-        <AccordionItem value="entrevista" className="border-none">
-          <Card className="shadow-sm border-border/50 overflow-hidden">
-            <AccordionTrigger className="px-6 py-4 hover:no-underline hover:bg-muted/30 [&[data-state=open]>div]:text-secondary">
-              <div className="flex items-center gap-3 text-lg font-semibold transition-colors">
-                <div className="p-2 rounded-lg bg-secondary/10">
-                  <ClipboardList className="h-5 w-5 text-secondary" />
-                </div>
-                Sección 1: Entrevista
-              </div>
-            </AccordionTrigger>
-            <AccordionContent>
-              <CardContent className="pt-2 pb-6 space-y-6">
-                <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-                  <div className="space-y-2">
-                    <Label htmlFor="skinType">Tipo de Piel</Label>
-                    <Select
-                      value={formData.skinType}
-                      onValueChange={(value) => setFormData(prev => ({ ...prev, skinType: value }))}
-                    >
-                      <SelectTrigger id="skinType">
-                        <SelectValue placeholder="Seleccionar tipo de piel" />
-                      </SelectTrigger>
-                      <SelectContent>
-                        {skinTypes.map((type) => (
-                          <SelectItem key={type} value={type.toLowerCase()}>
-                            {type}
-                          </SelectItem>
-                        ))}
-                      </SelectContent>
-                    </Select>
-                  </div>
-                  <div className="space-y-2">
-                    <Label htmlFor="phototype">Fototipo</Label>
-                    <Select
-                      value={formData.phototype}
-                      onValueChange={(value) => setFormData(prev => ({ ...prev, phototype: value }))}
-                    >
-                      <SelectTrigger id="phototype">
-                        <SelectValue placeholder="Seleccionar fototipo" />
-                      </SelectTrigger>
-                      <SelectContent>
-                        {phototypes.map((type) => (
-                          <SelectItem key={type} value={type}>
-                            {type}
-                          </SelectItem>
-                        ))}
-                      </SelectContent>
-                    </Select>
-                  </div>
-                </div>
+      {/* Selector de Paciente */}
+      <Card className="shadow-sm border-border/50">
+        <CardContent className="pt-6">
+          <div className="space-y-2">
+            <Label htmlFor="paciente">Paciente *</Label>
+            <Select value={pacienteId} onValueChange={setPacienteId} disabled={!!analisisId}>
+              <SelectTrigger id="paciente">
+                <SelectValue placeholder="Seleccionar paciente" />
+              </SelectTrigger>
+              <SelectContent>
+                {pacientes.map((paciente) => (
+                  <SelectItem key={paciente.id} value={paciente.id}>
+                    {paciente.name} - {paciente.phone}
+                  </SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+            {pacienteSeleccionado && (
+              <p className="text-sm text-muted-foreground">
+                {pacienteSeleccionado.email && `Email: ${pacienteSeleccionado.email}`}
+              </p>
+            )}
+          </div>
+        </CardContent>
+      </Card>
 
-                <div className="space-y-3">
-                  <Label>Preocupaciones Principales</Label>
-                  <div className="grid grid-cols-2 sm:grid-cols-4 gap-4">
-                    {concerns.map((concern) => (
-                      <div key={concern.id} className="flex items-center space-x-2">
-                        <Checkbox
-                          id={concern.id}
-                          checked={selectedConcerns.includes(concern.id)}
-                          onCheckedChange={(checked) => handleConcernChange(concern.id, checked as boolean)}
-                        />
-                        <Label htmlFor={concern.id} className="text-sm font-normal cursor-pointer">
-                          {concern.label}
-                        </Label>
-                      </div>
-                    ))}
-                  </div>
-                </div>
-              </CardContent>
-            </AccordionContent>
-          </Card>
-        </AccordionItem>
+      {/* Formulario - Replicando la plantilla HTML */}
+      <Card className="shadow-sm border-border/50">
+        <CardContent className="pt-6 space-y-6">
+          {/* Datos básicos */}
+          <div className="grid grid-cols-2 gap-6">
+            <div className="space-y-2">
+              <Label className="text-xs font-bold uppercase text-muted-foreground">Nombre</Label>
+              <Input
+                value={pacienteSeleccionado?.name || ""}
+                disabled
+                className="border-b border-t-0 border-l-0 border-r-0 rounded-none px-0"
+              />
+            </div>
+            <div className="space-y-2">
+              <Label className="text-xs font-bold uppercase text-muted-foreground">Teléfono</Label>
+              <Input
+                value={pacienteSeleccionado?.phone || ""}
+                disabled
+                className="border-b border-t-0 border-l-0 border-r-0 rounded-none px-0"
+              />
+            </div>
+            <div className="space-y-2">
+              <Label className="text-xs font-bold uppercase text-muted-foreground">Email</Label>
+              <Input
+                value={pacienteSeleccionado?.email || ""}
+                disabled
+                className="border-b border-t-0 border-l-0 border-r-0 rounded-none px-0"
+              />
+            </div>
+            <div className="space-y-2">
+              <Label className="text-xs font-bold uppercase text-muted-foreground">Fecha</Label>
+              <Input
+                type="date"
+                value={formData.fecha}
+                onChange={(e) => setFormData((prev) => ({ ...prev, fecha: e.target.value }))}
+                className="border-b border-t-0 border-l-0 border-r-0 rounded-none px-0"
+              />
+            </div>
+          </div>
 
-        {/* Section 2: Analysis */}
-        <AccordionItem value="analisis" className="border-none">
-          <Card className="shadow-sm border-border/50 overflow-hidden">
-            <AccordionTrigger className="px-6 py-4 hover:no-underline hover:bg-muted/30 [&[data-state=open]>div]:text-secondary">
-              <div className="flex items-center gap-3 text-lg font-semibold transition-colors">
-                <div className="p-2 rounded-lg bg-secondary/10">
-                  <TestTube className="h-5 w-5 text-secondary" />
-                </div>
-                Sección 2: Análisis
-              </div>
-            </AccordionTrigger>
-            <AccordionContent>
-              <CardContent className="pt-2 pb-6">
-                <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-5 gap-4">
-                  <div className="space-y-2">
-                    <Label htmlFor="hydration">Hidratación</Label>
-                    <div className="relative">
-                      <Input
-                        id="hydration"
-                        type="number"
-                        placeholder="0-100"
-                        value={formData.hydration}
-                        onChange={(e) => setFormData(prev => ({ ...prev, hydration: e.target.value }))}
-                        className="pr-8"
-                      />
-                      <span className="absolute right-3 top-1/2 -translate-y-1/2 text-sm text-muted-foreground">%</span>
-                    </div>
-                  </div>
-                  <div className="space-y-2">
-                    <Label htmlFor="sebum">Sebo</Label>
-                    <div className="relative">
-                      <Input
-                        id="sebum"
-                        type="number"
-                        placeholder="0-100"
-                        value={formData.sebum}
-                        onChange={(e) => setFormData(prev => ({ ...prev, sebum: e.target.value }))}
-                        className="pr-8"
-                      />
-                      <span className="absolute right-3 top-1/2 -translate-y-1/2 text-sm text-muted-foreground">%</span>
-                    </div>
-                  </div>
-                  <div className="space-y-2">
-                    <Label htmlFor="elasticity">Elasticidad</Label>
-                    <div className="relative">
-                      <Input
-                        id="elasticity"
-                        type="number"
-                        placeholder="0-100"
-                        value={formData.elasticity}
-                        onChange={(e) => setFormData(prev => ({ ...prev, elasticity: e.target.value }))}
-                        className="pr-8"
-                      />
-                      <span className="absolute right-3 top-1/2 -translate-y-1/2 text-sm text-muted-foreground">%</span>
-                    </div>
-                  </div>
-                  <div className="space-y-2">
-                    <Label htmlFor="spots">Manchas</Label>
-                    <div className="relative">
-                      <Input
-                        id="spots"
-                        type="number"
-                        placeholder="0-10"
-                        value={formData.spots}
-                        onChange={(e) => setFormData(prev => ({ ...prev, spots: e.target.value }))}
-                      />
-                    </div>
-                  </div>
-                  <div className="space-y-2">
-                    <Label htmlFor="ph">pH</Label>
-                    <div className="relative">
-                      <Input
-                        id="ph"
-                        type="number"
-                        step="0.1"
-                        placeholder="4.5-6.5"
-                        value={formData.ph}
-                        onChange={(e) => setFormData(prev => ({ ...prev, ph: e.target.value }))}
-                      />
-                    </div>
-                  </div>
-                </div>
-              </CardContent>
-            </AccordionContent>
-          </Card>
-        </AccordionItem>
+          {/* Motivo de consulta */}
+          <div className="space-y-2">
+            <Label className="text-xs font-bold uppercase text-muted-foreground">
+              Motivo / Objetivo de la consulta:
+            </Label>
+            <Textarea
+              value={formData.motivoConsulta}
+              onChange={(e) => setFormData((prev) => ({ ...prev, motivoConsulta: e.target.value }))}
+              rows={2}
+              className="border-b border-t-0 border-l-0 border-r-0 rounded-none px-0 resize-none"
+            />
+          </div>
 
-        {/* Section 3: Action Plan */}
-        <AccordionItem value="plan" className="border-none">
-          <Card className="shadow-sm border-border/50 overflow-hidden">
-            <AccordionTrigger className="px-6 py-4 hover:no-underline hover:bg-muted/30 [&[data-state=open]>div]:text-secondary">
-              <div className="flex items-center gap-3 text-lg font-semibold transition-colors">
-                <div className="p-2 rounded-lg bg-secondary/10">
-                  <Pill className="h-5 w-5 text-secondary" />
+          {/* Valoración de la piel */}
+          <div>
+            <div className="bg-[#6495a8] text-white font-semibold text-sm py-2 px-4 rounded-sm mb-4 uppercase tracking-wide">
+              Valoración de la piel
+            </div>
+            <div className="grid grid-cols-3 gap-x-5 gap-y-3">
+              {VALORACION_PIEL_OPCIONES.map((opcion) => (
+                <div key={opcion} className="flex items-center space-x-2">
+                  <Checkbox
+                    id={opcion}
+                    checked={formData.valoracionPiel.includes(opcion)}
+                    onCheckedChange={(checked) => handleValoracionPielChange(opcion, checked as boolean)}
+                  />
+                  <Label htmlFor={opcion} className="text-sm font-normal cursor-pointer">
+                    {VALORACION_PIEL_LABELS[opcion]}
+                  </Label>
                 </div>
-                Sección 3: Plan de Acción
+              ))}
+              <div className="flex items-center space-x-2 col-span-2">
+                <Checkbox
+                  id="valoracion_otro"
+                  checked={formData.valoracionPiel.includes("otro")}
+                  onCheckedChange={(checked) => handleValoracionPielChange("otro", checked as boolean)}
+                />
+                <Label htmlFor="valoracion_otro" className="text-sm font-normal cursor-pointer pr-2">
+                  Otro:
+                </Label>
+                <Input
+                  value={formData.valoracionPielOtro}
+                  onChange={(e) => setFormData((prev) => ({ ...prev, valoracionPielOtro: e.target.value }))}
+                  placeholder="Especificar"
+                  className="border-b border-t-0 border-l-0 border-r-0 rounded-none px-0 flex-1"
+                />
               </div>
-            </AccordionTrigger>
-            <AccordionContent>
-              <CardContent className="pt-2 pb-6 space-y-6">
-                <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-                  <div className="space-y-2">
-                    <Label htmlFor="treatment">Tratamiento Recomendado</Label>
+            </div>
+          </div>
+
+          {/* Hábitos y Salud */}
+          <div>
+            <div className="bg-[#6495a8] text-white font-semibold text-sm py-2 px-4 rounded-sm mb-4 uppercase tracking-wide">
+              Hábitos y Salud
+            </div>
+            <div className="grid grid-cols-3 gap-x-5 gap-y-3">
+              {HABITOS_OPCIONES.map((opcion) => (
+                <div key={opcion} className="flex items-center space-x-2">
+                  <Checkbox
+                    id={opcion}
+                    checked={formData.habitos.includes(opcion)}
+                    onCheckedChange={(checked) => handleHabitosChange(opcion, checked as boolean)}
+                  />
+                  <Label htmlFor={opcion} className="text-sm font-normal cursor-pointer">
+                    {HABITOS_LABELS[opcion]}
+                  </Label>
+                </div>
+              ))}
+            </div>
+            <div className="grid grid-cols-2 gap-6 mt-6">
+              <div className="space-y-2">
+                <Label className="text-xs font-semibold uppercase text-[#6495a8]">Medicación habitual</Label>
+                <Textarea
+                  value={formData.medicacionHabitual}
+                  onChange={(e) => setFormData((prev) => ({ ...prev, medicacionHabitual: e.target.value }))}
+                  rows={1}
+                  className="border-b border-t-0 border-l-0 border-r-0 rounded-none px-0 resize-none"
+                />
+              </div>
+              <div className="space-y-2">
+                <Label className="text-xs font-semibold uppercase text-[#6495a8]">Patologías</Label>
+                <Textarea
+                  value={formData.patologias}
+                  onChange={(e) => setFormData((prev) => ({ ...prev, patologias: e.target.value }))}
+                  rows={1}
+                  className="border-b border-t-0 border-l-0 border-r-0 rounded-none px-0 resize-none"
+                />
+              </div>
+              <div className="col-span-2 space-y-2">
+                <Label className="text-xs font-semibold uppercase text-[#6495a8]">Mujer - Etapa Hormonal</Label>
+                <Textarea
+                  value={formData.etapaHormonal}
+                  onChange={(e) => setFormData((prev) => ({ ...prev, etapaHormonal: e.target.value }))}
+                  rows={1}
+                  className="border-b border-t-0 border-l-0 border-r-0 rounded-none px-0 resize-none"
+                />
+              </div>
+            </div>
+          </div>
+
+          {/* Pauta Dermocosmética */}
+          <div>
+            <div className="bg-[#6495a8] text-white font-semibold text-sm py-2 px-4 rounded-sm mb-4 uppercase tracking-wide">
+              Pauta Dermocosmética
+            </div>
+            <div className="grid grid-cols-2 gap-10">
+              {/* Rutina de Día */}
+              <div>
+                <div className="bg-[#79438f] text-white text-center py-2 text-sm font-normal uppercase mb-4">
+                  Rutina de Día
+                </div>
+                <div className="space-y-4">
+                  <div className="space-y-1">
+                    <Label className="text-xs font-semibold uppercase text-[#6495a8]">1. Higiene</Label>
                     <Textarea
-                      id="treatment"
-                      placeholder="Describir el tratamiento recomendado..."
-                      value={formData.treatment}
-                      onChange={(e) => setFormData(prev => ({ ...prev, treatment: e.target.value }))}
-                      className="min-h-[100px]"
+                      value={formData.rutinaDia.higiene}
+                      onChange={(e) => handleRutinaDiaChange("higiene", e.target.value)}
+                      rows={1}
+                      className="border-b border-t-0 border-l-0 border-r-0 rounded-none px-0 resize-none"
                     />
                   </div>
-                  <div className="space-y-2">
-                    <Label htmlFor="cleaning">Limpieza</Label>
+                  <div className="space-y-1">
+                    <Label className="text-xs font-semibold uppercase text-[#6495a8]">2. Contorno de ojos</Label>
                     <Textarea
-                      id="cleaning"
-                      placeholder="Rutina de limpieza recomendada..."
-                      value={formData.cleaning}
-                      onChange={(e) => setFormData(prev => ({ ...prev, cleaning: e.target.value }))}
-                      className="min-h-[100px]"
+                      value={formData.rutinaDia.contornoOjos}
+                      onChange={(e) => handleRutinaDiaChange("contornoOjos", e.target.value)}
+                      rows={1}
+                      className="border-b border-t-0 border-l-0 border-r-0 rounded-none px-0 resize-none"
                     />
                   </div>
-                  <div className="space-y-2">
-                    <Label htmlFor="sunProtection">Protección Solar</Label>
+                  <div className="space-y-1">
+                    <Label className="text-xs font-semibold uppercase text-[#6495a8]">3. Producto intensivo</Label>
                     <Textarea
-                      id="sunProtection"
-                      placeholder="Recomendaciones de protección solar..."
-                      value={formData.sunProtection}
-                      onChange={(e) => setFormData(prev => ({ ...prev, sunProtection: e.target.value }))}
-                      className="min-h-[100px]"
+                      value={formData.rutinaDia.productoIntensivo}
+                      onChange={(e) => handleRutinaDiaChange("productoIntensivo", e.target.value)}
+                      rows={1}
+                      className="border-b border-t-0 border-l-0 border-r-0 rounded-none px-0 resize-none"
                     />
                   </div>
-                  <div className="space-y-2">
-                    <Label htmlFor="supplements">Suplementación Oral</Label>
+                  <div className="space-y-1">
+                    <Label className="text-xs font-semibold uppercase text-[#6495a8]">4. Hidratación</Label>
                     <Textarea
-                      id="supplements"
-                      placeholder="Suplementos recomendados..."
-                      value={formData.supplements}
-                      onChange={(e) => setFormData(prev => ({ ...prev, supplements: e.target.value }))}
-                      className="min-h-[100px]"
+                      value={formData.rutinaDia.hidratacion}
+                      onChange={(e) => handleRutinaDiaChange("hidratacion", e.target.value)}
+                      rows={1}
+                      className="border-b border-t-0 border-l-0 border-r-0 rounded-none px-0 resize-none"
+                    />
+                  </div>
+                  <div className="space-y-1">
+                    <Label className="text-xs font-semibold uppercase text-[#6495a8]">5. Protección Solar</Label>
+                    <Textarea
+                      value={formData.rutinaDia.proteccionSolar}
+                      onChange={(e) => handleRutinaDiaChange("proteccionSolar", e.target.value)}
+                      rows={1}
+                      className="border-b border-t-0 border-l-0 border-r-0 rounded-none px-0 resize-none"
                     />
                   </div>
                 </div>
-              </CardContent>
-            </AccordionContent>
-          </Card>
-        </AccordionItem>
-      </Accordion>
+              </div>
+
+              {/* Rutina de Noche */}
+              <div>
+                <div className="bg-[#79438f] text-white text-center py-2 text-sm font-normal uppercase mb-4">
+                  Rutina de Noche
+                </div>
+                <div className="space-y-4">
+                  <div className="space-y-1">
+                    <Label className="text-xs font-semibold uppercase text-[#6495a8]">1. Limpieza / Doble Limpieza</Label>
+                    <Textarea
+                      value={formData.rutinaNoche.limpieza}
+                      onChange={(e) => handleRutinaNocheChange("limpieza", e.target.value)}
+                      rows={1}
+                      className="border-b border-t-0 border-l-0 border-r-0 rounded-none px-0 resize-none"
+                    />
+                  </div>
+                  <div className="space-y-1">
+                    <Label className="text-xs font-semibold uppercase text-[#6495a8]">2. Contorno de ojos</Label>
+                    <Textarea
+                      value={formData.rutinaNoche.contornoOjos}
+                      onChange={(e) => handleRutinaNocheChange("contornoOjos", e.target.value)}
+                      rows={1}
+                      className="border-b border-t-0 border-l-0 border-r-0 rounded-none px-0 resize-none"
+                    />
+                  </div>
+                  <div className="space-y-1">
+                    <Label className="text-xs font-semibold uppercase text-[#6495a8]">3. Producto intensivo</Label>
+                    <Textarea
+                      value={formData.rutinaNoche.productoIntensivo}
+                      onChange={(e) => handleRutinaNocheChange("productoIntensivo", e.target.value)}
+                      rows={1}
+                      className="border-b border-t-0 border-l-0 border-r-0 rounded-none px-0 resize-none"
+                    />
+                  </div>
+                  <div className="space-y-1">
+                    <Label className="text-xs font-semibold uppercase text-[#6495a8]">4. Hidratación</Label>
+                    <Textarea
+                      value={formData.rutinaNoche.hidratacion}
+                      onChange={(e) => handleRutinaNocheChange("hidratacion", e.target.value)}
+                      rows={1}
+                      className="border-b border-t-0 border-l-0 border-r-0 rounded-none px-0 resize-none"
+                    />
+                  </div>
+                </div>
+              </div>
+            </div>
+
+            {/* Cuidados Semanales y Suplementación */}
+            <div className="grid grid-cols-2 gap-6 mt-6">
+              <div className="bg-[#f0f5f7] border-l-4 border-[#6495a8] p-4 space-y-4">
+                <div className="text-xs font-bold uppercase text-[#6495a8] mb-2">Cuidados Semanales</div>
+                <div className="space-y-1">
+                  <Label className="text-xs font-semibold uppercase text-[#79438f]">Exfoliante</Label>
+                  <Textarea
+                    value={formData.cuidadosSemanales.exfoliante}
+                    onChange={(e) => handleCuidadosSemanalesChange("exfoliante", e.target.value)}
+                    rows={1}
+                    className="border-b border-[#6495a8] border-t-0 border-l-0 border-r-0 rounded-none px-0 resize-none bg-transparent"
+                  />
+                </div>
+                <div className="space-y-1">
+                  <Label className="text-xs font-semibold uppercase text-[#79438f]">Mascarilla</Label>
+                  <Textarea
+                    value={formData.cuidadosSemanales.mascarilla}
+                    onChange={(e) => handleCuidadosSemanalesChange("mascarilla", e.target.value)}
+                    rows={1}
+                    className="border-b border-[#6495a8] border-t-0 border-l-0 border-r-0 rounded-none px-0 resize-none bg-transparent"
+                  />
+                </div>
+              </div>
+              <div className="bg-[#f0f5f7] border-l-4 border-[#6495a8] p-4">
+                <div className="text-xs font-bold uppercase text-[#6495a8] mb-2">Suplementación oral</div>
+                <Textarea
+                  value={formData.suplementacionOral}
+                  onChange={(e) => setFormData((prev) => ({ ...prev, suplementacionOral: e.target.value }))}
+                  rows={6}
+                  className="border-none bg-transparent text-sm italic resize-none"
+                />
+              </div>
+            </div>
+          </div>
+
+          {/* Firmas */}
+          <div className="flex justify-between items-center pt-6 border-t">
+            <div className="flex items-center gap-2">
+              <span className="text-xs font-semibold text-[#79438f] uppercase">Próxima Revisión:</span>
+              <Input
+                value={formData.proximaRevision}
+                onChange={(e) => setFormData((prev) => ({ ...prev, proximaRevision: e.target.value }))}
+                placeholder="dd / mm / aaaa"
+                className="border-b border-[#79438f] border-t-0 border-l-0 border-r-0 rounded-none px-0 w-32"
+              />
+            </div>
+            <div className="flex items-center gap-2">
+              <span className="text-xs font-semibold text-[#79438f] uppercase">Farmacéutico/a:</span>
+              <Input
+                value={formData.farmaceutico}
+                onChange={(e) => setFormData((prev) => ({ ...prev, farmaceutico: e.target.value }))}
+                className="border-b border-[#79438f] border-t-0 border-l-0 border-r-0 rounded-none px-0 w-40"
+              />
+            </div>
+          </div>
+        </CardContent>
+      </Card>
     </div>
   );
 }
