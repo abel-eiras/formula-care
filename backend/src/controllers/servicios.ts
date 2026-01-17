@@ -1,6 +1,7 @@
 import { Request, Response } from 'express';
 import { prisma } from '../lib/prisma.js';
 import { z } from 'zod';
+import { crearNotificacionRevision } from '../services/notificacionesService.js';
 
 // Esquema de validación para análisis dermocosmético (plantilla completa)
 const crearAnalisisDermoSchema = z.object({
