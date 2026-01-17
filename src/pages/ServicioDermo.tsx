@@ -1,4 +1,4 @@
-import { useState, useMemo } from "react";
+import { useState, useMemo, useEffect } from "react";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
@@ -133,7 +133,7 @@ export default function ServicioDermo() {
   });
 
   // Cargar datos existentes si estamos editando
-  useMemo(() => {
+  useEffect(() => {
     if (analisisExistente) {
       setPacienteId(analisisExistente.pacienteId);
       setFormData({
@@ -241,12 +241,20 @@ export default function ServicioDermo() {
       if (analisisId) {
         await actualizarAnalisis.mutateAsync({ id: analisisId, ...datosAnalisis });
         toast.success("Análisis actualizado correctamente");
+        // Después de actualizar, mantener el analisisId para poder imprimir
       } else {
-        await crearAnalisis.mutateAsync(datosAnalisis);
+        const nuevoAnalisis = await crearAnalisis.mutateAsync(datosAnalisis);
         toast.success("Análisis guardado correctamente");
+        // Abrir vista de impresión automáticamente después de crear
+        if (nuevoAnalisis?.id) {
+          setTimeout(() => {
+            window.open(`/servicios/dermo/print?id=${nuevoAnalisis.id}`, "_blank");
+          }, 500);
+        }
       }
 
-      navigate(`/pacientes/${pacienteId}`);
+      // No navegar automáticamente, dejar que el usuario decida
+      // navigate(`/pacientes/${pacienteId}`);
     } catch (error) {
       console.error("Error al guardar análisis:", error);
       toast.error("Error al guardar el análisis");
@@ -254,8 +262,13 @@ export default function ServicioDermo() {
   };
 
   const handleGenerarPDF = () => {
-    // TODO: Implementar generación de PDF
-    toast.info("Generación de PDF próximamente");
+    if (!analisisId) {
+      toast.info("Guarde el análisis primero para generar el PDF");
+      return;
+    }
+    
+    // Abrir vista de impresión en nueva pestaña
+    window.open(`/servicios/dermo/print?id=${analisisId}`, "_blank");
   };
 
   const isLoading = crearAnalisis.isPending || actualizarAnalisis.isPending;
