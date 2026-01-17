@@ -36,22 +36,44 @@ model Paciente {
 
 // Modelo de Análisis Dermocosmético
 model AnalisisDermo {
-  id            String   @id @default(cuid())
-  pacienteId    String
-  fecha         String   // Fecha en formato ISO
-  skinType      String?
-  phototype     String?
-  concerns      String   @default("[]") // JSON array como string
-  hydration     Float?
-  sebum         Float?
-  elasticity    Float?
-  spots         Float?
-  ph            Float?
-  treatment     String?
-  cleaning      String?
-  sunProtection String?
-  supplements   String?
-  createdAt     DateTime @default(now())
+  id                String   @id @default(cuid())
+  pacienteId        String
+  fecha             String   // Fecha en formato ISO
+  // Datos básicos
+  motivoConsulta    String?  // Motivo/Objetivo de la consulta
+  // Valoración de la piel (JSON array)
+  valoracionPiel    String   @default("[]") // JSON array: ["piel_grasa", "flacidez", etc.]
+  // Hábitos y Salud (JSON array)
+  habitos           String   @default("[]") // JSON array: ["sueño_irregular", "estrés", etc.]
+  medicacionHabitual String?
+  patologias        String?
+  etapaHormonal     String?  // Solo para mujeres
+  // Rutina Día (JSON object)
+  rutinaDia         String?  // JSON: { higiene, contornoOjos, productoIntensivo, hidratacion, proteccionSolar }
+  // Rutina Noche (JSON object)
+  rutinaNoche       String?  // JSON: { limpieza, contornoOjos, productoIntensivo, hidratacion }
+  // Cuidados Semanales (JSON object)
+  cuidadosSemanales String?  // JSON: { exfoliante, mascarilla }
+  // Suplementación
+  suplementacionOral String?
+  // Firma y seguimiento
+  proximaRevision   String?  // Fecha en formato ISO
+  farmaceutico      String?
+  // Campos legacy (mantener para compatibilidad)
+  skinType          String?
+  phototype         String?
+  concerns          String   @default("[]") // JSON array como string
+  hydration         Float?
+  sebum             Float?
+  elasticity        Float?
+  spots             Float?
+  ph                Float?
+  treatment         String?
+  cleaning          String?
+  sunProtection     String?
+  supplements       String?
+  createdAt         DateTime @default(now())
+  updatedAt         DateTime @updatedAt
 
   // Relación
   paciente Paciente @relation(fields: [pacienteId], references: [id], onDelete: Cascade)
