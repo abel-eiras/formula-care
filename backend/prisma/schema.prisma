@@ -194,6 +194,11 @@ model Configuracion {
   googleAccessToken     String?  // Access token de OAuth
   googleRefreshToken    String?  // Refresh token de OAuth
   googleTokenExpiry     DateTime? // Fecha de expiración del access token
+  // Integración Cal.com
+  calComEnabled         Boolean  @default(false) // Si está habilitada la integración
+  calComLink            String?  // Enlace de Cal.com (ej: "usuario/consulta-dermo")
+  calComApiKey          String?  // API Key de Cal.com para webhooks
+  calComWebhookSecret   String?  // Secret para verificar webhooks
   createdAt             DateTime @default(now())
   updatedAt             DateTime @updatedAt
 }

@@ -274,3 +274,44 @@ export async function obtenerRedirectUri(req: Request, res: Response) {
     res.status(500).json({ error: 'Error al obtener redirect URI' });
   }
 }
+
+/**
+ * Actualizar configuración de Cal.com
+ */
+export async function actualizarCalCom(req: Request, res: Response) {
+  try {
+    const schema = z.object({
+      calComEnabled: z.boolean().optional(),
+      calComLink: z.string().optional(),
+      calComApiKey: z.string().optional(),
+      calComWebhookSecret: z.string().optional(),
+    });
+
+    const datos = schema.parse(req.body);
+
+    const config = await prisma.configuracion.update({
+      where: { id: 'config' },
+      data: {
+        calComEnabled: datos.calComEnabled,
+        calComLink: datos.calComLink,
+        calComApiKey: datos.calComApiKey,
+        calComWebhookSecret: datos.calComWebhookSecret,
+      },
+    });
+
+    res.json({
+      message: 'Configuración de Cal.com actualizada correctamente',
+      config,
+    });
+  } catch (error) {
+    if (error instanceof z.ZodError) {
+      return res.status(400).json({
+        error: 'Datos inválidos',
+        detalles: error.errors,
+      });
+    }
+
+    console.error('Error al actualizar configuración Cal.com:', error);
+    res.status(500).json({ error: 'Error al actualizar configuración de Cal.com' });
+  }
+}

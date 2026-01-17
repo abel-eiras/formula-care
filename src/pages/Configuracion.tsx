@@ -10,7 +10,7 @@ import { Accordion, AccordionContent, AccordionItem, AccordionTrigger } from "@/
 import { ArrowLeft, Save, Settings, Building2, FlaskConical, Calendar, RefreshCw, CheckCircle2, BookOpen, ExternalLink, ChevronDown } from "lucide-react";
 import { Link } from "react-router-dom";
 import { toast } from "sonner";
-import { useConfiguracion, useActualizarFarmacia, useActualizarParametrosReferencia, useActualizarValoracionBio, useActualizarCredencialesGoogle, useRedirectUri } from "@/hooks/useConfiguracion";
+import { useConfiguracion, useActualizarFarmacia, useActualizarParametrosReferencia, useActualizarValoracionBio, useActualizarCredencialesGoogle, useRedirectUri, useActualizarCalCom } from "@/hooks/useConfiguracion";
 import { useGoogleCalendarEstado, useCalendarios, iniciarOAuth, useConfigurarCalendario, useDesconectarGoogleCalendar, useEstadoSincronizacion, useSincronizarDesdeGoogle } from "@/hooks/useGoogleCalendar";
 import type { ParametroReferencia } from "@/types";
 
@@ -154,6 +154,10 @@ export default function Configuracion() {
           <TabsTrigger value="googleCalendar" className="gap-2">
             <Calendar className="h-4 w-4" />
             Google Calendar
+          </TabsTrigger>
+          <TabsTrigger value="calcom" className="gap-2">
+            <Calendar className="h-4 w-4" />
+            Cal.com (Reservas)
           </TabsTrigger>
         </TabsList>
 
@@ -480,6 +484,11 @@ export default function Configuracion() {
         {/* Tab: Google Calendar */}
         <TabsContent value="googleCalendar">
           <GoogleCalendarConfig />
+        </TabsContent>
+
+        {/* Tab: Cal.com */}
+        <TabsContent value="calcom">
+          <CalComConfig />
         </TabsContent>
       </Tabs>
     </div>
@@ -902,6 +911,160 @@ function GoogleCalendarConfig() {
             </AccordionContent>
           </AccordionItem>
         </Accordion>
+      </CardContent>
+    </Card>
+  );
+}
+
+/**
+ * Componente de configuración de Cal.com
+ */
+function CalComConfig() {
+  const { data: config } = useConfiguracion();
+  const actualizarCalCom = useActualizarCalCom();
+  
+  const [calComConfig, setCalComConfig] = useState({
+    calComEnabled: config?.calComEnabled || false,
+    calComLink: config?.calComLink || "",
+    calComApiKey: config?.calComApiKey || "",
+    calComWebhookSecret: config?.calComWebhookSecret || "",
+  });
+
+  useEffect(() => {
+    if (config) {
+      setCalComConfig({
+        calComEnabled: config.calComEnabled || false,
+        calComLink: config.calComLink || "",
+        calComApiKey: config.calComApiKey || "",
+        calComWebhookSecret: config.calComWebhookSecret || "",
+      });
+    }
+  }, [config]);
+
+  const handleGuardar = async () => {
+    if (calComConfig.calComEnabled && !calComConfig.calComLink) {
+      toast.error("El enlace de Cal.com es requerido cuando está habilitado");
+      return;
+    }
+
+    try {
+      await actualizarCalCom.mutateAsync(calComConfig);
+      toast.success("Configuración de Cal.com guardada correctamente");
+    } catch (error) {
+      console.error("Error al guardar:", error);
+      toast.error("Error al guardar la configuración de Cal.com");
+    }
+  };
+
+  // Calcular URL del webhook
+  const webhookUrl = typeof window !== 'undefined' 
+    ? `${window.location.protocol}//${window.location.host}/api/calcom/webhook`
+    : '';
+
+  return (
+    <Card className="shadow-sm border-border/50">
+      <CardHeader>
+        <CardTitle>Integración con Cal.com</CardTitle>
+        <CardDescription>
+          Configura Cal.com para permitir que los clientes reserven citas directamente desde tu página web.
+          Mucho más simple que Google Calendar y diseñado específicamente para reservas.
+        </CardDescription>
+      </CardHeader>
+      <CardContent className="space-y-6">
+        <div className="flex items-center justify-between p-4 rounded-lg border bg-muted/50">
+          <div className="flex items-center gap-3">
+            <Switch
+              checked={calComConfig.calComEnabled}
+              onCheckedChange={(checked) =>
+                setCalComConfig({ ...calComConfig, calComEnabled: checked })
+              }
+            />
+            <div>
+              <p className="font-semibold">
+                {calComConfig.calComEnabled ? "Cal.com Habilitado" : "Cal.com Deshabilitado"}
+              </p>
+              <p className="text-sm text-muted-foreground">
+                {calComConfig.calComEnabled
+                  ? "Los clientes pueden reservar citas desde tu página web"
+                  : "Activa esta opción para habilitar las reservas online"}
+              </p>
+            </div>
+          </div>
+        </div>
+
+        {calComConfig.calComEnabled && (
+          <div className="space-y-4 p-4 bg-white dark:bg-gray-900 rounded border">
+            <div className="space-y-2">
+              <Label htmlFor="calcom-link">Enlace de Cal.com *</Label>
+              <Input
+                id="calcom-link"
+                type="text"
+                placeholder="usuario/consulta-dermo"
+                value={calComConfig.calComLink}
+                onChange={(e) =>
+                  setCalComConfig({ ...calComConfig, calComLink: e.target.value })
+                }
+              />
+              <p className="text-xs text-muted-foreground">
+                El enlace de tu evento en Cal.com (ej: "farmaciapontevea/consulta-dermo").
+                Lo encuentras en la configuración de tu evento en Cal.com.
+              </p>
+            </div>
+
+            <div className="space-y-2">
+              <Label htmlFor="calcom-api-key">API Key de Cal.com</Label>
+              <Input
+                id="calcom-api-key"
+                type="password"
+                placeholder="cal_xxxxxxxxxxxxx"
+                value={calComConfig.calComApiKey}
+                onChange={(e) =>
+                  setCalComConfig({ ...calComConfig, calComApiKey: e.target.value })
+                }
+              />
+              <p className="text-xs text-muted-foreground">
+                Opcional. Necesaria para crear webhooks automáticamente desde la aplicación.
+                La puedes obtener en Cal.com &gt; Settings &gt; API Keys.
+              </p>
+            </div>
+
+            <div className="space-y-2">
+              <Label htmlFor="calcom-webhook-secret">Webhook Secret</Label>
+              <Input
+                id="calcom-webhook-secret"
+                type="password"
+                placeholder="Genera un secret aleatorio"
+                value={calComConfig.calComWebhookSecret}
+                onChange={(e) =>
+                  setCalComConfig({ ...calComConfig, calComWebhookSecret: e.target.value })
+                }
+              />
+              <p className="text-xs text-muted-foreground">
+                Secret para verificar la autenticidad de los webhooks. 
+                Debe coincidir con el configurado en Cal.com.
+              </p>
+            </div>
+
+            {webhookUrl && (
+              <div className="p-3 bg-blue-50 dark:bg-blue-950/20 rounded border border-blue-200 dark:border-blue-800">
+                <p className="text-xs font-semibold text-blue-900 dark:text-blue-100 mb-1">
+                  URL del Webhook:
+                </p>
+                <code className="text-xs text-blue-800 dark:text-blue-200 break-all">
+                  {webhookUrl}
+                </code>
+                <p className="text-xs text-blue-700 dark:text-blue-300 mt-2">
+                  Copia esta URL y configúrala en Cal.com &gt; Settings &gt; Webhooks
+                </p>
+              </div>
+            )}
+
+            <Button onClick={handleGuardar} disabled={actualizarCalCom.isPending} className="w-full gap-2">
+              <Save className="h-4 w-4" />
+              {actualizarCalCom.isPending ? "Guardando..." : "Guardar Configuración"}
+            </Button>
+          </div>
+        )}
       </CardContent>
     </Card>
   );

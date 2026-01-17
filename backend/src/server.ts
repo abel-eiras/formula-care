@@ -37,6 +37,7 @@ app.use('/api/configuracion', configuracionRouter);
 app.use('/api/estadisticas', estadisticasRouter);
 app.use('/api/notificaciones', notificacionesRouter);
 app.use('/api/google-calendar', googleCalendarRouter);
+app.use('/api/calcom', calcomRouter);
 
 // Ruta de salud
 app.get('/api/health', (req, res) => {

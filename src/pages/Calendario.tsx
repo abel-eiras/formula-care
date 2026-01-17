@@ -8,11 +8,14 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { CalendarDays, Plus, Clock, User, Link2, ExternalLink } from "lucide-react";
 import { format, isSameDay } from "date-fns";
 import { es } from "date-fns/locale";
 import { cn } from "@/lib/utils";
 import { useToast } from "@/hooks/use-toast";
+import { useConfiguracion } from "@/hooks/useConfiguracion";
+import CalBookingWidget from "@/components/calendario/CalBookingWidget";
 
 interface Cita {
   id: string;
@@ -244,6 +247,19 @@ export default function Calendario() {
           </div>
         </CardContent>
       </Card>
+
+      {/* Cal.com Widget si está habilitado */}
+      {config?.calComEnabled && config.calComLink && (
+        <Card className="border-primary/30 bg-primary/5">
+          <CardContent className="py-4">
+            <CalBookingWidget 
+              calLink={config.calComLink}
+              brandColor="#79438f"
+              theme="light"
+            />
+          </CardContent>
+        </Card>
+      )}
 
       {/* Main Content */}
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">

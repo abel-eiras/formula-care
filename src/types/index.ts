@@ -16,6 +16,11 @@ export interface Configuracion {
   googleClientId?: string;
   googleClientSecret?: string;
   googleRedirectUri?: string;
+  // Cal.com
+  calComEnabled?: boolean;
+  calComLink?: string;
+  calComApiKey?: string;
+  calComWebhookSecret?: string;
   createdAt?: string;
   updatedAt?: string;
 }

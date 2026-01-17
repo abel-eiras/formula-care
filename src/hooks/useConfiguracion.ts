@@ -102,3 +102,27 @@ export function useRedirectUri() {
     refetchOnWindowFocus: false, // No refetch al enfocar la ventana
   });
 }
+
+/**
+ * Hook para actualizar configuración de Cal.com
+ */
+export function useActualizarCalCom() {
+  const queryClient = useQueryClient();
+
+  return useMutation({
+    mutationFn: async (config: {
+      calComEnabled?: boolean;
+      calComLink?: string;
+      calComApiKey?: string;
+      calComWebhookSecret?: string;
+    }) => {
+      return api.put<{ message: string; config: Configuracion }>(
+        '/configuracion/calcom',
+        config
+      );
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['configuracion'] });
+    },
+  });
+}
