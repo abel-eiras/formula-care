@@ -877,7 +877,15 @@ function CalendarioTab() {
                         <div className="text-sm text-muted-foreground space-y-1">
                           <p>Duración: {evento.duracion} minutos</p>
                           <p>Máx. asistentes: {evento.maxAsistentes}</p>
-                          <p>Fechas: {evento.fechas.length > 0 ? evento.fechas.join(', ') : 'Sin fechas'}</p>
+                          <p>Fechas: {evento.fechas.length > 0 
+                            ? evento.fechas.map(f => {
+                                try {
+                                  return format(new Date(f + 'T00:00:00'), 'dd-MM-yyyy', { locale: es });
+                                } catch {
+                                  return f;
+                                }
+                              }).join(', ')
+                            : 'Sin fechas'}</p>
                           <p>Horarios: {evento.horas.join(', ')}</p>
                         </div>
                       </div>
