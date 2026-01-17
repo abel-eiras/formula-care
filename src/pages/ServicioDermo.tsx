@@ -12,7 +12,8 @@ import { toast } from "sonner";
 import { usePacientes } from "@/hooks/usePacientes";
 import { useCrearAnalisisDermo, useAnalisisDermo, useActualizarAnalisisDermo } from "@/hooks/useAnalisisDermo";
 import type { AnalisisDermo, RutinaDia, RutinaNoche, CuidadosSemanales } from "@/types";
-import { generatePDFFromElement, generatePDFFilename } from "@/lib/pdfGenerator";
+// Importación dinámica para reducir el bundle inicial
+const loadPDFGenerator = () => import("@/lib/pdfGenerator");
 
 // Opciones de valoración de la piel
 const VALORACION_PIEL_OPCIONES = [
@@ -285,6 +286,9 @@ export default function ServicioDermo() {
 
     try {
       toast.info("Generando PDF...", { duration: 2000 });
+      
+      // Cargar el generador de PDF dinámicamente
+      const { generatePDFFromElement, generatePDFFilename } = await loadPDFGenerator();
       
       // Abrir la página de impresión en un iframe oculto
       const iframe = document.createElement('iframe');
