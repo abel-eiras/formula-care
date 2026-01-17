@@ -742,3 +742,430 @@ function GoogleCalendarConfig() {
     </Card>
   );
 }
+
+/**
+ * Componente del tutorial completo de Google Calendar
+ */
+function TutorialGoogleCalendar() {
+  return (
+    <div className="space-y-6 text-sm">
+      <div className="p-4 bg-blue-50 dark:bg-blue-950/20 rounded-lg border border-blue-200 dark:border-blue-800">
+        <p className="font-semibold text-blue-900 dark:text-blue-100 mb-2">
+          📋 Antes de comenzar
+        </p>
+        <p className="text-blue-800 dark:text-blue-200 text-xs">
+          Necesitarás una cuenta de Google y acceso a Google Cloud Console. 
+          Este proceso toma aproximadamente 10-15 minutos.
+        </p>
+      </div>
+
+      {/* Paso 1 */}
+      <div className="space-y-3">
+        <div className="flex items-start gap-3">
+          <div className="flex-shrink-0 w-8 h-8 rounded-full bg-primary text-primary-foreground flex items-center justify-center font-bold text-sm">
+            1
+          </div>
+          <div className="flex-1 space-y-2">
+            <h3 className="font-semibold text-base">Crear Proyecto en Google Cloud Console</h3>
+            <ol className="list-decimal list-inside space-y-2 text-muted-foreground ml-2">
+              <li>
+                Abre tu navegador y ve a{" "}
+                <a
+                  href="https://console.cloud.google.com/"
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="text-primary hover:underline inline-flex items-center gap-1"
+                >
+                  Google Cloud Console
+                  <ExternalLink className="h-3 w-3" />
+                </a>
+              </li>
+              <li>
+                Inicia sesión con tu cuenta de Google (la misma que usarás para el calendario)
+              </li>
+              <li>
+                En la parte superior, haz clic en el selector de proyectos (junto al logo de Google Cloud)
+              </li>
+              <li>
+                Haz clic en <strong>"Nuevo Proyecto"</strong> o selecciona uno existente
+              </li>
+              <li>
+                Si creas uno nuevo:
+                <ul className="list-disc list-inside ml-4 mt-1 space-y-1">
+                  <li>Nombre: <code className="bg-muted px-1 rounded">Farmacia Pontevea</code></li>
+                  <li>Haz clic en <strong>"Crear"</strong></li>
+                  <li>Espera unos segundos y selecciona el proyecto recién creado</li>
+                </ul>
+              </li>
+            </ol>
+          </div>
+        </div>
+      </div>
+
+      {/* Paso 2 */}
+      <div className="space-y-3">
+        <div className="flex items-start gap-3">
+          <div className="flex-shrink-0 w-8 h-8 rounded-full bg-primary text-primary-foreground flex items-center justify-center font-bold text-sm">
+            2
+          </div>
+          <div className="flex-1 space-y-2">
+            <h3 className="font-semibold text-base">Habilitar Google Calendar API</h3>
+            <ol className="list-decimal list-inside space-y-2 text-muted-foreground ml-2">
+              <li>
+                En el menú lateral izquierdo, busca y haz clic en{" "}
+                <strong>"APIs y servicios"</strong> o{" "}
+                <strong>"APIs & Services"</strong>
+              </li>
+              <li>
+                Haz clic en <strong>"Biblioteca"</strong> o{" "}
+                <strong>"Library"</strong>
+              </li>
+              <li>
+                En el buscador, escribe: <code className="bg-muted px-1 rounded">Google Calendar API</code>
+              </li>
+              <li>
+                Haz clic en el resultado <strong>"Google Calendar API"</strong>
+              </li>
+              <li>
+                Haz clic en el botón azul <strong>"Habilitar"</strong> o{" "}
+                <strong>"Enable"</strong>
+              </li>
+              <li>
+                Espera unos segundos hasta que aparezca el mensaje de confirmación
+              </li>
+            </ol>
+          </div>
+        </div>
+      </div>
+
+      {/* Paso 3 */}
+      <div className="space-y-3">
+        <div className="flex items-start gap-3">
+          <div className="flex-shrink-0 w-8 h-8 rounded-full bg-primary text-primary-foreground flex items-center justify-center font-bold text-sm">
+            3
+          </div>
+          <div className="flex-1 space-y-2">
+            <h3 className="font-semibold text-base">Configurar Pantalla de Consentimiento OAuth</h3>
+            <p className="text-muted-foreground text-xs mb-2">
+              Solo necesitas hacer esto la primera vez que configuras OAuth en tu proyecto.
+            </p>
+            <ol className="list-decimal list-inside space-y-2 text-muted-foreground ml-2">
+              <li>
+                En el menú lateral, ve a <strong>"APIs y servicios"</strong> →{" "}
+                <strong>"Pantalla de consentimiento"</strong> o{" "}
+                <strong>"OAuth consent screen"</strong>
+              </li>
+              <li>
+                Selecciona <strong>"Externo"</strong> o{" "}
+                <strong>"External"</strong> y haz clic en{" "}
+                <strong>"Crear"</strong>
+              </li>
+              <li>
+                Completa el formulario:
+                <ul className="list-disc list-inside ml-4 mt-1 space-y-1">
+                  <li>
+                    <strong>Nombre de la aplicación:</strong>{" "}
+                    <code className="bg-muted px-1 rounded">Farmacia Pontevea Servicios</code>
+                  </li>
+                  <li>
+                    <strong>Email de soporte:</strong> Tu email de contacto
+                  </li>
+                  <li>
+                    <strong>Email del desarrollador:</strong> Tu email (puede ser el mismo)
+                  </li>
+                </ul>
+              </li>
+              <li>
+                Haz clic en <strong>"Guardar y continuar"</strong> o{" "}
+                <strong>"Save and Continue"</strong>
+              </li>
+              <li>
+                En <strong>"Scopes"</strong>, haz clic en{" "}
+                <strong>"Guardar y continuar"</strong> (no necesitas agregar scopes manualmente)
+              </li>
+              <li>
+                En <strong>"Usuarios de prueba"</strong>, agrega tu email de Google si es necesario, luego{" "}
+                <strong>"Guardar y continuar"</strong>
+              </li>
+              <li>
+                En <strong>"Resumen"</strong>, revisa la información y haz clic en{" "}
+                <strong>"Volver al panel"</strong>
+              </li>
+            </ol>
+          </div>
+        </div>
+      </div>
+
+      {/* Paso 4 */}
+      <div className="space-y-3">
+        <div className="flex items-start gap-3">
+          <div className="flex-shrink-0 w-8 h-8 rounded-full bg-primary text-primary-foreground flex items-center justify-center font-bold text-sm">
+            4
+          </div>
+          <div className="flex-1 space-y-2">
+            <h3 className="font-semibold text-base">Crear Credenciales OAuth 2.0</h3>
+            <ol className="list-decimal list-inside space-y-2 text-muted-foreground ml-2">
+              <li>
+                En el menú lateral, ve a <strong>"APIs y servicios"</strong> →{" "}
+                <strong>"Credenciales"</strong> o{" "}
+                <strong>"Credentials"</strong>
+              </li>
+              <li>
+                Haz clic en el botón <strong>"+ Crear credenciales"</strong> o{" "}
+                <strong>"+ Create Credentials"</strong>
+              </li>
+              <li>
+                Selecciona <strong>"ID de cliente de OAuth"</strong> o{" "}
+                <strong>"OAuth client ID"</strong>
+              </li>
+              <li>
+                Si te pide configurar la pantalla de consentimiento, vuelve al paso 3
+              </li>
+              <li>
+                En <strong>"Tipo de aplicación"</strong>, selecciona{" "}
+                <strong>"Aplicación web"</strong> o{" "}
+                <strong>"Web application"</strong>
+              </li>
+              <li>
+                Completa el formulario:
+                <ul className="list-disc list-inside ml-4 mt-1 space-y-1">
+                  <li>
+                    <strong>Nombre:</strong>{" "}
+                    <code className="bg-muted px-1 rounded">Farmacia Pontevea Web Client</code>
+                  </li>
+                  <li>
+                    <strong>URI de redirección autorizadas:</strong>
+                    <div className="mt-1 space-y-1">
+                      <div className="bg-muted p-2 rounded text-xs font-mono">
+                        Para desarrollo:
+                        <br />
+                        <code>http://localhost:5000/api/google-calendar/callback</code>
+                      </div>
+                      <div className="bg-muted p-2 rounded text-xs font-mono mt-1">
+                        Para producción (cuando despliegues):
+                        <br />
+                        <code>https://tu-dominio.com/api/google-calendar/callback</code>
+                      </div>
+                    </div>
+                    <p className="text-xs text-muted-foreground mt-1">
+                      ⚠️ <strong>Importante:</strong> Copia exactamente estas URLs, incluyendo http/https y sin espacios al final
+                    </p>
+                  </li>
+                </ul>
+              </li>
+              <li>
+                Haz clic en <strong>"Crear"</strong> o{" "}
+                <strong>"Create"</strong>
+              </li>
+              <li>
+                <strong className="text-foreground">¡IMPORTANTE!</strong> Se abrirá una ventana con tus credenciales:
+                <ul className="list-disc list-inside ml-4 mt-1 space-y-1">
+                  <li>
+                    <strong>ID de cliente:</strong> Copia este valor (lo necesitarás)
+                  </li>
+                  <li>
+                    <strong>Secreto de cliente:</strong> Copia este valor (lo necesitarás)
+                  </li>
+                </ul>
+                <div className="bg-yellow-50 dark:bg-yellow-950/20 border border-yellow-200 dark:border-yellow-800 rounded p-2 mt-2">
+                  <p className="text-xs text-yellow-900 dark:text-yellow-100">
+                    ⚠️ <strong>Guarda estos valores de forma segura.</strong> El secreto de cliente solo se muestra una vez.
+                    Si lo pierdes, tendrás que crear nuevas credenciales.
+                  </p>
+                </div>
+              </li>
+            </ol>
+          </div>
+        </div>
+      </div>
+
+      {/* Paso 5 */}
+      <div className="space-y-3">
+        <div className="flex items-start gap-3">
+          <div className="flex-shrink-0 w-8 h-8 rounded-full bg-primary text-primary-foreground flex items-center justify-center font-bold text-sm">
+            5
+          </div>
+          <div className="flex-1 space-y-2">
+            <h3 className="font-semibold text-base">Configurar Variables de Entorno</h3>
+            <ol className="list-decimal list-inside space-y-2 text-muted-foreground ml-2">
+              <li>
+                Abre el archivo <code className="bg-muted px-1 rounded">.env</code> en la carpeta{" "}
+                <code className="bg-muted px-1 rounded">backend</code> de tu proyecto
+              </li>
+              <li>
+                Si no existe, créalo en la carpeta <code className="bg-muted px-1 rounded">backend</code>
+              </li>
+              <li>
+                Agrega las siguientes líneas (reemplaza los valores con los que copiaste):
+                <div className="bg-muted p-3 rounded mt-2 font-mono text-xs overflow-x-auto">
+                  <div className="space-y-1">
+                    <div>
+                      <span className="text-muted-foreground"># Google Calendar OAuth</span>
+                    </div>
+                    <div>
+                      <span className="text-blue-600 dark:text-blue-400">GOOGLE_CLIENT_ID</span>=
+                      <span className="text-green-600 dark:text-green-400">tu-client-id-aqui</span>
+                    </div>
+                    <div>
+                      <span className="text-blue-600 dark:text-blue-400">GOOGLE_CLIENT_SECRET</span>=
+                      <span className="text-green-600 dark:text-green-400">tu-client-secret-aqui</span>
+                    </div>
+                    <div>
+                      <span className="text-blue-600 dark:text-blue-400">GOOGLE_REDIRECT_URI</span>=
+                      <span className="text-green-600 dark:text-green-400">http://localhost:5000/api/google-calendar/callback</span>
+                    </div>
+                    <div className="mt-2">
+                      <span className="text-muted-foreground"># URL del frontend</span>
+                    </div>
+                    <div>
+                      <span className="text-blue-600 dark:text-blue-400">FRONTEND_URL</span>=
+                      <span className="text-green-600 dark:text-green-400">http://localhost:5173</span>
+                    </div>
+                  </div>
+                </div>
+              </li>
+              <li>
+                <strong>Guarda el archivo</strong> (Ctrl+S o Cmd+S)
+              </li>
+              <li>
+                <strong>Reinicia el servidor backend</strong> si estaba corriendo para que cargue las nuevas variables
+              </li>
+            </ol>
+          </div>
+        </div>
+      </div>
+
+      {/* Paso 6 */}
+      <div className="space-y-3">
+        <div className="flex items-start gap-3">
+          <div className="flex-shrink-0 w-8 h-8 rounded-full bg-primary text-primary-foreground flex items-center justify-center font-bold text-sm">
+            6
+          </div>
+          <div className="flex-1 space-y-2">
+            <h3 className="font-semibold text-base">Conectar en la Aplicación</h3>
+            <ol className="list-decimal list-inside space-y-2 text-muted-foreground ml-2">
+              <li>
+                Asegúrate de que el backend esté corriendo (deberías ver mensajes en la consola)
+              </li>
+              <li>
+                En esta misma página, haz clic en el botón{" "}
+                <strong>"Conectar con Google"</strong> (arriba)
+              </li>
+              <li>
+                Se abrirá una nueva ventana o pestaña con la autorización de Google
+              </li>
+              <li>
+                Selecciona la cuenta de Google que quieres usar (la misma que tiene el calendario)
+              </li>
+              <li>
+                Revisa los permisos solicitados y haz clic en{" "}
+                <strong>"Permitir"</strong> o{" "}
+                <strong>"Allow"</strong>
+              </li>
+              <li>
+                Serás redirigido de vuelta a esta página con un mensaje de éxito
+              </li>
+              <li>
+                Haz clic en <strong>"Actualizar Lista"</strong> para cargar tus calendarios
+              </li>
+              <li>
+                Selecciona el calendario que quieres usar (puede ser "Principal" o uno específico)
+              </li>
+              <li>
+                Haz clic en <strong>"Guardar Calendario"</strong>
+              </li>
+              <li>
+                ¡Listo! Las citas ahora se sincronizarán automáticamente con Google Calendar
+              </li>
+            </ol>
+          </div>
+        </div>
+      </div>
+
+      {/* Información adicional */}
+      <div className="p-4 bg-green-50 dark:bg-green-950/20 rounded-lg border border-green-200 dark:border-green-800">
+        <p className="font-semibold text-green-900 dark:text-green-100 mb-2 flex items-center gap-2">
+          <CheckCircle2 className="h-4 w-4" />
+          ¿Cómo funciona la sincronización?
+        </p>
+        <ul className="text-green-800 dark:text-green-200 text-xs space-y-1 list-disc list-inside">
+          <li>
+            <strong>Del sistema → Google Calendar:</strong> Automática. Cuando creas, editas o eliminas una cita aquí, se actualiza en Google Calendar
+          </li>
+          <li>
+            <strong>De Google Calendar → Sistema:</strong> Manual. Usa el botón "Sincronizar" para traer cambios desde Google Calendar
+          </li>
+          <li>
+            Las citas aparecen con colores diferentes según el tipo (Dermo=Azul, Bio=Verde)
+          </li>
+        </ul>
+      </div>
+
+      {/* Solución de problemas */}
+      <div className="p-4 bg-orange-50 dark:bg-orange-950/20 rounded-lg border border-orange-200 dark:border-orange-800">
+        <p className="font-semibold text-orange-900 dark:text-orange-100 mb-2">
+          🔧 Solución de Problemas Comunes
+        </p>
+        <div className="space-y-2 text-xs text-orange-800 dark:text-orange-200">
+          <div>
+            <strong>Error "redirect_uri_mismatch":</strong>
+            <ul className="list-disc list-inside ml-4 mt-1">
+              <li>Verifica que la URL en Google Cloud Console sea exactamente igual a la del .env</li>
+              <li>No debe haber espacios al inicio o final</li>
+              <li>Debe coincidir exactamente (http vs https, localhost vs dominio)</li>
+            </ul>
+          </div>
+          <div>
+            <strong>Error "invalid_grant":</strong>
+            <ul className="list-disc list-inside ml-4 mt-1">
+              <li>El token puede haber expirado</li>
+              <li>Haz clic en "Desconectar" y vuelve a conectar</li>
+            </ul>
+          </div>
+          <div>
+            <strong>Las citas no se sincronizan:</strong>
+            <ul className="list-disc list-inside ml-4 mt-1">
+              <li>Verifica que Google Calendar esté habilitado (debe aparecer "Conectado")</li>
+              <li>Verifica que hayas seleccionado un calendario</li>
+              <li>Revisa la consola del backend para ver errores</li>
+            </ul>
+          </div>
+        </div>
+      </div>
+
+      {/* Enlaces útiles */}
+      <div className="p-4 bg-muted rounded-lg">
+        <p className="font-semibold mb-2 text-sm">🔗 Enlaces Útiles</p>
+        <div className="space-y-1 text-xs">
+          <a
+            href="https://console.cloud.google.com/"
+            target="_blank"
+            rel="noopener noreferrer"
+            className="text-primary hover:underline flex items-center gap-1"
+          >
+            Google Cloud Console
+            <ExternalLink className="h-3 w-3" />
+          </a>
+          <a
+            href="https://console.cloud.google.com/apis/library/calendar-json.googleapis.com"
+            target="_blank"
+            rel="noopener noreferrer"
+            className="text-primary hover:underline flex items-center gap-1"
+          >
+            Google Calendar API (directo)
+            <ExternalLink className="h-3 w-3" />
+          </a>
+          <a
+            href="https://console.cloud.google.com/apis/credentials"
+            target="_blank"
+            rel="noopener noreferrer"
+            className="text-primary hover:underline flex items-center gap-1"
+          >
+            Credenciales OAuth (directo)
+            <ExternalLink className="h-3 w-3" />
+          </a>
+        </div>
+      </div>
+    </div>
+  );
+}
