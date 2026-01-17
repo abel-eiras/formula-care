@@ -377,6 +377,27 @@ export default function ServicioBioPrint() {
           </div>
         </div>
 
+        {/* Observaciones y Recomendaciones - Siempre visible */}
+        <div className="section-header">Observaciones y Recomendaciones</div>
+        <div className="grid-2cols mb-6">
+          <div className="space-y-2">
+            <div className="param-row">
+              <span className="param-label">Observaciones</span>
+            </div>
+            <div className="text-sm whitespace-pre-wrap" style={{ padding: "8px 0", minHeight: "60px", borderBottom: "1px solid #e2e8f0" }}>
+              {analisis.observaciones || ""}
+            </div>
+          </div>
+          <div className="space-y-2">
+            <div className="param-row">
+              <span className="param-label">Recomendaciones</span>
+            </div>
+            <div className="text-sm whitespace-pre-wrap" style={{ padding: "8px 0", minHeight: "60px", borderBottom: "1px solid #e2e8f0" }}>
+              {analisis.recomendaciones || ""}
+            </div>
+          </div>
+        </div>
+
         {/* Información de Contacto */}
         <div className="footer-line">
           <div>

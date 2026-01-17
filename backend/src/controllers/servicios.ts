@@ -70,6 +70,9 @@ const crearAnalisisBioSchema = z.object({
   // Medidas corporales
   weight: z.number().positive().optional(),
   height: z.number().positive().optional(),
+  // Observaciones y recomendaciones
+  observaciones: z.string().optional(),
+  recomendaciones: z.string().optional(),
   // Campo legacy para compatibilidad
   glucose: z.number().positive().optional(),
 });

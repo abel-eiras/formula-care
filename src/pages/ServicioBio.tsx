@@ -3,6 +3,7 @@ import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
+import { Textarea } from "@/components/ui/textarea";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Badge } from "@/components/ui/badge";
 import { ArrowLeft, Save, Printer, FlaskConical, AlertTriangle, CheckCircle } from "lucide-react";
@@ -15,7 +16,7 @@ import { evaluarValor, getMensajeValoracion } from "@/lib/valoracionBio";
 import { cn } from "@/lib/utils";
 import type { AnalisisBio, ParametroReferencia } from "@/types";
 
-// Componente para mostrar badge de valoración
+// Componente para mostrar badge de valoraci?n
 function ValoracionBadge({
   valor,
   parametroId,
@@ -49,7 +50,7 @@ function ValoracionBadge({
   );
 }
 
-// Función para obtener clase CSS del input según valoración
+// Funci?n para obtener clase CSS del input seg?n valoraci?n
 function getInputClass(estado: "normal" | "advertencia" | "critico" | null): string {
   if (!estado) return "";
   switch (estado) {
@@ -64,7 +65,7 @@ function getInputClass(estado: "normal" | "advertencia" | "critico" | null): str
   }
 }
 
-// Función para crear campo de parámetro con valoración
+// Funci?n para crear campo de par?metro con valoraci?n
 function ParametroInput({
   id,
   label,
@@ -123,24 +124,27 @@ export default function ServicioBio() {
   const [pacienteId, setPacienteId] = useState<string>(pacienteIdParam || "");
   const [formData, setFormData] = useState({
     fecha: new Date().toISOString().split("T")[0],
-    // Parámetros básicos
+    // Par?metros b?sicos
     glucemia: "",
     cholesterol: "",
     cholesterolHDL: "",
     cholesterolLDL: "",
     triglycerides: "",
-    // Parámetros avanzados
+    // Par?metros avanzados
     hemoglobinaGlucosilada: "",
     proteinaCReactiva: "",
     vitaminaD: "",
     ferritina: "",
-    // Tensión arterial y pulsaciones
+    // Tensi?n arterial y pulsaciones
     systolic: "",
     diastolic: "",
     pulsaciones: "",
     // Medidas corporales
     weight: "",
     height: "",
+    // Observaciones y recomendaciones
+    observaciones: "",
+    recomendaciones: "",
   });
 
   // Cargar datos existentes si estamos editando
@@ -163,6 +167,8 @@ export default function ServicioBio() {
         pulsaciones: analisisExistente.pulsaciones?.toString() || "",
         weight: analisisExistente.weight?.toString() || "",
         height: analisisExistente.height?.toString() || "",
+        observaciones: analisisExistente.observaciones || "",
+        recomendaciones: analisisExistente.recomendaciones || "",
       });
     }
   }, [analisisExistente]);
@@ -181,7 +187,7 @@ export default function ServicioBio() {
     return Number((weight / (heightM * heightM)).toFixed(1));
   }, [formData.weight, formData.height]);
 
-  // Evaluar IMC si está activa la valoración
+  // Evaluar IMC si est? activa la valoraci?n
   const estadoIMC = useMemo(() => {
     if (!configuracion?.valoracionBioActiva || !imc) return null;
     return evaluarValor(imc, configuracion.parametrosReferencia?.imc);
@@ -215,15 +221,17 @@ export default function ServicioBio() {
         pulsaciones: formData.pulsaciones ? parseInt(formData.pulsaciones) : undefined,
         weight: formData.weight ? parseFloat(formData.weight) : undefined,
         height: formData.height ? parseFloat(formData.height) : undefined,
+        observaciones: formData.observaciones || undefined,
+        recomendaciones: formData.recomendaciones || undefined,
       };
 
       if (analisisId) {
         await actualizarAnalisis.mutateAsync({ id: analisisId, ...datosAnalisis });
-        toast.success("Análisis actualizado correctamente");
+        toast.success("An?lisis actualizado correctamente");
       } else {
         const nuevoAnalisis = await crearAnalisis.mutateAsync(datosAnalisis);
-        toast.success("Análisis guardado correctamente");
-        // Abrir vista de impresión automáticamente después de crear
+        toast.success("An?lisis guardado correctamente");
+        // Abrir vista de impresi?n autom?ticamente despu?s de crear
         if (nuevoAnalisis?.id) {
           setTimeout(() => {
             window.open(`/servicios/bio/print?id=${nuevoAnalisis.id}`, "_blank");
@@ -233,18 +241,18 @@ export default function ServicioBio() {
 
       navigate(`/pacientes/${pacienteId}`);
     } catch (error) {
-      console.error("Error al guardar análisis:", error);
-      toast.error("Error al guardar el análisis");
+      console.error("Error al guardar an?lisis:", error);
+      toast.error("Error al guardar el an?lisis");
     }
   };
 
   const handleImprimir = () => {
     if (!analisisId) {
-      toast.info("Guarde el análisis primero para imprimir");
+      toast.info("Guarde el an?lisis primero para imprimir");
       return;
     }
     
-    // Abrir vista de impresión en nueva pestaña
+    // Abrir vista de impresi?n en nueva pesta?a
     window.open(`/servicios/bio/print?id=${analisisId}`, "_blank");
   };
 
@@ -264,9 +272,9 @@ export default function ServicioBio() {
           <div>
             <h1 className="text-2xl font-bold text-foreground flex items-center gap-2">
               <FlaskConical className="h-6 w-6 text-primary" />
-              Análisis Bioquímico
+              An?lisis Bioqu?mico
             </h1>
-            <p className="text-muted-foreground">Parámetros de salud</p>
+            <p className="text-muted-foreground">Par?metros de salud</p>
           </div>
         </div>
         <div className="flex gap-2">
@@ -276,7 +284,7 @@ export default function ServicioBio() {
           </Button>
           <Button size="lg" onClick={handleSubmit} className="shadow-md gap-2" disabled={isLoading}>
             <Save className="h-5 w-5" />
-            {isLoading ? "Guardando..." : analisisId ? "Actualizar" : "Guardar Análisis"}
+            {isLoading ? "Guardando..." : analisisId ? "Actualizar" : "Guardar An?lisis"}
           </Button>
         </div>
       </div>
@@ -311,10 +319,10 @@ export default function ServicioBio() {
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
         {/* Columna Izquierda */}
         <div className="space-y-6">
-          {/* Bloque 1: Parámetros Básicos */}
+          {/* Bloque 1: Par?metros B?sicos */}
           <Card className="shadow-sm border-border/50">
             <CardContent className="pt-6">
-              <h3 className="text-lg font-semibold mb-4 text-primary">Parámetros Básicos</h3>
+              <h3 className="text-lg font-semibold mb-4 text-primary">Par?metros B?sicos</h3>
               <div className="space-y-4">
                 <ParametroInput
                   id="glucemia"
@@ -354,7 +362,7 @@ export default function ServicioBio() {
                 />
                 <ParametroInput
                   id="triglycerides"
-                  label="Triglicéridos"
+                  label="Triglic?ridos"
                   unit="mg/dL"
                   value={formData.triglycerides}
                   onChange={(value) => handleChange("triglycerides", value)}
@@ -365,10 +373,10 @@ export default function ServicioBio() {
             </CardContent>
           </Card>
 
-          {/* Bloque 2: Parámetros Avanzados */}
+          {/* Bloque 2: Par?metros Avanzados */}
           <Card className="shadow-sm border-border/50">
             <CardContent className="pt-6">
-              <h3 className="text-lg font-semibold mb-4 text-secondary">Parámetros Avanzados</h3>
+              <h3 className="text-lg font-semibold mb-4 text-secondary">Par?metros Avanzados</h3>
               <div className="space-y-4">
                 <ParametroInput
                   id="hemoglobinaGlucosilada"
@@ -381,7 +389,7 @@ export default function ServicioBio() {
                 />
                 <ParametroInput
                   id="proteinaCReactiva"
-                  label="Proteína C Reactiva - PCR"
+                  label="Prote?na C Reactiva - PCR"
                   unit="mg/L"
                   value={formData.proteinaCReactiva}
                   onChange={(value) => handleChange("proteinaCReactiva", value)}
@@ -413,15 +421,15 @@ export default function ServicioBio() {
 
         {/* Columna Derecha */}
         <div className="space-y-6">
-          {/* Bloque 3: Tensión Arterial y Pulsaciones */}
+          {/* Bloque 3: Tensi?n Arterial y Pulsaciones */}
           <Card className="shadow-sm border-border/50">
             <CardContent className="pt-6">
-              <h3 className="text-lg font-semibold mb-4 text-destructive">Tensión Arterial y Pulsaciones</h3>
+              <h3 className="text-lg font-semibold mb-4 text-destructive">Tensi?n Arterial y Pulsaciones</h3>
               <div className="space-y-4">
                 <div className="grid grid-cols-2 gap-4">
                   <ParametroInput
                     id="systolic"
-                    label="Sistólica"
+                    label="Sist?lica"
                     unit="mmHg"
                     value={formData.systolic}
                     onChange={(value) => handleChange("systolic", value)}
@@ -430,7 +438,7 @@ export default function ServicioBio() {
                   />
                   <ParametroInput
                     id="diastolic"
-                    label="Diastólica"
+                    label="Diast?lica"
                     unit="mmHg"
                     value={formData.diastolic}
                     onChange={(value) => handleChange("diastolic", value)}
@@ -484,7 +492,7 @@ export default function ServicioBio() {
                     <div className="flex items-center justify-between">
                       <div>
                         <div className="flex items-center gap-2">
-                          <Label className="text-sm font-semibold">Índice de Masa Corporal (IMC)</Label>
+                          <Label className="text-sm font-semibold">?ndice de Masa Corporal (IMC)</Label>
                           {configuracion?.valoracionBioActiva && estadoIMC && (
                             <ValoracionBadge
                               valor={imc}
@@ -499,7 +507,7 @@ export default function ServicioBio() {
                           estadoIMC === "advertencia" && "text-warning",
                           estadoIMC === "critico" && "text-destructive"
                         )}>
-                          {imc} kg/m²
+                          {imc} kg/m?
                         </p>
                       </div>
                       <div className="text-right">
@@ -524,7 +532,7 @@ export default function ServicioBio() {
           <Card className="shadow-sm border-border/50">
             <CardContent className="pt-6">
               <div className="space-y-2">
-                <Label htmlFor="fecha">Fecha del Análisis</Label>
+                <Label htmlFor="fecha">Fecha del An?lisis</Label>
                 <Input
                   id="fecha"
                   type="date"
