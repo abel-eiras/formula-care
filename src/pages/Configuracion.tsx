@@ -6,7 +6,8 @@ import { Label } from "@/components/ui/label";
 import { Switch } from "@/components/ui/switch";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import { ArrowLeft, Save, Settings, Building2, FlaskConical, Calendar, RefreshCw, CheckCircle2 } from "lucide-react";
+import { Accordion, AccordionContent, AccordionItem, AccordionTrigger } from "@/components/ui/accordion";
+import { ArrowLeft, Save, Settings, Building2, FlaskConical, Calendar, RefreshCw, CheckCircle2, BookOpen, ExternalLink, ChevronDown } from "lucide-react";
 import { Link } from "react-router-dom";
 import { toast } from "sonner";
 import { useConfiguracion, useActualizarFarmacia, useActualizarParametrosReferencia, useActualizarValoracionBio } from "@/hooks/useConfiguracion";
@@ -723,27 +724,20 @@ function GoogleCalendarConfig() {
           </ul>
         </div>
 
-        {/* Instrucciones */}
-        <div className="p-4 rounded-lg border border-muted bg-muted/30">
-          <p className="font-semibold mb-2">Instrucciones:</p>
-          <ol className="list-decimal list-inside space-y-1 text-sm text-muted-foreground">
-            <li>Haz clic en "Conectar con Google" para autorizar el acceso</li>
-            <li>Selecciona tu cuenta de Google y otorga los permisos necesarios</li>
-            <li>Selecciona el calendario que quieres usar para las citas</li>
-            <li>Las citas creadas en el sistema se sincronizarán automáticamente</li>
-            <li>Usa el botón "Sincronizar" para traer cambios desde Google Calendar</li>
-          </ol>
-          <div className="mt-3 p-3 bg-primary/10 rounded border border-primary/20">
-            <p className="text-sm font-semibold text-primary mb-1 flex items-center gap-2">
-              <CheckCircle2 className="h-4 w-4" />
-              Sincronización Bidireccional
-            </p>
-            <p className="text-xs text-muted-foreground">
-              Los cambios en el sistema se reflejan en Google Calendar automáticamente. 
-              Los cambios en Google Calendar se pueden traer manualmente con el botón "Sincronizar".
-            </p>
-          </div>
-        </div>
+        {/* Tutorial Completo */}
+        <Accordion type="single" collapsible className="w-full">
+          <AccordionItem value="tutorial" className="border rounded-lg">
+            <AccordionTrigger className="px-4 py-3 hover:no-underline">
+              <div className="flex items-center gap-2">
+                <BookOpen className="h-5 w-5 text-primary" />
+                <span className="font-semibold">Manual de Configuración Completo</span>
+              </div>
+            </AccordionTrigger>
+            <AccordionContent className="px-4 pb-4">
+              <TutorialGoogleCalendar />
+            </AccordionContent>
+          </AccordionItem>
+        </Accordion>
       </CardContent>
     </Card>
   );
