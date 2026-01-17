@@ -1,0 +1,102 @@
+// Esquema de base de datos para Farmacia Pontevea
+// Usa SQLite para desarrollo (simple, sin servidor)
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "sqlite"
+  url      = env("DATABASE_URL")
+}
+
+// Modelo de Paciente
+model Paciente {
+  id          String   @id @default(cuid())
+  name        String
+  age         Int
+  sex         String   // "M", "F", "O"
+  phone       String
+  email       String?
+  birthDate   String?  // Fecha en formato ISO
+  address     String?
+  notes       String?
+  lastVisit   String?  // Fecha en formato ISO
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  // Relaciones
+  analisisDermo AnalisisDermo[]
+  analisisBio   AnalisisBio[]
+  citas         Cita[]
+
+  @@index([name])
+  @@index([phone])
+}
+
+// Modelo de Análisis Dermocosmético
+model AnalisisDermo {
+  id            String   @id @default(cuid())
+  pacienteId    String
+  fecha         String   // Fecha en formato ISO
+  skinType      String?
+  phototype     String?
+  concerns      String   @default("[]") // JSON array como string
+  hydration     Float?
+  sebum         Float?
+  elasticity    Float?
+  spots         Float?
+  ph            Float?
+  treatment     String?
+  cleaning      String?
+  sunProtection String?
+  supplements   String?
+  createdAt     DateTime @default(now())
+
+  // Relación
+  paciente Paciente @relation(fields: [pacienteId], references: [id], onDelete: Cascade)
+
+  @@index([pacienteId])
+  @@index([fecha])
+}
+
+// Modelo de Análisis Bioquímico
+model AnalisisBio {
+  id           String   @id @default(cuid())
+  pacienteId   String
+  fecha        String   // Fecha en formato ISO
+  glucose      Float?
+  cholesterol  Float?
+  triglycerides Float?
+  systolic     Int?
+  diastolic    Int?
+  weight       Float?
+  height       Float?
+  imc          Float?   // Calculado automáticamente
+  createdAt    DateTime @default(now())
+
+  // Relación
+  paciente Paciente @relation(fields: [pacienteId], references: [id], onDelete: Cascade)
+
+  @@index([pacienteId])
+  @@index([fecha])
+}
+
+// Modelo de Cita
+model Cita {
+  id         String   @id @default(cuid())
+  titulo     String
+  pacienteId String
+  fecha      String   // Fecha en formato ISO
+  hora       String   // Formato "HH:mm"
+  tipo       String   // "dermo", "bio", "consulta", "seguimiento"
+  notas      String?
+  createdAt  DateTime @default(now())
+  updatedAt  DateTime @updatedAt
+
+  // Relación
+  paciente Paciente @relation(fields: [pacienteId], references: [id], onDelete: Cascade)
+
+  @@index([pacienteId])
+  @@index([fecha])
+}
