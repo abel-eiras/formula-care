@@ -171,16 +171,21 @@ export default function SolicitarCita() {
       <div className="max-w-4xl mx-auto">
         {/* Encabezado con logo y datos de contacto */}
         <div className="text-center mb-8 bg-white rounded-lg shadow-sm p-6">
-          {configFarmacia?.farmaciaLogo && (
+          {!cargandoConfig && configFarmacia?.farmaciaLogo && (
             <div className="mb-4 flex justify-center">
               <img
                 src={configFarmacia.farmaciaLogo.startsWith('data:') 
                   ? configFarmacia.farmaciaLogo 
                   : `/microcaya/${configFarmacia.farmaciaLogo}`}
                 alt={configFarmacia.farmaciaNombre || 'Logo'}
-                className="h-16 object-contain"
+                className="h-20 sm:h-24 object-contain max-w-full"
+                style={{ maxHeight: '96px' }}
                 onError={(e) => {
+                  console.error('Error cargando logo:', configFarmacia.farmaciaLogo?.substring(0, 50));
                   (e.target as HTMLImageElement).style.display = 'none';
+                }}
+                onLoad={() => {
+                  console.log('Logo cargado correctamente');
                 }}
               />
             </div>
