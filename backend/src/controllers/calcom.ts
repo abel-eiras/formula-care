@@ -75,7 +75,7 @@ async function procesarReservaCreada(payload: any) {
   // Buscar paciente existente o crear uno nuevo
   let paciente = null;
   if (email) {
-        paciente = await prisma.paciente.findFirst({
+    paciente = await prisma.paciente.findFirst({
       where: { email },
     });
   }
@@ -104,8 +104,6 @@ async function procesarReservaCreada(payload: any) {
       tipo: 'dermo',
       pacienteId: paciente?.id || undefined,
       notas: `Reserva desde Cal.com (ID: ${id})`,
-      // Guardar ID de Cal.com para referencia futura
-      metadata: JSON.stringify({ calComBookingId: id }),
     },
   });
 
@@ -118,10 +116,10 @@ async function procesarReservaCreada(payload: any) {
 async function procesarReservaReagendada(payload: any) {
   const { id, startTime, endTime } = payload;
 
-  // Buscar cita por metadata
+  // Buscar cita por notas (que contiene el ID de Cal.com)
   const citas = await prisma.cita.findMany({
     where: {
-      metadata: {
+      notas: {
         contains: id,
       },
     },
@@ -150,10 +148,10 @@ async function procesarReservaReagendada(payload: any) {
 async function procesarReservaCancelada(payload: any) {
   const { id } = payload;
 
-  // Buscar cita por metadata
+  // Buscar cita por notas (que contiene el ID de Cal.com)
   const citas = await prisma.cita.findMany({
     where: {
-      metadata: {
+      notas: {
         contains: id,
       },
     },
