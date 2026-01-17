@@ -962,111 +962,452 @@ function CalComConfig() {
     : '';
 
   return (
-    <Card className="shadow-sm border-border/50">
-      <CardHeader>
-        <CardTitle>Integración con Cal.com</CardTitle>
-        <CardDescription>
-          Configura Cal.com para permitir que los clientes reserven citas directamente desde tu página web.
-          Mucho más simple que Google Calendar y diseñado específicamente para reservas.
-        </CardDescription>
-      </CardHeader>
-      <CardContent className="space-y-6">
-        <div className="flex items-center justify-between p-4 rounded-lg border bg-muted/50">
-          <div className="flex items-center gap-3">
-            <Switch
-              checked={calComConfig.calComEnabled}
-              onCheckedChange={(checked) =>
-                setCalComConfig({ ...calComConfig, calComEnabled: checked })
-              }
-            />
-            <div>
-              <p className="font-semibold">
-                {calComConfig.calComEnabled ? "Cal.com Habilitado" : "Cal.com Deshabilitado"}
-              </p>
-              <p className="text-sm text-muted-foreground">
-                {calComConfig.calComEnabled
-                  ? "Los clientes pueden reservar citas desde tu página web"
-                  : "Activa esta opción para habilitar las reservas online"}
+    <div className="space-y-6">
+      <Card className="shadow-sm border-border/50">
+        <CardHeader>
+          <CardTitle>Integración con Cal.com</CardTitle>
+          <CardDescription>
+            Configura Cal.com para permitir que los clientes reserven citas directamente desde tu página web.
+            Mucho más simple que Google Calendar y diseñado específicamente para reservas online.
+          </CardDescription>
+        </CardHeader>
+        <CardContent className="space-y-6">
+          {/* Tutorial */}
+          <Accordion type="single" collapsible className="w-full">
+            <AccordionItem value="tutorial">
+              <AccordionTrigger className="hover:no-underline">
+                <div className="flex items-center gap-2">
+                  <BookOpen className="h-4 w-4" />
+                  <span className="font-semibold">Manual de Configuración</span>
+                </div>
+              </AccordionTrigger>
+              <AccordionContent>
+                <TutorialCalCom webhookUrl={webhookUrl} />
+              </AccordionContent>
+            </AccordionItem>
+          </Accordion>
+
+          {/* Estado y configuración */}
+          <div className="flex items-center justify-between p-4 rounded-lg border bg-muted/50">
+            <div className="flex items-center gap-3">
+              <Switch
+                checked={calComConfig.calComEnabled}
+                onCheckedChange={(checked) =>
+                  setCalComConfig({ ...calComConfig, calComEnabled: checked })
+                }
+              />
+              <div>
+                <p className="font-semibold">
+                  {calComConfig.calComEnabled ? "Cal.com Habilitado" : "Cal.com Deshabilitado"}
+                </p>
+                <p className="text-sm text-muted-foreground">
+                  {calComConfig.calComEnabled
+                    ? "Los clientes pueden reservar citas desde tu página web"
+                    : "Activa esta opción para habilitar las reservas online"}
+                </p>
+              </div>
+            </div>
+          </div>
+
+          {calComConfig.calComEnabled && (
+            <div className="space-y-4 p-4 bg-white dark:bg-gray-900 rounded border">
+              <div className="space-y-2">
+                <Label htmlFor="calcom-link">Enlace de Cal.com *</Label>
+                <Input
+                  id="calcom-link"
+                  type="text"
+                  placeholder="usuario/consulta-dermo"
+                  value={calComConfig.calComLink}
+                  onChange={(e) =>
+                    setCalComConfig({ ...calComConfig, calComLink: e.target.value })
+                  }
+                />
+                <p className="text-xs text-muted-foreground">
+                  El enlace de tu evento en Cal.com (ej: "farmaciapontevea/consulta-dermo").
+                  Lo encuentras en la configuración de tu evento en Cal.com. Ver el manual arriba para más detalles.
+                </p>
+              </div>
+
+              <div className="space-y-2">
+                <Label htmlFor="calcom-webhook-secret">Webhook Secret *</Label>
+                <Input
+                  id="calcom-webhook-secret"
+                  type="password"
+                  placeholder="Genera un secret aleatorio (ej: mi-secret-super-seguro-123)"
+                  value={calComConfig.calComWebhookSecret}
+                  onChange={(e) =>
+                    setCalComConfig({ ...calComConfig, calComWebhookSecret: e.target.value })
+                  }
+                />
+                <p className="text-xs text-muted-foreground">
+                  Secret para verificar la autenticidad de los webhooks. 
+                  Debe ser el mismo que configures en Cal.com. Puede ser cualquier texto aleatorio que elijas.
+                </p>
+              </div>
+
+              {webhookUrl && (
+                <div className="p-3 bg-blue-50 dark:bg-blue-950/20 rounded border border-blue-200 dark:border-blue-800">
+                  <p className="text-xs font-semibold text-blue-900 dark:text-blue-100 mb-1">
+                    URL del Webhook (copia esto):
+                  </p>
+                  <code className="text-xs text-blue-800 dark:text-blue-200 break-all block p-2 bg-blue-100 dark:bg-blue-900/30 rounded">
+                    {webhookUrl}
+                  </code>
+                  <p className="text-xs text-blue-700 dark:text-blue-300 mt-2">
+                    Necesitarás esta URL en el paso 4 del manual de configuración.
+                  </p>
+                </div>
+              )}
+
+              <div className="space-y-2">
+                <Label htmlFor="calcom-api-key">API Key de Cal.com (Opcional)</Label>
+                <Input
+                  id="calcom-api-key"
+                  type="password"
+                  placeholder="cal_xxxxxxxxxxxxx"
+                  value={calComConfig.calComApiKey}
+                  onChange={(e) =>
+                    setCalComConfig({ ...calComConfig, calComApiKey: e.target.value })
+                  }
+                />
+                <p className="text-xs text-muted-foreground">
+                  Opcional. Solo necesaria si quieres crear webhooks automáticamente desde la aplicación.
+                  La mayoría de usuarios no la necesitan.
+                </p>
+              </div>
+
+              <Button onClick={handleGuardar} disabled={actualizarCalCom.isPending} className="w-full gap-2">
+                <Save className="h-4 w-4" />
+                {actualizarCalCom.isPending ? "Guardando..." : "Guardar Configuración"}
+              </Button>
+            </div>
+          )}
+        </CardContent>
+      </Card>
+    </div>
+  );
+}
+
+/**
+ * Componente del tutorial completo de Cal.com
+ */
+function TutorialCalCom({ webhookUrl }: { webhookUrl: string }) {
+  return (
+    <div className="space-y-6 text-sm pt-4">
+      <div className="p-4 bg-green-50 dark:bg-green-950/20 rounded-lg border border-green-200 dark:border-green-800">
+        <p className="font-semibold text-green-900 dark:text-green-100 mb-2">
+          ✅ Ventajas de Cal.com
+        </p>
+        <ul className="text-green-800 dark:text-green-200 text-xs space-y-1 list-disc list-inside">
+          <li>Mucho más simple que Google Calendar - solo necesitas un enlace</li>
+          <li>Diseñado específicamente para reservas de clientes</li>
+          <li>No requiere configuración técnica compleja</li>
+          <li>Los clientes reservan directamente desde tu página web</li>
+          <li>Las reservas se sincronizan automáticamente con tu sistema</li>
+        </ul>
+      </div>
+
+      {/* Paso 1 */}
+      <div className="space-y-3">
+        <div className="flex items-start gap-3">
+          <div className="flex-shrink-0 w-8 h-8 rounded-full bg-primary text-primary-foreground flex items-center justify-center font-bold text-sm">
+            1
+          </div>
+          <div className="flex-1 space-y-2">
+            <h3 className="font-semibold text-base">Crear cuenta en Cal.com</h3>
+            <ol className="list-decimal list-inside space-y-2 text-muted-foreground ml-2">
+              <li>
+                Abre tu navegador y ve a{" "}
+                <a
+                  href="https://cal.com"
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="text-primary hover:underline inline-flex items-center gap-1"
+                >
+                  Cal.com
+                  <ExternalLink className="h-3 w-3" />
+                </a>
+              </li>
+              <li>
+                Haz clic en <strong>"Sign up"</strong> o <strong>"Registrarse"</strong>
+              </li>
+              <li>
+                Crea tu cuenta usando tu email (puedes usar el email de la farmacia)
+              </li>
+              <li>
+                Verifica tu email si es necesario
+              </li>
+              <li>
+                Completa tu perfil básico (nombre, zona horaria, etc.)
+              </li>
+            </ol>
+          </div>
+        </div>
+      </div>
+
+      {/* Paso 2 */}
+      <div className="space-y-3">
+        <div className="flex items-start gap-3">
+          <div className="flex-shrink-0 w-8 h-8 rounded-full bg-primary text-primary-foreground flex items-center justify-center font-bold text-sm">
+            2
+          </div>
+          <div className="flex-1 space-y-2">
+            <h3 className="font-semibold text-base">Crear un Event Type (Tipo de Evento)</h3>
+            <ol className="list-decimal list-inside space-y-2 text-muted-foreground ml-2">
+              <li>
+                Una vez dentro de Cal.com, haz clic en{" "}
+                <strong>"Event Types"</strong> o <strong>"Tipos de Evento"</strong> en el menú
+              </li>
+              <li>
+                Haz clic en <strong>"+ New"</strong> o <strong>"+ Nuevo"</strong>
+              </li>
+              <li>
+                Completa el formulario:
+                <ul className="list-disc list-inside ml-4 mt-1 space-y-1">
+                  <li>
+                    <strong>Title:</strong> <code className="bg-muted px-1 rounded">Consulta Dermocosmética</code>
+                  </li>
+                  <li>
+                    <strong>Duration:</strong> 30 minutos o 1 hora (según prefieras)
+                  </li>
+                  <li>
+                    <strong>Description:</strong> Descripción de la consulta
+                  </li>
+                </ul>
+              </li>
+              <li>
+                Configura la disponibilidad (horarios en los que aceptas citas)
+              </li>
+              <li>
+                Haz clic en <strong>"Continue"</strong> o <strong>"Continuar"</strong>
+              </li>
+              <li>
+                En la siguiente pantalla, configura el formulario de reserva (campos que el cliente debe llenar)
+              </li>
+              <li>
+                Haz clic en <strong>"Publish"</strong> o <strong>"Publicar"</strong>
+              </li>
+            </ol>
+          </div>
+        </div>
+      </div>
+
+      {/* Paso 3 */}
+      <div className="space-y-3">
+        <div className="flex items-start gap-3">
+          <div className="flex-shrink-0 w-8 h-8 rounded-full bg-primary text-primary-foreground flex items-center justify-center font-bold text-sm">
+            3
+          </div>
+          <div className="flex-1 space-y-2">
+            <h3 className="font-semibold text-base">Obtener el Enlace (Link) del Evento</h3>
+            <ol className="list-decimal list-inside space-y-2 text-muted-foreground ml-2">
+              <li>
+                Una vez creado el evento, verás una página con el enlace de tu evento
+              </li>
+              <li>
+                El enlace tendrá un formato como: <code className="bg-muted px-1 rounded">tu-usuario/consulta-dermo</code>
+              </li>
+              <li>
+                <strong>Copia este enlace completo</strong> (sin el dominio cal.com, solo la parte después de cal.com/)
+              </li>
+              <li>
+                Ejemplo: Si la URL completa es <code className="bg-muted px-1 rounded">https://cal.com/farmaciapontevea/consulta-dermo</code>,
+                el enlace que necesitas es: <code className="bg-muted px-1 rounded">farmaciapontevea/consulta-dermo</code>
+              </li>
+              <li>
+                También puedes encontrarlo en <strong>Event Types</strong> &gt; Tu evento &gt; <strong>"Copy link"</strong>
+              </li>
+            </ol>
+          </div>
+        </div>
+      </div>
+
+      {/* Paso 4 */}
+      <div className="space-y-3">
+        <div className="flex items-start gap-3">
+          <div className="flex-shrink-0 w-8 h-8 rounded-full bg-primary text-primary-foreground flex items-center justify-center font-bold text-sm">
+            4
+          </div>
+          <div className="flex-1 space-y-2">
+            <h3 className="font-semibold text-base">Configurar Webhook en Cal.com</h3>
+            <p className="text-muted-foreground text-xs mb-2">
+              Esto permite que las reservas se sincronicen automáticamente con tu sistema.
+            </p>
+            <ol className="list-decimal list-inside space-y-2 text-muted-foreground ml-2">
+              <li>
+                En Cal.com, ve a <strong>Settings</strong> (Configuración) &gt; <strong>Webhooks</strong>
+              </li>
+              <li>
+                Haz clic en <strong>"+ Add Webhook"</strong> o <strong>"+ Agregar Webhook"</strong>
+              </li>
+              <li>
+                Completa el formulario:
+                <ul className="list-disc list-inside ml-4 mt-1 space-y-1">
+                  <li>
+                    <strong>Subscriber URL:</strong> Pega la URL del webhook que aparece arriba en esta página:
+                    <div className="bg-muted p-2 rounded text-xs font-mono mt-1 break-all">
+                      {webhookUrl || "Se calculará automáticamente cuando guardes la configuración"}
+                    </div>
+                  </li>
+                  <li>
+                    <strong>Secret:</strong> Genera un secret aleatorio (puede ser cualquier texto, ej: <code className="bg-muted px-1 rounded">mi-secret-123</code>)
+                    <br />
+                    <span className="text-xs text-orange-600 dark:text-orange-400">
+                      ⚠️ <strong>Importante:</strong> Copia este secret, lo necesitarás en el paso 5
+                    </span>
+                  </li>
+                  <li>
+                    <strong>Event Triggers:</strong> Selecciona:
+                    <ul className="list-disc list-inside ml-4 mt-1">
+                      <li>✓ BOOKING_CREATED</li>
+                      <li>✓ BOOKING_RESCHEDULED</li>
+                      <li>✓ BOOKING_CANCELLED</li>
+                    </ul>
+                  </li>
+                </ul>
+              </li>
+              <li>
+                Haz clic en <strong>"Save"</strong> o <strong>"Guardar"</strong>
+              </li>
+            </ol>
+          </div>
+        </div>
+      </div>
+
+      {/* Paso 5 */}
+      <div className="space-y-3">
+        <div className="flex items-start gap-3">
+          <div className="flex-shrink-0 w-8 h-8 rounded-full bg-primary text-primary-foreground flex items-center justify-center font-bold text-sm">
+            5
+          </div>
+          <div className="flex-1 space-y-2">
+            <h3 className="font-semibold text-base">Configurar en esta Aplicación</h3>
+            <ol className="list-decimal list-inside space-y-2 text-muted-foreground ml-2">
+              <li>
+                En esta misma página, activa el switch <strong>"Cal.com Habilitado"</strong>
+              </li>
+              <li>
+                Se desplegará un formulario con los siguientes campos:
+                <ul className="list-disc list-inside ml-4 mt-1 space-y-1">
+                  <li>
+                    <strong>Enlace de Cal.com:</strong> Pega el enlace que copiaste en el paso 3
+                    <br />
+                    <span className="text-xs">Ejemplo: <code className="bg-muted px-1 rounded">farmaciapontevea/consulta-dermo</code></span>
+                  </li>
+                  <li>
+                    <strong>Webhook Secret:</strong> Pega el secret que generaste en el paso 4
+                    <br />
+                    <span className="text-xs">Debe ser exactamente el mismo que configuraste en Cal.com</span>
+                  </li>
+                  <li>
+                    <strong>API Key:</strong> Déjalo vacío (no es necesario para la mayoría de usuarios)
+                  </li>
+                </ul>
+              </li>
+              <li>
+                Haz clic en <strong>"Guardar Configuración"</strong>
+              </li>
+              <li>
+                Verás un mensaje de confirmación: <strong>"Configuración de Cal.com guardada correctamente"</strong>
+              </li>
+            </ol>
+          </div>
+        </div>
+      </div>
+
+      {/* Paso 6 */}
+      <div className="space-y-3">
+        <div className="flex items-start gap-3">
+          <div className="flex-shrink-0 w-8 h-8 rounded-full bg-primary text-primary-foreground flex items-center justify-center font-bold text-sm">
+            6
+          </div>
+          <div className="flex-1 space-y-2">
+            <h3 className="font-semibold text-base">¡Listo! Probar la Integración</h3>
+            <ol className="list-decimal list-inside space-y-2 text-muted-foreground ml-2">
+              <li>
+                Ve a la página de <strong>Calendario</strong> en esta aplicación
+              </li>
+              <li>
+                Verás el widget de Cal.com embebido en la página
+              </li>
+              <li>
+                Haz una reserva de prueba desde el widget
+              </li>
+              <li>
+                La reserva debería aparecer automáticamente en tu sistema de citas
+              </li>
+              <li>
+                También aparecerá en tu calendario de Cal.com
+              </li>
+            </ol>
+            <div className="bg-green-50 dark:bg-green-950/20 border border-green-200 dark:border-green-800 rounded p-3 mt-2">
+              <p className="text-xs text-green-900 dark:text-green-100">
+                ✅ <strong>¡Felicidades!</strong> Ahora tus clientes pueden reservar citas directamente desde tu página web.
+                Las reservas se sincronizarán automáticamente con tu sistema.
               </p>
             </div>
           </div>
         </div>
+      </div>
 
-        {calComConfig.calComEnabled && (
-          <div className="space-y-4 p-4 bg-white dark:bg-gray-900 rounded border">
-            <div className="space-y-2">
-              <Label htmlFor="calcom-link">Enlace de Cal.com *</Label>
-              <Input
-                id="calcom-link"
-                type="text"
-                placeholder="usuario/consulta-dermo"
-                value={calComConfig.calComLink}
-                onChange={(e) =>
-                  setCalComConfig({ ...calComConfig, calComLink: e.target.value })
-                }
-              />
-              <p className="text-xs text-muted-foreground">
-                El enlace de tu evento en Cal.com (ej: "farmaciapontevea/consulta-dermo").
-                Lo encuentras en la configuración de tu evento en Cal.com.
-              </p>
-            </div>
+      {/* Información adicional */}
+      <div className="p-4 bg-blue-50 dark:bg-blue-950/20 rounded-lg border border-blue-200 dark:border-blue-800">
+        <p className="font-semibold text-blue-900 dark:text-blue-100 mb-2 flex items-center gap-2">
+          <BookOpen className="h-4 w-4" />
+          Información Adicional
+        </p>
+        <ul className="text-blue-800 dark:text-blue-200 text-xs space-y-1 list-disc list-inside">
+          <li>
+            <strong>Precios:</strong> Cal.com tiene un plan gratuito con funcionalidades básicas. 
+            Los planes de pago ofrecen más opciones de personalización.
+          </li>
+          <li>
+            <strong>Sincronización:</strong> Las reservas se crean automáticamente en tu sistema cuando un cliente reserva.
+            Si el cliente cancela o reagenda, también se actualiza automáticamente.
+          </li>
+          <li>
+            <strong>Pacientes:</strong> Si el cliente proporciona su email, se buscará en tu base de datos.
+            Si no existe, se creará un nuevo paciente automáticamente.
+          </li>
+        </ul>
+      </div>
 
-            <div className="space-y-2">
-              <Label htmlFor="calcom-api-key">API Key de Cal.com</Label>
-              <Input
-                id="calcom-api-key"
-                type="password"
-                placeholder="cal_xxxxxxxxxxxxx"
-                value={calComConfig.calComApiKey}
-                onChange={(e) =>
-                  setCalComConfig({ ...calComConfig, calComApiKey: e.target.value })
-                }
-              />
-              <p className="text-xs text-muted-foreground">
-                Opcional. Necesaria para crear webhooks automáticamente desde la aplicación.
-                La puedes obtener en Cal.com &gt; Settings &gt; API Keys.
-              </p>
-            </div>
-
-            <div className="space-y-2">
-              <Label htmlFor="calcom-webhook-secret">Webhook Secret</Label>
-              <Input
-                id="calcom-webhook-secret"
-                type="password"
-                placeholder="Genera un secret aleatorio"
-                value={calComConfig.calComWebhookSecret}
-                onChange={(e) =>
-                  setCalComConfig({ ...calComConfig, calComWebhookSecret: e.target.value })
-                }
-              />
-              <p className="text-xs text-muted-foreground">
-                Secret para verificar la autenticidad de los webhooks. 
-                Debe coincidir con el configurado en Cal.com.
-              </p>
-            </div>
-
-            {webhookUrl && (
-              <div className="p-3 bg-blue-50 dark:bg-blue-950/20 rounded border border-blue-200 dark:border-blue-800">
-                <p className="text-xs font-semibold text-blue-900 dark:text-blue-100 mb-1">
-                  URL del Webhook:
-                </p>
-                <code className="text-xs text-blue-800 dark:text-blue-200 break-all">
-                  {webhookUrl}
-                </code>
-                <p className="text-xs text-blue-700 dark:text-blue-300 mt-2">
-                  Copia esta URL y configúrala en Cal.com &gt; Settings &gt; Webhooks
-                </p>
-              </div>
-            )}
-
-            <Button onClick={handleGuardar} disabled={actualizarCalCom.isPending} className="w-full gap-2">
-              <Save className="h-4 w-4" />
-              {actualizarCalCom.isPending ? "Guardando..." : "Guardar Configuración"}
-            </Button>
-          </div>
-        )}
-      </CardContent>
-    </Card>
+      {/* Enlaces útiles */}
+      <div className="p-4 bg-muted rounded-lg">
+        <p className="font-semibold mb-2 text-sm">Enlaces Útiles</p>
+        <div className="flex flex-wrap gap-2 text-xs">
+          <a
+            href="https://cal.com"
+            target="_blank"
+            rel="noopener noreferrer"
+            className="text-primary hover:underline inline-flex items-center gap-1"
+          >
+            Cal.com
+            <ExternalLink className="h-3 w-3" />
+          </a>
+          <span className="text-muted-foreground">•</span>
+          <a
+            href="https://cal.com/docs"
+            target="_blank"
+            rel="noopener noreferrer"
+            className="text-primary hover:underline inline-flex items-center gap-1"
+          >
+            Documentación de Cal.com
+            <ExternalLink className="h-3 w-3" />
+          </a>
+          <span className="text-muted-foreground">•</span>
+          <a
+            href="https://cal.com/docs/developing/guides/automation/webhooks"
+            target="_blank"
+            rel="noopener noreferrer"
+            className="text-primary hover:underline inline-flex items-center gap-1"
+          >
+            Guía de Webhooks
+            <ExternalLink className="h-3 w-3" />
+          </a>
+        </div>
+      </div>
+    </div>
   );
 }
 
