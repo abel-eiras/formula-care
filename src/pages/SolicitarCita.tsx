@@ -552,7 +552,9 @@ export default function SolicitarCita() {
                       <div className="space-y-1 text-sm text-gray-600">
                         <p>
                           <strong>Servicio:</strong>{' '}
-                          {TIPOS_SERVICIO.find((t) => t.value === tipoServicio)?.label}
+                          {tipoServicio 
+                            ? (tiposServicioDisponibles.find((t) => t.value === tipoServicio)?.label || '')
+                            : ''}
                         </p>
                         <p>
                           <strong>Fecha:</strong>{' '}
