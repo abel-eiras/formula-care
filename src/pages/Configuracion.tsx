@@ -8,6 +8,8 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Accordion, AccordionContent, AccordionItem, AccordionTrigger } from "@/components/ui/accordion";
 import { Badge } from "@/components/ui/badge";
+import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
+import { Calendar } from "@/components/ui/calendar";
 import { ArrowLeft, Save, Settings, Building2, FlaskConical, Calendar as CalendarIcon, RefreshCw, CheckCircle2, BookOpen, ExternalLink, ChevronDown, Plus, Trash2 } from "lucide-react";
 import { Link } from "react-router-dom";
 import { toast } from "sonner";
@@ -722,19 +724,47 @@ function CalendarioTab() {
                   </div>
                 </div>
                 <div className="space-y-2">
-                  <Label>Fechas Disponibles (formato: YYYY-MM-DD) *</Label>
-                  <div className="space-y-2">
+                  <Label>Fechas Disponibles (formato: DD-MM-AAAA) *</Label>
+                  <div className="space-y-3">
                     {nuevoEvento.fechas.map((fecha, index) => (
-                      <div key={index} className="flex gap-2">
-                        <Input
-                          type="date"
-                          value={fecha}
-                          onChange={(e) => {
-                            const nuevasFechas = [...nuevoEvento.fechas];
-                            nuevasFechas[index] = e.target.value;
-                            setNuevoEvento({ ...nuevoEvento, fechas: nuevasFechas });
-                          }}
-                        />
+                      <div key={index} className="flex gap-2 items-start">
+                        <div className="flex-1">
+                          <Popover>
+                            <PopoverTrigger asChild>
+                              <Button
+                                variant="outline"
+                                className={cn(
+                                  "w-full justify-start text-left font-normal",
+                                  !fecha && "text-muted-foreground"
+                                )}
+                              >
+                                <CalendarIcon className="mr-2 h-4 w-4" />
+                                {fecha ? (
+                                  format(new Date(fecha + 'T00:00:00'), "dd-MM-yyyy", { locale: es })
+                                ) : (
+                                  <span>Selecciona una fecha</span>
+                                )}
+                              </Button>
+                            </PopoverTrigger>
+                            <PopoverContent className="w-auto p-0" align="start">
+                              <Calendar
+                                mode="single"
+                                selected={fecha ? new Date(fecha + 'T00:00:00') : undefined}
+                                onSelect={(date) => {
+                                  if (date) {
+                                    const nuevasFechas = [...nuevoEvento.fechas];
+                                    nuevasFechas[index] = format(date, 'yyyy-MM-dd');
+                                    setNuevoEvento({ ...nuevoEvento, fechas: nuevasFechas });
+                                  }
+                                }}
+                                locale={es}
+                                weekStartsOn={1} // Lunes
+                                disabled={(date) => date < new Date(new Date().setHours(0, 0, 0, 0))}
+                                initialFocus
+                              />
+                            </PopoverContent>
+                          </Popover>
+                        </div>
                         <Button
                           type="button"
                           variant="outline"
