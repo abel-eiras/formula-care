@@ -8,8 +8,6 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Accordion, AccordionContent, AccordionItem, AccordionTrigger } from "@/components/ui/accordion";
 import { Badge } from "@/components/ui/badge";
-import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
-import { Calendar } from "@/components/ui/calendar";
 import { ArrowLeft, Save, Settings, Building2, FlaskConical, Calendar as CalendarIcon, RefreshCw, CheckCircle2, BookOpen, ExternalLink, ChevronDown, Plus, Trash2 } from "lucide-react";
 import { Link } from "react-router-dom";
 import { toast } from "sonner";
@@ -18,6 +16,8 @@ import { useEventos, useCrearEvento, useActualizarEvento, useEliminarEvento } fr
 import type { Evento } from "@/types";
 import { cn } from "@/lib/utils";
 import type { ParametroReferencia } from "@/types";
+import { format } from "date-fns";
+import { es } from "date-fns/locale";
 
 // Mapeo de parámetros con sus etiquetas y unidades
 const PARAMETROS_INFO: Record<string, { label: string; unit: string }> = {
@@ -238,13 +238,55 @@ export default function Configuracion() {
                   />
                 </div>
                 <div className="space-y-2">
-                  <Label htmlFor="farmaciaLogo">Ruta del Logo</Label>
-                  <Input
-                    id="farmaciaLogo"
-                    value={farmaciaData.farmaciaLogo}
-                    onChange={(e) => setFarmaciaData({ ...farmaciaData, farmaciaLogo: e.target.value })}
-                    placeholder="/logo.png"
-                  />
+                  <Label htmlFor="farmaciaLogo">Logo de la Farmacia</Label>
+                  <div className="flex items-center gap-4">
+                    {farmaciaData.farmaciaLogo && (
+                      <div className="relative w-24 h-24 border rounded-md overflow-hidden bg-gray-50">
+                        <img
+                          src={farmaciaData.farmaciaLogo.startsWith('data:') ? farmaciaData.farmaciaLogo : `/microcaya/${farmaciaData.farmaciaLogo}`}
+                          alt="Logo"
+                          className="w-full h-full object-contain"
+                          onError={(e) => {
+                            // Si falla la carga, ocultar la imagen
+                            (e.target as HTMLImageElement).style.display = 'none';
+                          }}
+                        />
+                      </div>
+                    )}
+                    <div className="flex-1">
+                      <Input
+                        id="farmaciaLogo"
+                        type="file"
+                        accept="image/png"
+                        onChange={(e) => {
+                          const file = e.target.files?.[0];
+                          if (file) {
+                            // Validar que sea PNG
+                            if (file.type !== 'image/png') {
+                              toast.error('Solo se permiten archivos PNG');
+                              return;
+                            }
+                            // Validar tamaño (máx 2MB)
+                            if (file.size > 2 * 1024 * 1024) {
+                              toast.error('El archivo es demasiado grande. Máximo 2MB');
+                              return;
+                            }
+                            // Convertir a base64
+                            const reader = new FileReader();
+                            reader.onloadend = () => {
+                              const base64String = reader.result as string;
+                              setFarmaciaData({ ...farmaciaData, farmaciaLogo: base64String });
+                            };
+                            reader.readAsDataURL(file);
+                          }
+                        }}
+                        className="cursor-pointer"
+                      />
+                      <p className="text-xs text-muted-foreground mt-1">
+                        Formato: PNG. Tamaño máximo: 2MB
+                      </p>
+                    </div>
+                  </div>
                 </div>
               </div>
               <div className="flex justify-end pt-4">
