@@ -104,7 +104,7 @@ export async function crearEvento(req: Request, res: Response) {
       data: {
         nombre: datos.nombre,
         activo: datos.activo ?? true,
-        dias: JSON.stringify(datos.dias),
+        fechas: JSON.stringify(datos.fechas),
         horas: JSON.stringify(datos.horas),
         duracion: datos.duracion,
         maxAsistentes: datos.maxAsistentes,
@@ -115,7 +115,7 @@ export async function crearEvento(req: Request, res: Response) {
     // Parsear JSON fields para respuesta
     const eventoParsed = {
       ...evento,
-      dias: typeof evento.dias === 'string' ? JSON.parse(evento.dias) : evento.dias,
+      fechas: typeof evento.fechas === 'string' ? JSON.parse(evento.fechas) : evento.fechas,
       horas: typeof evento.horas === 'string' ? JSON.parse(evento.horas) : evento.horas,
     };
 
