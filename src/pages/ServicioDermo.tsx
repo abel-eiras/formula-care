@@ -6,12 +6,13 @@ import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Checkbox } from "@/components/ui/checkbox";
-import { ArrowLeft, Save, Printer, Sparkles } from "lucide-react";
+import { ArrowLeft, Save, Printer, Sparkles, Download } from "lucide-react";
 import { Link, useNavigate, useSearchParams } from "react-router-dom";
 import { toast } from "sonner";
 import { usePacientes } from "@/hooks/usePacientes";
 import { useCrearAnalisisDermo, useAnalisisDermo, useActualizarAnalisisDermo } from "@/hooks/useAnalisisDermo";
 import type { AnalisisDermo, RutinaDia, RutinaNoche, CuidadosSemanales } from "@/types";
+import { generatePDFFromElement, generatePDFFilename } from "@/lib/pdfGenerator";
 
 // Opciones de valoración de la piel
 const VALORACION_PIEL_OPCIONES = [
@@ -96,6 +97,11 @@ export default function ServicioDermo() {
 
   const { data: pacientes = [] } = usePacientes();
   const { data: analisisExistente } = useAnalisisDermo(analisisId || undefined);
+  
+  // Necesitamos el paciente para el nombre del archivo
+  const paciente = analisisExistente?.pacienteId
+    ? pacientes.find((p) => p.id === analisisExistente.pacienteId)
+    : null;
   const crearAnalisis = useCrearAnalisisDermo();
   const actualizarAnalisis = useActualizarAnalisisDermo();
 

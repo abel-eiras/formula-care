@@ -6,7 +6,7 @@ import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Badge } from "@/components/ui/badge";
-import { ArrowLeft, Save, Printer, FlaskConical, AlertTriangle, CheckCircle } from "lucide-react";
+import { ArrowLeft, Save, Printer, FlaskConical, AlertTriangle, CheckCircle, Download } from "lucide-react";
 import { Link, useNavigate, useSearchParams } from "react-router-dom";
 import { toast } from "sonner";
 import { usePacientes } from "@/hooks/usePacientes";
@@ -116,6 +116,11 @@ export default function ServicioBio() {
 
   const { data: pacientes = [] } = usePacientes();
   const { data: analisisExistente } = useAnalisisBio(analisisId || undefined);
+  
+  // Necesitamos el paciente para el nombre del archivo
+  const paciente = analisisExistente?.pacienteId
+    ? pacientes.find((p) => p.id === analisisExistente.pacienteId)
+    : null;
   const { data: configuracion } = useConfiguracion();
   const crearAnalisis = useCrearAnalisisBio();
   const actualizarAnalisis = useActualizarAnalisisBio();
@@ -281,6 +286,10 @@ export default function ServicioBio() {
           <Button variant="outline" onClick={handleImprimir} className="gap-2" disabled={isLoading || !analisisId}>
             <Printer className="h-4 w-4" />
             Imprimir
+          </Button>
+          <Button variant="outline" onClick={handleDescargarPDF} className="gap-2" disabled={isLoading || !analisisId}>
+            <Download className="h-4 w-4" />
+            Descargar PDF
           </Button>
           <Button size="lg" onClick={handleSubmit} className="shadow-md gap-2" disabled={isLoading}>
             <Save className="h-5 w-5" />
