@@ -36,6 +36,9 @@ app.use('/api/configuracion', configuracionRouter);
 app.use('/api/estadisticas', estadisticasRouter);
 app.use('/api/notificaciones', notificacionesRouter);
 
+// Rutas públicas (sin autenticación)
+app.use('/api/public', publicRouter);
+
 // Ruta de salud
 app.get('/api/health', (req, res) => {
   res.json({ status: 'ok', message: 'API funcionando correctamente' });
