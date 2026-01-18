@@ -10,10 +10,11 @@ interface ProtectedRouteProps {
   children: React.ReactNode;
   requiredRoles?: string[];
   requiredRole?: string; // Alias para un solo rol
+  excludeRoles?: string[]; // Roles que NO pueden acceder
 }
 
-export function ProtectedRoute({ children, requiredRoles, requiredRole }: ProtectedRouteProps) {
-  const { isAuthenticated, isLoading, tieneRol } = useAuthContext();
+export function ProtectedRoute({ children, requiredRoles, requiredRole, excludeRoles }: ProtectedRouteProps) {
+  const { isAuthenticated, isLoading, tieneRol, usuario } = useAuthContext();
   const location = useLocation();
 
   // Combinar requiredRole con requiredRoles
@@ -35,11 +36,21 @@ export function ProtectedRoute({ children, requiredRoles, requiredRole }: Protec
     return <Navigate to="/login" state={{ from: location }} replace />;
   }
 
+  // Si hay roles excluidos, verificar que el usuario no tenga ninguno
+  if (excludeRoles && excludeRoles.length > 0 && usuario) {
+    if (excludeRoles.includes(usuario.rol)) {
+      // Redirigir superadmin a su panel, otros a dashboard
+      const redirectTo = usuario.rol === 'superadmin' ? '/admin' : '/';
+      return <Navigate to={redirectTo} state={{ error: 'No tienes permisos para acceder a esta página' }} replace />;
+    }
+  }
+
   // Si se requieren roles específicos, verificar
   if (rolesRequeridos && rolesRequeridos.length > 0) {
     if (!tieneRol(...rolesRequeridos)) {
-      // No tiene permisos, redirigir a dashboard con mensaje
-      return <Navigate to="/" state={{ error: 'No tienes permisos para acceder a esta página' }} replace />;
+      // Redirigir superadmin a su panel, otros a dashboard
+      const redirectTo = usuario?.rol === 'superadmin' ? '/admin' : '/';
+      return <Navigate to={redirectTo} state={{ error: 'No tienes permisos para acceder a esta página' }} replace />;
     }
   }
 
