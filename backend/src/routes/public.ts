@@ -3,7 +3,8 @@ import {
   obtenerDisponibilidadPublica, 
   solicitarCita, 
   obtenerFarmaciaPublica,
-  obtenerEventosFarmacia 
+  obtenerEventosFarmacia,
+  obtenerTextoLegalPublico,
 } from '../controllers/solicitudesPublicas.js';
 import { 
   verificarTokenCita, 
@@ -22,6 +23,8 @@ export const publicRouter = Router();
 publicRouter.get('/farmacia/:slug', obtenerFarmaciaPublica);
 // Obtener eventos activos de una farmacia
 publicRouter.get('/farmacia/:slug/eventos', obtenerEventosFarmacia);
+// Obtener textos legales públicos de una farmacia
+publicRouter.get('/farmacia/:slug/legal/:tipo', obtenerTextoLegalPublico);
 
 // ==========================================
 // DISPONIBILIDAD Y SOLICITUDES

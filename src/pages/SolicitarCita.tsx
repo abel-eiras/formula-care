@@ -612,7 +612,7 @@ export default function SolicitarCita() {
                           <Label htmlFor="privacidad" className="text-sm text-gray-600 leading-relaxed cursor-pointer">
                             He leído y acepto la{' '}
                             <Link
-                              to="/legal/privacidad"
+                              to={`/f/${slug}/legal/privacidad`}
                               target="_blank"
                               className="text-[#79438f] hover:underline font-medium"
                             >

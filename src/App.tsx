@@ -25,6 +25,7 @@ const Calendario = lazy(() => import("./pages/Calendario"));
 const Solicitudes = lazy(() => import("./pages/Solicitudes"));
 const SolicitarCita = lazy(() => import("./pages/SolicitarCita"));
 const Legal = lazy(() => import("./pages/Legal"));
+const LegalPublico = lazy(() => import("./pages/LegalPublico"));
 const ConfirmarCita = lazy(() => import("./pages/ConfirmarCita"));
 const ModificarCita = lazy(() => import("./pages/ModificarCita"));
 const CancelarCita = lazy(() => import("./pages/CancelarCita"));
@@ -71,7 +72,16 @@ const App = () => (
                 </Suspense>
               }
             />
-            {/* Rutas legales públicas */}
+            {/* Rutas legales públicas por farmacia */}
+            <Route
+              path="/f/:slug/legal/:tipo"
+              element={
+                <Suspense fallback={<LoadingSpinner />}>
+                  <LegalPublico />
+                </Suspense>
+              }
+            />
+            {/* Rutas legales generales (para usuarios autenticados) */}
             <Route
               path="/legal/:tipo"
               element={
