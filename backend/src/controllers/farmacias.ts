@@ -567,3 +567,129 @@ export async function crearUsuarioFarmacia(req: Request, res: Response) {
     res.status(500).json({ error: 'Error interno del servidor' });
   }
 }
+
+/**
+ * PUT /api/admin/farmacias/:id/usuarios/:usuarioId
+ * Actualizar usuario de una farmacia
+ */
+export async function actualizarUsuarioFarmacia(req: Request, res: Response) {
+  try {
+    const farmaciaId = getParamString(req.params.id);
+    const usuarioId = getParamString(req.params.usuarioId);
+
+    const usuario = await prisma.usuario.findFirst({
+      where: { id: usuarioId, farmaciaId },
+    });
+
+    if (!usuario) {
+      return res.status(404).json({ error: 'Usuario no encontrado' });
+    }
+
+    const { nombre, rol, activo } = req.body;
+
+    const usuarioActualizado = await prisma.usuario.update({
+      where: { id: usuarioId },
+      data: {
+        nombre: nombre || undefined,
+        rol: rol || undefined,
+        activo: activo !== undefined ? activo : undefined,
+      },
+      select: {
+        id: true,
+        email: true,
+        nombre: true,
+        rol: true,
+        activo: true,
+        ultimoAcceso: true,
+        createdAt: true,
+      },
+    });
+
+    res.json({
+      mensaje: 'Usuario actualizado correctamente',
+      usuario: usuarioActualizado,
+    });
+  } catch (error) {
+    console.error('Error al actualizar usuario:', error);
+    res.status(500).json({ error: 'Error interno del servidor' });
+  }
+}
+
+/**
+ * PUT /api/admin/farmacias/:id/usuarios/:usuarioId/password
+ * Cambiar contraseña de un usuario
+ */
+export async function cambiarPasswordUsuario(req: Request, res: Response) {
+  try {
+    const farmaciaId = getParamString(req.params.id);
+    const usuarioId = getParamString(req.params.usuarioId);
+
+    const usuario = await prisma.usuario.findFirst({
+      where: { id: usuarioId, farmaciaId },
+    });
+
+    if (!usuario) {
+      return res.status(404).json({ error: 'Usuario no encontrado' });
+    }
+
+    const { password } = req.body;
+
+    if (!password || password.length < 6) {
+      return res.status(400).json({
+        error: 'La contraseña debe tener al menos 6 caracteres',
+      });
+    }
+
+    const salt = await bcrypt.genSalt(10);
+    const passwordHash = await bcrypt.hash(password, salt);
+
+    await prisma.usuario.update({
+      where: { id: usuarioId },
+      data: { password: passwordHash },
+    });
+
+    res.json({ mensaje: 'Contraseña actualizada correctamente' });
+  } catch (error) {
+    console.error('Error al cambiar contraseña:', error);
+    res.status(500).json({ error: 'Error interno del servidor' });
+  }
+}
+
+/**
+ * DELETE /api/admin/farmacias/:id/usuarios/:usuarioId
+ * Eliminar usuario de una farmacia
+ */
+export async function eliminarUsuarioFarmacia(req: Request, res: Response) {
+  try {
+    const farmaciaId = getParamString(req.params.id);
+    const usuarioId = getParamString(req.params.usuarioId);
+
+    const usuario = await prisma.usuario.findFirst({
+      where: { id: usuarioId, farmaciaId },
+    });
+
+    if (!usuario) {
+      return res.status(404).json({ error: 'Usuario no encontrado' });
+    }
+
+    // Verificar que no sea el último admin
+    const admins = await prisma.usuario.count({
+      where: { farmaciaId, rol: 'admin', activo: true },
+    });
+
+    if (usuario.rol === 'admin' && admins <= 1) {
+      return res.status(400).json({
+        error: 'No se puede eliminar el último administrador de la farmacia',
+      });
+    }
+
+    await prisma.usuario.delete({
+      where: { id: usuarioId },
+    });
+
+    res.status(204).send();
+  } catch (error) {
+    console.error('Error al eliminar usuario:', error);
+    res.status(500).json({ error: 'Error interno del servidor' });
+  }
+}
