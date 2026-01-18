@@ -58,6 +58,7 @@ export default function Solicitudes() {
   const [dialogoRechazo, setDialogoRechazo] = useState(false);
   const [solicitudRechazar, setSolicitudRechazar] = useState<string | null>(null);
   const [motivoRechazo, setMotivoRechazo] = useState('');
+  const [solicitudProcesando, setSolicitudProcesando] = useState<string | null>(null);
 
   // Queries y mutations
   const { data: solicitudes, isLoading, error } = useSolicitudes(
@@ -68,11 +69,14 @@ export default function Solicitudes() {
 
   // Aprobar solicitud
   const handleAprobar = async (id: string) => {
+    setSolicitudProcesando(id);
     try {
       await aprobarMutation.mutateAsync(id);
       toast.success('Solicitud aprobada. Se ha enviado email de confirmación al cliente.');
     } catch {
       toast.error('Error al aprobar la solicitud');
+    } finally {
+      setSolicitudProcesando(null);
     }
   };
 
@@ -265,9 +269,9 @@ export default function Solicitudes() {
                             variant="outline"
                             className="text-green-600 hover:text-green-700 hover:bg-green-50"
                             onClick={() => handleAprobar(solicitud.id)}
-                            disabled={aprobarMutation.isPending}
+                            disabled={solicitudProcesando !== null}
                           >
-                            {aprobarMutation.isPending ? (
+                            {solicitudProcesando === solicitud.id ? (
                               <Loader2 className="mr-1 h-4 w-4 animate-spin" />
                             ) : (
                               <CheckCircle className="mr-1 h-4 w-4" />
@@ -279,7 +283,7 @@ export default function Solicitudes() {
                             variant="outline"
                             className="text-red-600 hover:text-red-700 hover:bg-red-50"
                             onClick={() => abrirDialogoRechazo(solicitud.id)}
-                            disabled={rechazarMutation.isPending}
+                            disabled={solicitudProcesando !== null}
                           >
                             <XCircle className="mr-1 h-4 w-4" />
                             Rechazar
