@@ -42,6 +42,9 @@ import {
   useDesactivarFarmacia, 
   useActivarFarmacia,
   useCrearUsuarioFarmacia,
+  useActualizarUsuarioFarmacia,
+  useCambiarPasswordUsuario,
+  useEliminarUsuarioFarmacia,
 } from '@/hooks/useAdmin';
 import { toast } from 'sonner';
 import { 
@@ -61,6 +64,11 @@ import {
   Phone,
   Globe,
   MapPin,
+  Pencil,
+  Trash2,
+  Key,
+  ExternalLink,
+  Copy,
 } from 'lucide-react';
 import type { PlanFarmacia } from '@/types';
 
@@ -88,6 +96,9 @@ export default function FarmaciaDetalle() {
   const desactivarMutation = useDesactivarFarmacia();
   const activarMutation = useActivarFarmacia();
   const crearUsuarioMutation = useCrearUsuarioFarmacia();
+  const actualizarUsuarioMutation = useActualizarUsuarioFarmacia();
+  const cambiarPasswordMutation = useCambiarPasswordUsuario();
+  const eliminarUsuarioMutation = useEliminarUsuarioFarmacia();
 
   // Estado para edición
   const [editando, setEditando] = useState(false);
@@ -111,6 +122,20 @@ export default function FarmaciaDetalle() {
     password: '',
     rol: 'usuario' as 'admin' | 'farmaceutico' | 'usuario',
   });
+
+  // Estado para edición de usuario
+  const [dialogoEditarUsuario, setDialogoEditarUsuario] = useState(false);
+  const [usuarioEditando, setUsuarioEditando] = useState<{
+    id: string;
+    nombre: string;
+    rol: 'admin' | 'farmaceutico' | 'usuario';
+    activo: boolean;
+  } | null>(null);
+
+  // Estado para cambiar contraseña
+  const [dialogoCambiarPassword, setDialogoCambiarPassword] = useState(false);
+  const [usuarioPasswordId, setUsuarioPasswordId] = useState<string | null>(null);
+  const [nuevaPassword, setNuevaPassword] = useState('');
 
   // Iniciar edición
   const iniciarEdicion = () => {
@@ -185,6 +210,82 @@ export default function FarmaciaDetalle() {
     } catch {
       toast.error('Error al crear el usuario');
     }
+  };
+
+  // Editar usuario
+  const handleEditarUsuario = async () => {
+    if (!id || !usuarioEditando) return;
+
+    try {
+      await actualizarUsuarioMutation.mutateAsync({
+        farmaciaId: id,
+        usuarioId: usuarioEditando.id,
+        datos: {
+          nombre: usuarioEditando.nombre,
+          rol: usuarioEditando.rol,
+          activo: usuarioEditando.activo,
+        },
+      });
+      toast.success('Usuario actualizado correctamente');
+      setDialogoEditarUsuario(false);
+      setUsuarioEditando(null);
+    } catch {
+      toast.error('Error al actualizar el usuario');
+    }
+  };
+
+  // Cambiar contraseña
+  const handleCambiarPassword = async () => {
+    if (!id || !usuarioPasswordId || !nuevaPassword) {
+      toast.error('La contraseña es requerida');
+      return;
+    }
+
+    if (nuevaPassword.length < 6) {
+      toast.error('La contraseña debe tener al menos 6 caracteres');
+      return;
+    }
+
+    try {
+      await cambiarPasswordMutation.mutateAsync({
+        farmaciaId: id,
+        usuarioId: usuarioPasswordId,
+        password: nuevaPassword,
+      });
+      toast.success('Contraseña actualizada correctamente');
+      setDialogoCambiarPassword(false);
+      setUsuarioPasswordId(null);
+      setNuevaPassword('');
+    } catch {
+      toast.error('Error al cambiar la contraseña');
+    }
+  };
+
+  // Eliminar usuario
+  const handleEliminarUsuario = async (usuarioId: string, nombre: string) => {
+    if (!id) return;
+
+    if (!confirm(`¿Estás seguro de eliminar al usuario "${nombre}"? Esta acción no se puede deshacer.`)) {
+      return;
+    }
+
+    try {
+      await eliminarUsuarioMutation.mutateAsync({
+        farmaciaId: id,
+        usuarioId,
+      });
+      toast.success('Usuario eliminado correctamente');
+    } catch {
+      toast.error('Error al eliminar el usuario');
+    }
+  };
+
+  // Copiar enlace de citas
+  const handleCopiarEnlaceCitas = () => {
+    if (!farmacia) return;
+    const url = `${window.location.origin}/cita/${farmacia.slug}`;
+    navigator.clipboard.writeText(url);
+    toast.success('Enlace copiado al portapapeles');
   };
 
   if (isLoading) {
@@ -455,13 +556,41 @@ export default function FarmaciaDetalle() {
                 </div>
               )}
 
-              <div className="border-t pt-4">
+              <div className="border-t pt-4 space-y-3">
                 <p className="text-sm text-muted-foreground">
                   Fecha de alta: {new Date(farmacia.fechaAlta).toLocaleDateString('es-ES')}
                   {farmacia.fechaExpiracion && (
                     <> · Expira: {new Date(farmacia.fechaExpiracion).toLocaleDateString('es-ES')}</>
                   )}
                 </p>
+                
+                {/* Enlace público de citas */}
+                <div className="flex items-center justify-between p-3 bg-muted/50 rounded-lg">
+                  <div>
+                    <p className="text-sm font-medium">Enlace público de citas</p>
+                    <p className="text-xs text-muted-foreground">
+                      {window.location.origin}/cita/{farmacia.slug}
+                    </p>
+                  </div>
+                  <div className="flex gap-2">
+                    <Button
+                      variant="outline"
+                      size="sm"
+                      onClick={handleCopiarEnlaceCitas}
+                    >
+                      <Copy className="mr-2 h-4 w-4" />
+                      Copiar
+                    </Button>
+                    <Button
+                      variant="outline"
+                      size="sm"
+                      onClick={() => window.open(`/cita/${farmacia.slug}`, '_blank')}
+                    >
+                      <ExternalLink className="mr-2 h-4 w-4" />
+                      Abrir
+                    </Button>
+                  </div>
+                </div>
               </div>
             </CardContent>
           </Card>
@@ -562,6 +691,7 @@ export default function FarmaciaDetalle() {
                       <TableHead>Rol</TableHead>
                       <TableHead>Estado</TableHead>
                       <TableHead>Último acceso</TableHead>
+                      <TableHead className="text-right">Acciones</TableHead>
                     </TableRow>
                   </TableHeader>
                   <TableBody>
@@ -586,6 +716,47 @@ export default function FarmaciaDetalle() {
                             ? new Date(usuario.ultimoAcceso).toLocaleString('es-ES')
                             : 'Nunca'}
                         </TableCell>
+                        <TableCell className="text-right">
+                          <div className="flex items-center justify-end gap-1">
+                            <Button
+                              variant="ghost"
+                              size="icon"
+                              title="Editar"
+                              onClick={() => {
+                                setUsuarioEditando({
+                                  id: usuario.id,
+                                  nombre: usuario.nombre,
+                                  rol: usuario.rol as 'admin' | 'farmaceutico' | 'usuario',
+                                  activo: usuario.activo,
+                                });
+                                setDialogoEditarUsuario(true);
+                              }}
+                            >
+                              <Pencil className="h-4 w-4" />
+                            </Button>
+                            <Button
+                              variant="ghost"
+                              size="icon"
+                              title="Cambiar contraseña"
+                              onClick={() => {
+                                setUsuarioPasswordId(usuario.id);
+                                setNuevaPassword('');
+                                setDialogoCambiarPassword(true);
+                              }}
+                            >
+                              <Key className="h-4 w-4" />
+                            </Button>
+                            <Button
+                              variant="ghost"
+                              size="icon"
+                              title="Eliminar"
+                              onClick={() => handleEliminarUsuario(usuario.id, usuario.nombre)}
+                              disabled={eliminarUsuarioMutation.isPending}
+                            >
+                              <Trash2 className="h-4 w-4 text-destructive" />
+                            </Button>
+                          </div>
+                        </TableCell>
                       </TableRow>
                     ))}
                   </TableBody>
@@ -598,6 +769,104 @@ export default function FarmaciaDetalle() {
               )}
             </CardContent>
           </Card>
+
+          {/* Diálogo editar usuario */}
+          <Dialog open={dialogoEditarUsuario} onOpenChange={setDialogoEditarUsuario}>
+            <DialogContent>
+              <DialogHeader>
+                <DialogTitle>Editar Usuario</DialogTitle>
+                <DialogDescription>Modificar datos del usuario</DialogDescription>
+              </DialogHeader>
+              {usuarioEditando && (
+                <div className="space-y-4 py-4">
+                  <div className="space-y-2">
+                    <Label>Nombre</Label>
+                    <Input
+                      value={usuarioEditando.nombre}
+                      onChange={(e) => setUsuarioEditando({ ...usuarioEditando, nombre: e.target.value })}
+                    />
+                  </div>
+                  <div className="space-y-2">
+                    <Label>Rol</Label>
+                    <Select
+                      value={usuarioEditando.rol}
+                      onValueChange={(value: 'admin' | 'farmaceutico' | 'usuario') =>
+                        setUsuarioEditando({ ...usuarioEditando, rol: value })
+                      }
+                    >
+                      <SelectTrigger>
+                        <SelectValue />
+                      </SelectTrigger>
+                      <SelectContent>
+                        <SelectItem value="admin">Administrador</SelectItem>
+                        <SelectItem value="farmaceutico">Farmacéutico</SelectItem>
+                        <SelectItem value="usuario">Usuario</SelectItem>
+                      </SelectContent>
+                    </Select>
+                  </div>
+                  <div className="flex items-center gap-2">
+                    <input
+                      type="checkbox"
+                      id="activo"
+                      checked={usuarioEditando.activo}
+                      onChange={(e) => setUsuarioEditando({ ...usuarioEditando, activo: e.target.checked })}
+                      className="h-4 w-4"
+                    />
+                    <Label htmlFor="activo">Usuario activo</Label>
+                  </div>
+                </div>
+              )}
+              <div className="flex justify-end gap-2">
+                <Button variant="outline" onClick={() => setDialogoEditarUsuario(false)}>
+                  Cancelar
+                </Button>
+                <Button onClick={handleEditarUsuario} disabled={actualizarUsuarioMutation.isPending}>
+                  {actualizarUsuarioMutation.isPending ? (
+                    <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                  ) : (
+                    <Save className="mr-2 h-4 w-4" />
+                  )}
+                  Guardar
+                </Button>
+              </div>
+            </DialogContent>
+          </Dialog>
+
+          {/* Diálogo cambiar contraseña */}
+          <Dialog open={dialogoCambiarPassword} onOpenChange={setDialogoCambiarPassword}>
+            <DialogContent>
+              <DialogHeader>
+                <DialogTitle>Cambiar Contraseña</DialogTitle>
+                <DialogDescription>Introduce la nueva contraseña para el usuario</DialogDescription>
+              </DialogHeader>
+              <div className="space-y-4 py-4">
+                <div className="space-y-2">
+                  <Label>Nueva Contraseña</Label>
+                  <Input
+                    type="password"
+                    value={nuevaPassword}
+                    onChange={(e) => setNuevaPassword(e.target.value)}
+                    placeholder="••••••••"
+                    minLength={6}
+                  />
+                  <p className="text-xs text-muted-foreground">Mínimo 6 caracteres</p>
+                </div>
+              </div>
+              <div className="flex justify-end gap-2">
+                <Button variant="outline" onClick={() => setDialogoCambiarPassword(false)}>
+                  Cancelar
+                </Button>
+                <Button onClick={handleCambiarPassword} disabled={cambiarPasswordMutation.isPending}>
+                  {cambiarPasswordMutation.isPending ? (
+                    <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                  ) : (
+                    <Key className="mr-2 h-4 w-4" />
+                  )}
+                  Cambiar
+                </Button>
+              </div>
+            </DialogContent>
+          </Dialog>
         </TabsContent>
 
         {/* Tab Configuración */}

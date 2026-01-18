@@ -15,6 +15,9 @@ import {
   activarFarmacia,
   listarUsuariosFarmacia,
   crearUsuarioFarmacia,
+  actualizarUsuarioFarmacia,
+  cambiarPasswordUsuario,
+  eliminarUsuarioFarmacia,
 } from '../controllers/farmacias.js';
 import {
   obtenerEstadisticasPlataforma,
@@ -46,5 +49,8 @@ router.post('/farmacias/:id/activar', activarFarmacia);
 // ==========================================
 router.get('/farmacias/:id/usuarios', listarUsuariosFarmacia);
 router.post('/farmacias/:id/usuarios', crearUsuarioFarmacia);
+router.put('/farmacias/:id/usuarios/:usuarioId', actualizarUsuarioFarmacia);
+router.put('/farmacias/:id/usuarios/:usuarioId/password', cambiarPasswordUsuario);
+router.delete('/farmacias/:id/usuarios/:usuarioId', eliminarUsuarioFarmacia);
 
 export default router;

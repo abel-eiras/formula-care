@@ -5,11 +5,13 @@
 
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
+import { Button } from '@/components/ui/button';
 import { Skeleton } from '@/components/ui/skeleton';
 import { Alert, AlertDescription } from '@/components/ui/alert';
 import { ScrollArea } from '@/components/ui/scroll-area';
-import { useEstadisticasPlataforma } from '@/hooks/useAdmin';
+import { useEstadisticasPlataforma, useFarmacias } from '@/hooks/useAdmin';
 import { Link } from 'react-router-dom';
+import { toast } from 'sonner';
 import { 
   Building2, 
   Users, 
@@ -19,7 +21,25 @@ import {
   TrendingUp,
   Activity,
   Clock,
+  Download,
+  BarChart3,
+  PieChart,
 } from 'lucide-react';
+import {
+  LineChart,
+  Line,
+  XAxis,
+  YAxis,
+  CartesianGrid,
+  Tooltip,
+  ResponsiveContainer,
+  PieChart as RechartsPie,
+  Pie,
+  Cell,
+  Legend,
+  BarChart,
+  Bar,
+} from 'recharts';
 
 // Componente de tarjeta de estadística
 function StatCard({ 
@@ -73,8 +93,59 @@ function PlanBadge({ plan }: { plan: string }) {
   );
 }
 
+// Colores para gráficos
+const COLORS = ['#8b5cf6', '#3b82f6', '#22c55e'];
+const PLAN_COLORS = {
+  basico: '#94a3b8',
+  profesional: '#8b5cf6',
+  enterprise: '#22c55e',
+};
+
 export default function AdminDashboard() {
   const { data: stats, isLoading, error } = useEstadisticasPlataforma();
+  const { data: farmacias } = useFarmacias({});
+
+  // Función para exportar farmacias a CSV
+  const handleExportarCSV = () => {
+    if (!farmacias || farmacias.length === 0) {
+      toast.error('No hay datos para exportar');
+      return;
+    }
+
+    const headers = ['Nombre', 'Slug', 'Email', 'Plan', 'Estado', 'Usuarios', 'Pacientes', 'Fecha Alta'];
+    const rows = farmacias.map(f => [
+      f.nombre,
+      f.slug,
+      f.email || '',
+      f.plan,
+      f.activa ? 'Activa' : 'Inactiva',
+      f.totalUsuarios || 0,
+      f.totalPacientes || 0,
+      new Date(f.fechaAlta).toLocaleDateString('es-ES'),
+    ]);
+
+    const csvContent = [
+      headers.join(','),
+      ...rows.map(row => row.map(cell => `"${cell}"`).join(','))
+    ].join('\n');
+
+    const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' });
+    const url = URL.createObjectURL(blob);
+    const link = document.createElement('a');
+    link.href = url;
+    link.download = `farmacias_${new Date().toISOString().split('T')[0]}.csv`;
+    link.click();
+    URL.revokeObjectURL(url);
+
+    toast.success('Archivo CSV descargado');
+  };
+
+  // Datos para el gráfico de distribución por plan
+  const datosPlanes = stats ? [
+    { name: 'Básico', value: stats.farmaciasPorPlan.basico, color: PLAN_COLORS.basico },
+    { name: 'Profesional', value: stats.farmaciasPorPlan.profesional, color: PLAN_COLORS.profesional },
+    { name: 'Enterprise', value: stats.farmaciasPorPlan.enterprise, color: PLAN_COLORS.enterprise },
+  ].filter(d => d.value > 0) : [];
 
   if (isLoading) {
     return (
@@ -110,12 +181,18 @@ export default function AdminDashboard() {
 
   return (
     <div className="p-6 space-y-6">
-      {/* Título */}
-      <div>
-        <h1 className="text-3xl font-bold text-foreground">Panel de Administración</h1>
-        <p className="text-muted-foreground">
-          Vista general de la plataforma
-        </p>
+      {/* Título y acciones */}
+      <div className="flex items-center justify-between">
+        <div>
+          <h1 className="text-3xl font-bold text-foreground">Panel de Administración</h1>
+          <p className="text-muted-foreground">
+            Vista general de la plataforma
+          </p>
+        </div>
+        <Button onClick={handleExportarCSV} variant="outline">
+          <Download className="mr-2 h-4 w-4" />
+          Exportar CSV
+        </Button>
       </div>
 
       {/* Estadísticas principales */}
@@ -144,6 +221,95 @@ export default function AdminDashboard() {
           descripcion={`${stats.citasSemana} esta semana, ${stats.citasMes} este mes`}
           icono={Calendar}
         />
+      </div>
+
+      {/* Gráficos */}
+      <div className="grid gap-6 lg:grid-cols-2">
+        {/* Gráfico de crecimiento */}
+        <Card>
+          <CardHeader>
+            <CardTitle className="flex items-center gap-2">
+              <BarChart3 className="h-5 w-5 text-primary" />
+              Crecimiento de Farmacias
+            </CardTitle>
+            <CardDescription>Evolución en los últimos 6 meses</CardDescription>
+          </CardHeader>
+          <CardContent>
+            <div className="h-[250px]">
+              <ResponsiveContainer width="100%" height="100%">
+                <LineChart data={stats.crecimientoMensual}>
+                  <CartesianGrid strokeDasharray="3 3" className="stroke-muted" />
+                  <XAxis 
+                    dataKey="mes" 
+                    tick={{ fontSize: 12 }}
+                    className="text-muted-foreground"
+                  />
+                  <YAxis 
+                    tick={{ fontSize: 12 }}
+                    className="text-muted-foreground"
+                  />
+                  <Tooltip 
+                    contentStyle={{ 
+                      backgroundColor: 'hsl(var(--background))',
+                      border: '1px solid hsl(var(--border))',
+                      borderRadius: '6px',
+                    }}
+                    labelStyle={{ color: 'hsl(var(--foreground))' }}
+                  />
+                  <Line 
+                    type="monotone" 
+                    dataKey="farmacias" 
+                    stroke="hsl(var(--primary))" 
+                    strokeWidth={2}
+                    dot={{ fill: 'hsl(var(--primary))' }}
+                    name="Farmacias"
+                  />
+                </LineChart>
+              </ResponsiveContainer>
+            </div>
+          </CardContent>
+        </Card>
+
+        {/* Gráfico de distribución por plan */}
+        <Card>
+          <CardHeader>
+            <CardTitle className="flex items-center gap-2">
+              <PieChart className="h-5 w-5 text-secondary" />
+              Distribución por Plan
+            </CardTitle>
+            <CardDescription>Farmacias por tipo de plan</CardDescription>
+          </CardHeader>
+          <CardContent>
+            <div className="h-[250px]">
+              {datosPlanes.length > 0 ? (
+                <ResponsiveContainer width="100%" height="100%">
+                  <RechartsPie>
+                    <Pie
+                      data={datosPlanes}
+                      cx="50%"
+                      cy="50%"
+                      innerRadius={60}
+                      outerRadius={90}
+                      paddingAngle={5}
+                      dataKey="value"
+                      label={({ name, value }) => `${name}: ${value}`}
+                    >
+                      {datosPlanes.map((entry, index) => (
+                        <Cell key={`cell-${index}`} fill={entry.color} />
+                      ))}
+                    </Pie>
+                    <Tooltip />
+                    <Legend />
+                  </RechartsPie>
+                </ResponsiveContainer>
+              ) : (
+                <div className="flex items-center justify-center h-full text-muted-foreground">
+                  No hay datos suficientes
+                </div>
+              )}
+            </div>
+          </CardContent>
+        </Card>
       </div>
 
       {/* Distribución por plan */}

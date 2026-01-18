@@ -190,3 +190,84 @@ export function useCrearUsuarioFarmacia() {
     },
   });
 }
+
+/**
+ * Actualizar usuario de una farmacia
+ */
+export function useActualizarUsuarioFarmacia() {
+  const queryClient = useQueryClient();
+
+  return useMutation({
+    mutationFn: ({
+      farmaciaId,
+      usuarioId,
+      datos,
+    }: {
+      farmaciaId: string;
+      usuarioId: string;
+      datos: {
+        nombre?: string;
+        rol?: 'admin' | 'farmaceutico' | 'usuario';
+        activo?: boolean;
+      };
+    }) =>
+      api.put<{ mensaje: string; usuario: Usuario }>(
+        `/admin/farmacias/${farmaciaId}/usuarios/${usuarioId}`,
+        datos
+      ),
+    onSuccess: (_, variables) => {
+      queryClient.invalidateQueries({
+        queryKey: ['admin', 'farmacia', variables.farmaciaId, 'usuarios'],
+      });
+      queryClient.invalidateQueries({
+        queryKey: ['admin', 'farmacia', variables.farmaciaId],
+      });
+    },
+  });
+}
+
+/**
+ * Cambiar contraseña de un usuario
+ */
+export function useCambiarPasswordUsuario() {
+  return useMutation({
+    mutationFn: ({
+      farmaciaId,
+      usuarioId,
+      password,
+    }: {
+      farmaciaId: string;
+      usuarioId: string;
+      password: string;
+    }) =>
+      api.put<{ mensaje: string }>(
+        `/admin/farmacias/${farmaciaId}/usuarios/${usuarioId}/password`,
+        { password }
+      ),
+  });
+}
+
+/**
+ * Eliminar usuario de una farmacia
+ */
+export function useEliminarUsuarioFarmacia() {
+  const queryClient = useQueryClient();
+
+  return useMutation({
+    mutationFn: ({
+      farmaciaId,
+      usuarioId,
+    }: {
+      farmaciaId: string;
+      usuarioId: string;
+    }) => api.delete<void>(`/admin/farmacias/${farmaciaId}/usuarios/${usuarioId}`),
+    onSuccess: (_, variables) => {
+      queryClient.invalidateQueries({
+        queryKey: ['admin', 'farmacia', variables.farmaciaId, 'usuarios'],
+      });
+      queryClient.invalidateQueries({
+        queryKey: ['admin', 'farmacia', variables.farmaciaId],
+      });
+    },
+  });
+}
