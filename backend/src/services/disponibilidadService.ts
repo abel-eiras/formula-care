@@ -127,8 +127,12 @@ async function obtenerConfiguracionCalendario(farmaciaId?: string) {
 
 /**
  * Obtiene todas las horas disponibles para un tipo de servicio o evento en una fecha específica
+ * @param tipo - Tipo de servicio (dermo, bio, evento)
+ * @param fecha - Fecha en formato YYYY-MM-DD
+ * @param eventoId - ID del evento (solo si tipo es 'evento')
+ * @param farmaciaId - ID de la farmacia (opcional, si no se proporciona usa la primera activa)
  */
-export async function obtenerDisponibilidad(tipo: string, fecha: string, eventoId?: string): Promise<string[]> {
+export async function obtenerDisponibilidad(tipo: string, fecha: string, eventoId?: string, farmaciaId?: string): Promise<string[]> {
   // Validar tipo
   const tiposValidos = ['dermo', 'bio', 'evento'];
   if (!tiposValidos.includes(tipo)) {
@@ -195,8 +199,8 @@ export async function obtenerDisponibilidad(tipo: string, fecha: string, eventoI
     throw new Error(`Formato de fecha inválido: ${fecha}. Debe ser YYYY-MM-DD`);
   }
 
-  // Obtener configuración
-  const config = await obtenerConfiguracionCalendario();
+  // Obtener configuración (usando farmaciaId si se proporciona)
+  const config = await obtenerConfiguracionCalendario(farmaciaId);
   
   // Si no hay configuración, retornar array vacío
   if (!config) {
@@ -297,13 +301,14 @@ export async function obtenerDisponibilidad(tipo: string, fecha: string, eventoI
 export async function verificarDisponibilidad(
   tipo: string,
   fecha: string,
-  hora: string
+  hora: string,
+  farmaciaId?: string
 ): Promise<boolean> {
   // Validar formato de hora (HH:mm)
   if (!/^([0-1]?[0-9]|2[0-3]):[0-5][0-9]$/.test(hora)) {
     throw new Error(`Formato de hora inválido: ${hora}. Debe ser HH:mm`);
   }
 
-  const horasDisponibles = await obtenerDisponibilidad(tipo, fecha);
+  const horasDisponibles = await obtenerDisponibilidad(tipo, fecha, undefined, farmaciaId);
   return horasDisponibles.includes(hora);
 }

@@ -1,29 +1,39 @@
 import { useState, useEffect } from 'react';
+import { useParams, Navigate } from 'react-router-dom';
 import { Button } from '@/components/ui/button';
-import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
+import { Card, CardContent } from '@/components/ui/card';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Textarea } from '@/components/ui/textarea';
 import { Calendar } from '@/components/ui/calendar';
 import { Badge } from '@/components/ui/badge';
 import { Alert, AlertDescription } from '@/components/ui/alert';
-import { CheckCircle2, Clock, Calendar as CalendarIcon, User, Mail, Phone, MessageSquare, Loader2 } from 'lucide-react';
+import { CheckCircle2, Clock, User, Mail, Phone, MessageSquare, Loader2, AlertTriangle } from 'lucide-react';
 import { format } from 'date-fns';
 import { es } from 'date-fns/locale';
-import { useDisponibilidad, useSolicitarCita } from '@/hooks/useSolicitudes';
-import { useEventosActivos } from '@/hooks/useEventos';
-import { useConfiguracion } from '@/hooks/useConfiguracion';
-import type { Evento } from '@/types';
+import { useDisponibilidad, useSolicitarCita, useFarmaciaPublica, useEventosFarmacia } from '@/hooks/useSolicitudes';
 import { toast } from 'sonner';
 import { cn } from '@/lib/utils';
 import { MessageCircle } from 'lucide-react';
+import { LoadingSpinner } from '@/components/ui/LoadingSpinner';
+
+// Tipo local para eventos
+interface EventoPublico {
+  id: string;
+  nombre: string;
+  descripcion: string | null;
+  fechas: string[];
+  horas: string[];
+}
 
 export default function SolicitarCita() {
+  // Obtener slug de la URL
+  const { slug } = useParams<{ slug: string }>();
+
   // Estados del formulario
   const [paso, setPaso] = useState<1 | 2 | 3 | 4 | 5>(1);
   const [tipoServicio, setTipoServicio] = useState<string | null>(null);
-  const [eventoSeleccionado, setEventoSeleccionado] = useState<Evento | null>(null);
+  const [eventoSeleccionado, setEventoSeleccionado] = useState<EventoPublico | null>(null);
   const [fechaSeleccionada, setFechaSeleccionada] = useState<Date | undefined>(undefined);
   const [horaSeleccionada, setHoraSeleccionada] = useState<string>('');
   const [datosCliente, setDatosCliente] = useState({
@@ -38,9 +48,11 @@ export default function SolicitarCita() {
     mensaje: string;
   } | null>(null);
 
-  // Hook para obtener eventos activos y configuración de farmacia
-  const { data: eventosActivos = [] } = useEventosActivos();
-  const { data: configFarmacia, isLoading: cargandoConfig } = useConfiguracion();
+  // Hook para obtener datos de la farmacia por slug
+  const { data: farmacia, isLoading: cargandoFarmacia, error: errorFarmacia } = useFarmaciaPublica(slug || null);
+  
+  // Hook para obtener eventos activos de la farmacia
+  const { data: eventosActivos = [] } = useEventosFarmacia(slug || null);
 
   // Determinar tipo y eventoId para disponibilidad
   const tipoParaDisponibilidad = tipoServicio?.startsWith('evento:') ? 'evento' : tipoServicio;
@@ -51,6 +63,7 @@ export default function SolicitarCita() {
   // Hook para obtener disponibilidad
   const fechaString = fechaSeleccionada ? format(fechaSeleccionada, 'yyyy-MM-dd') : null;
   const { data: disponibilidad, isLoading: cargandoDisponibilidad, refetch: refetchDisponibilidad } = useDisponibilidad(
+    slug || null,
     tipoParaDisponibilidad,
     fechaString,
     eventoIdParaDisponibilidad
@@ -99,13 +112,14 @@ export default function SolicitarCita() {
 
   // Manejar envío del formulario
   const handleEnviarSolicitud = async () => {
-    if (!tipoServicio || !fechaSeleccionada || !horaSeleccionada) return;
+    if (!slug || !tipoServicio || !fechaSeleccionada || !horaSeleccionada) return;
 
     try {
       const tipoFinal = tipoServicio?.startsWith('evento:') ? 'evento' : tipoServicio;
       const eventoIdFinal = tipoServicio?.startsWith('evento:') ? tipoServicio.split(':')[1] : undefined;
 
       const resultado = await solicitarCita.mutateAsync({
+        farmaciaSlug: slug,
         nombreCliente: datosCliente.nombre,
         emailCliente: datosCliente.email,
         telefonoCliente: datosCliente.telefono,
@@ -159,63 +173,86 @@ export default function SolicitarCita() {
 
   // Función para abrir WhatsApp
   const handleWhatsApp = () => {
-    if (configFarmacia?.farmaciaWhatsapp) {
-      const numero = configFarmacia.farmaciaWhatsapp.replace(/\s/g, ''); // Eliminar espacios
+    if (farmacia?.whatsapp) {
+      const numero = farmacia.whatsapp.replace(/\s/g, ''); // Eliminar espacios
       const mensaje = encodeURIComponent('Hola, me gustaría solicitar información sobre sus servicios.');
       window.open(`https://wa.me/${numero}?text=${mensaje}`, '_blank');
     }
   };
+
+  // Si no hay slug, redirigir a la página principal
+  if (!slug) {
+    return <Navigate to="/" replace />;
+  }
+
+  // Mostrar cargando mientras se obtienen datos de la farmacia
+  if (cargandoFarmacia) {
+    return (
+      <div className="min-h-screen bg-gradient-to-br from-purple-50 via-white to-blue-50 flex items-center justify-center">
+        <LoadingSpinner />
+      </div>
+    );
+  }
+
+  // Mostrar error si la farmacia no existe
+  if (errorFarmacia || !farmacia) {
+    return (
+      <div className="min-h-screen bg-gradient-to-br from-purple-50 via-white to-blue-50 py-8 px-4">
+        <div className="max-w-md mx-auto">
+          <Card className="shadow-lg">
+            <CardContent className="p-8 text-center">
+              <AlertTriangle className="w-16 h-16 text-amber-500 mx-auto mb-4" />
+              <h2 className="text-xl font-bold text-gray-900 mb-2">Farmacia no encontrada</h2>
+              <p className="text-gray-600">
+                No pudimos encontrar la farmacia que buscas. Verifica que el enlace sea correcto.
+              </p>
+            </CardContent>
+          </Card>
+        </div>
+      </div>
+    );
+  }
 
   return (
     <div className="min-h-screen bg-gradient-to-br from-purple-50 via-white to-blue-50 py-8 px-4 sm:px-6 lg:px-8">
       <div className="max-w-4xl mx-auto">
         {/* Encabezado con logo y datos de contacto */}
         <div className="text-center mb-8 bg-white rounded-lg shadow-sm p-6">
-          {!cargandoConfig && (
+          {farmacia.logo && (
             <div className="mb-4 flex justify-center">
               <img
                 src={
-                  configFarmacia?.farmaciaLogo
-                    ? (configFarmacia.farmaciaLogo.startsWith('data:')
-                        ? configFarmacia.farmaciaLogo
-                        : `/microcaya/${configFarmacia.farmaciaLogo}`)
-                    : '/logo.png'
+                  farmacia.logo.startsWith('data:')
+                    ? farmacia.logo
+                    : `/microcaya/${farmacia.logo}`
                 }
-                alt={configFarmacia?.farmaciaNombre || 'Logo'}
+                alt={farmacia.nombre || 'Logo'}
                 className="h-20 sm:h-24 object-contain max-w-full"
                 style={{ maxHeight: '96px' }}
                 onError={(e) => {
                   console.error('Error cargando logo');
-                  // Si falla el logo de configuración, intentar el por defecto
-                  if (configFarmacia?.farmaciaLogo && !configFarmacia.farmaciaLogo.startsWith('data:')) {
-                    (e.target as HTMLImageElement).src = '/logo.png';
-                  } else {
-                    (e.target as HTMLImageElement).style.display = 'none';
-                  }
-                }}
-                onLoad={() => {
-                  console.log('Logo cargado correctamente');
+                  (e.target as HTMLImageElement).style.display = 'none';
                 }}
               />
             </div>
           )}
-          {configFarmacia?.farmaciaNombre && (
+          {farmacia.nombre && (
             <h2 className="text-xl font-bold text-gray-900 mb-2">
-              {configFarmacia.farmaciaNombre}
+              {farmacia.nombre}
             </h2>
           )}
           <div className="text-sm text-gray-600 space-y-1">
-            {configFarmacia?.farmaciaDireccion && (
-              <p>{configFarmacia.farmaciaDireccion}</p>
+            {farmacia.direccion && (
+              <p>{farmacia.direccion}</p>
             )}
-            {configFarmacia?.farmaciaCiudad && (
-              <p>{configFarmacia.farmaciaCiudad}</p>
+            {farmacia.ciudad && (
+              <p>{farmacia.ciudad}</p>
             )}
-            {configFarmacia?.farmaciaTelefono && (
-              <p>Tel: {configFarmacia.farmaciaTelefono}</p>
+            {farmacia.telefono && (
+              <p>Tel: {farmacia.telefono}</p>
             )}
-            {configFarmacia?.farmaciaEmail && (
-              <p>Email: {configFarmacia.farmaciaEmail}</p>
+            {farmacia.email && (
+              <p>Email: {farmacia.email}</p>
             )}
           </div>
         </div>
@@ -609,7 +646,7 @@ export default function SolicitarCita() {
         </Card>
 
         {/* Botón de WhatsApp */}
-        {configFarmacia?.farmaciaWhatsapp && (
+        {farmacia.whatsapp && (
           <div className="mt-6 text-center">
             <Button
               onClick={handleWhatsApp}
