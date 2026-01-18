@@ -232,7 +232,21 @@ export async function aprobarSolicitud(req: Request, res: Response) {
       });
     }
 
-    // TODO: Enviar email de confirmación (se implementará en Fase 5)
+    // Enviar email de confirmación al cliente
+    try {
+      const { enviarConfirmacionCita } = await import('../services/emailService.js');
+      await enviarConfirmacionCita(solicitudConPaciente.emailCliente, {
+        citaId: cita.id,
+        tipo: solicitudConPaciente.tipo,
+        fecha: solicitudConPaciente.fecha,
+        hora: solicitudConPaciente.hora,
+        nombreCliente: solicitudConPaciente.nombreCliente,
+      });
+      console.log(`✅ Email de confirmación enviado a ${solicitudConPaciente.emailCliente}`);
+    } catch (emailError) {
+      console.error('Error al enviar email de confirmación:', emailError);
+      // No fallar la operación si el email falla
+    }
 
     res.json({
       solicitud: solicitudActualizada,
@@ -316,16 +330,21 @@ export async function rechazarSolicitud(req: Request, res: Response) {
       });
     }
 
-    // Opcional - enviar email al cliente informando del rechazo
-    // (Comentado por defecto, descomentar si se desea activar)
-    // const { enviarRechazoSolicitud } = await import('../services/emailService.js');
-    // await enviarRechazoSolicitud(solicitud.emailCliente, {
-    //   tipo: solicitud.tipo,
-    //   fecha: solicitud.fecha,
-    //   hora: solicitud.hora,
-    //   nombreCliente: solicitud.nombreCliente,
-    //   motivo: motivo,
-    // });
+    // Enviar email al cliente informando del rechazo
+    try {
+      const { enviarRechazoSolicitud } = await import('../services/emailService.js');
+      await enviarRechazoSolicitud(solicitud.emailCliente, {
+        tipo: solicitud.tipo,
+        fecha: solicitud.fecha,
+        hora: solicitud.hora,
+        nombreCliente: solicitud.nombreCliente,
+        motivo: motivo || undefined,
+      });
+      console.log(`✅ Email de rechazo enviado a ${solicitud.emailCliente}`);
+    } catch (emailError) {
+      console.error('Error al enviar email de rechazo:', emailError);
+      // No fallar la operación si el email falla
+    }
 
     res.json({
       solicitud: solicitudActualizada,

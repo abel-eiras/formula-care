@@ -22,6 +22,7 @@ const ServicioBio = lazy(() => import("./pages/ServicioBio"));
 const ServicioBioPrint = lazy(() => import("./pages/ServicioBioPrint"));
 const Configuracion = lazy(() => import("./pages/Configuracion"));
 const Calendario = lazy(() => import("./pages/Calendario"));
+const Solicitudes = lazy(() => import("./pages/Solicitudes"));
 const SolicitarCita = lazy(() => import("./pages/SolicitarCita"));
 const Legal = lazy(() => import("./pages/Legal"));
 const ConfirmarCita = lazy(() => import("./pages/ConfirmarCita"));
@@ -162,6 +163,7 @@ const App = () => (
               <Route path="pacientes/:id" element={<PacienteDetalle />} />
               <Route path="pacientes/:id/editar" element={<EditarPaciente />} />
               <Route path="calendario" element={<Calendario />} />
+              <Route path="solicitudes" element={<Solicitudes />} />
               <Route path="servicios/dermo" element={<ServicioDermo />} />
               <Route path="servicios/bio" element={<ServicioBio />} />
               <Route path="configuracion" element={<Configuracion />} />

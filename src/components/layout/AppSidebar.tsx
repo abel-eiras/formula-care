@@ -10,6 +10,7 @@ import {
   User,
   Building2,
   Shield,
+  ClipboardList,
 } from "lucide-react";
 import { NavLink, useLocation, useNavigate } from "react-router-dom";
 import { cn } from "@/lib/utils";
@@ -33,6 +34,11 @@ const navigationItems = [
     title: "Calendario",
     url: "/calendario",
     icon: CalendarDays,
+  },
+  {
+    title: "Solicitudes",
+    url: "/solicitudes",
+    icon: ClipboardList,
   },
   {
     title: "Dermocosmética",
