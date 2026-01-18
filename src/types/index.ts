@@ -10,6 +10,7 @@ export interface Configuracion {
   farmaciaLogo?: string;
   valoracionBioActiva: boolean;
   parametrosReferencia: Record<string, ParametroReferencia>;
+  parametrosBioConfig?: ParametroBioConfig[]; // Configuración de parámetros dinámicos
   createdAt?: string;
   updatedAt?: string;
 }
@@ -25,6 +26,17 @@ export interface ParametroReferencia {
   criticoMax?: number;
   criticoMin2?: number;
   criticoMax2?: number;
+}
+
+// Configuración de un parámetro bioquímico
+export interface ParametroBioConfig {
+  id: string;           // Identificador único (ej: "glucemia", "custom_1")
+  label: string;        // Nombre visible (ej: "Glucemia")
+  unit: string;         // Unidad (ej: "mg/dL")
+  grupo: 'basicos' | 'avanzados' | 'tension' | 'corporales'; // Grupo para maquetación
+  activo: boolean;      // Si está activo/visible
+  orden: number;        // Orden dentro del grupo
+  esPersonalizado?: boolean; // Si es un parámetro creado por el usuario
 }
 
 export type EstadoValoracion = 'normal' | 'advertencia' | 'critico';

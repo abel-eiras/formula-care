@@ -69,9 +69,15 @@ export async function obtenerConfiguracion(req: Request, res: Response) {
       ? JSON.parse(config.parametrosReferencia)
       : config.parametrosReferencia;
 
+    // Parsear configuración de parámetros bioquímicos
+    const parametrosBioConfig = typeof config.parametrosBioConfig === 'string'
+      ? JSON.parse(config.parametrosBioConfig)
+      : config.parametrosBioConfig || [];
+
     res.json({
       ...config,
       parametrosReferencia,
+      parametrosBioConfig,
     });
   } catch (error) {
     console.error('Error al obtener configuración:', error);
@@ -209,6 +215,72 @@ export async function actualizarValoracionBio(req: Request, res: Response) {
   } catch (error) {
     console.error('Error al actualizar valoración bio:', error);
     res.status(500).json({ error: 'Error al actualizar valoración bioquímica' });
+  }
+}
+
+/**
+ * Actualizar configuración de parámetros bioquímicos
+ * PUT /api/configuracion/parametros-bio
+ */
+export async function actualizarParametrosBioConfig(req: Request, res: Response) {
+  try {
+    const parametrosBioConfig = req.body;
+
+    // Validar que sea un array
+    if (!Array.isArray(parametrosBioConfig)) {
+      return res.status(400).json({ error: 'parametrosBioConfig debe ser un array' });
+    }
+
+    // Validar estructura de cada parámetro
+    for (const param of parametrosBioConfig) {
+      if (!param.id || typeof param.id !== 'string') {
+        return res.status(400).json({ error: 'Cada parámetro debe tener un id válido' });
+      }
+      if (!param.label || typeof param.label !== 'string') {
+        return res.status(400).json({ error: 'Cada parámetro debe tener un label válido' });
+      }
+      if (!param.unit || typeof param.unit !== 'string') {
+        return res.status(400).json({ error: 'Cada parámetro debe tener una unidad (unit) válida' });
+      }
+      if (!['basicos', 'avanzados', 'tension', 'corporales'].includes(param.grupo)) {
+        return res.status(400).json({ error: 'El grupo debe ser: basicos, avanzados, tension o corporales' });
+      }
+      if (typeof param.activo !== 'boolean') {
+        return res.status(400).json({ error: 'activo debe ser un booleano' });
+      }
+      if (typeof param.orden !== 'number') {
+        return res.status(400).json({ error: 'orden debe ser un número' });
+      }
+    }
+
+    // Verificar que existe la configuración
+    let config = await prisma.configuracion.findUnique({
+      where: { id: 'config' },
+    });
+
+    if (!config) {
+      config = await prisma.configuracion.create({
+        data: {
+          id: 'config',
+          parametrosBioConfig: JSON.stringify(parametrosBioConfig),
+        },
+      });
+    } else {
+      config = await prisma.configuracion.update({
+        where: { id: 'config' },
+        data: {
+          parametrosBioConfig: JSON.stringify(parametrosBioConfig),
+        },
+      });
+    }
+
+    res.json({
+      ...config,
+      parametrosBioConfig,
+    });
+  } catch (error) {
+    console.error('Error al actualizar parámetros bio config:', error);
+    res.status(500).json({ error: 'Error al actualizar configuración de parámetros bioquímicos' });
   }
 }
 

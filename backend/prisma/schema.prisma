@@ -187,6 +187,9 @@ model Configuracion {
   // Configuración de valoración bioquímica
   valoracionBioActiva   Boolean  @default(true) // Activar/desactivar valoración global
   parametrosReferencia  String   @default("{}") // JSON con valores de referencia por parámetro
+  // Configuración de parámetros bioquímicos dinámicos
+  // JSON: [{ id, label, unit, grupo, activo, orden }]
+  parametrosBioConfig   String   @default("[]")
   createdAt             DateTime @default(now())
   updatedAt             DateTime @updatedAt
 }

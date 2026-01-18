@@ -10,32 +10,45 @@ import { Accordion, AccordionContent, AccordionItem, AccordionTrigger } from "@/
 import { Badge } from "@/components/ui/badge";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 import { Calendar } from "@/components/ui/calendar";
-import { ArrowLeft, Save, Settings, Building2, FlaskConical, Calendar as CalendarIcon, RefreshCw, CheckCircle2, BookOpen, ExternalLink, ChevronDown, Plus, Trash2 } from "lucide-react";
+import { ScrollArea } from "@/components/ui/scroll-area";
+import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
+import { ArrowLeft, Save, Settings, Building2, FlaskConical, Calendar as CalendarIcon, Plus, Trash2, GripVertical, Eye, EyeOff } from "lucide-react";
 import { Link } from "react-router-dom";
 import { toast } from "sonner";
-import { useConfiguracion, useActualizarFarmacia, useActualizarParametrosReferencia, useActualizarValoracionBio, useConfiguracionCalendario, useActualizarConfiguracionCalendario } from "@/hooks/useConfiguracion";
+import { useConfiguracion, useActualizarFarmacia, useActualizarParametrosReferencia, useActualizarValoracionBio, useActualizarParametrosBioConfig, useConfiguracionCalendario, useActualizarConfiguracionCalendario } from "@/hooks/useConfiguracion";
 import { useEventos, useCrearEvento, useActualizarEvento, useEliminarEvento } from "@/hooks/useEventos";
-import type { Evento } from "@/types";
+import type { Evento, ParametroBioConfig } from "@/types";
 import { cn } from "@/lib/utils";
 import type { ParametroReferencia } from "@/types";
 import { format } from "date-fns";
 import { es } from "date-fns/locale";
 
-// Mapeo de parámetros con sus etiquetas y unidades
-const PARAMETROS_INFO: Record<string, { label: string; unit: string }> = {
-  glucemia: { label: "Glucemia", unit: "mg/dL" },
-  cholesterol: { label: "Colesterol Total", unit: "mg/dL" },
-  cholesterolHDL: { label: "Colesterol HDL", unit: "mg/dL" },
-  cholesterolLDL: { label: "Colesterol LDL", unit: "mg/dL" },
-  triglycerides: { label: "Triglicéridos", unit: "mg/dL" },
-  hemoglobinaGlucosilada: { label: "Hemoglobina Glucosilada (HbA1c)", unit: "%" },
-  proteinaCReactiva: { label: "Proteína C Reactiva (PCR)", unit: "mg/L" },
-  vitaminaD: { label: "Vitamina D", unit: "ng/mL" },
-  ferritina: { label: "Ferritina", unit: "ng/mL" },
-  systolic: { label: "Tensión Sistólica", unit: "mmHg" },
-  diastolic: { label: "Tensión Diastólica", unit: "mmHg" },
-  pulsaciones: { label: "Pulsaciones", unit: "lpm" },
-  imc: { label: "Índice de Masa Corporal (IMC)", unit: "kg/m²" },
+// Parámetros por defecto del sistema
+const PARAMETROS_DEFAULT: ParametroBioConfig[] = [
+  // Grupo: Básicos
+  { id: "glucemia", label: "Glucemia", unit: "mg/dL", grupo: "basicos", activo: true, orden: 1 },
+  { id: "cholesterol", label: "Colesterol Total", unit: "mg/dL", grupo: "basicos", activo: true, orden: 2 },
+  { id: "cholesterolHDL", label: "Colesterol HDL", unit: "mg/dL", grupo: "basicos", activo: true, orden: 3 },
+  { id: "cholesterolLDL", label: "Colesterol LDL", unit: "mg/dL", grupo: "basicos", activo: true, orden: 4 },
+  { id: "triglycerides", label: "Triglicéridos", unit: "mg/dL", grupo: "basicos", activo: true, orden: 5 },
+  // Grupo: Avanzados
+  { id: "hemoglobinaGlucosilada", label: "Hemoglobina Glucosilada (HbA1c)", unit: "%", grupo: "avanzados", activo: true, orden: 1 },
+  { id: "proteinaCReactiva", label: "Proteína C Reactiva (PCR)", unit: "mg/L", grupo: "avanzados", activo: true, orden: 2 },
+  { id: "vitaminaD", label: "Vitamina D", unit: "ng/mL", grupo: "avanzados", activo: true, orden: 3 },
+  { id: "ferritina", label: "Ferritina", unit: "ng/mL", grupo: "avanzados", activo: true, orden: 4 },
+  // Grupo: Tensión
+  { id: "systolic", label: "Tensión Sistólica", unit: "mmHg", grupo: "tension", activo: true, orden: 1 },
+  { id: "diastolic", label: "Tensión Diastólica", unit: "mmHg", grupo: "tension", activo: true, orden: 2 },
+  { id: "pulsaciones", label: "Pulsaciones", unit: "lpm", grupo: "tension", activo: true, orden: 3 },
+  // Grupo: Corporales
+  { id: "imc", label: "Índice de Masa Corporal (IMC)", unit: "kg/m²", grupo: "corporales", activo: true, orden: 1 },
+];
+
+const GRUPOS_INFO: Record<string, { label: string; color: string }> = {
+  basicos: { label: "Parámetros Básicos", color: "text-primary" },
+  avanzados: { label: "Parámetros Avanzados", color: "text-secondary" },
+  tension: { label: "Tensión Arterial y Pulsaciones", color: "text-destructive" },
+  corporales: { label: "Medidas Corporales", color: "text-success" },
 };
 
 export default function Configuracion() {
@@ -43,6 +56,7 @@ export default function Configuracion() {
   const actualizarFarmacia = useActualizarFarmacia();
   const actualizarParametros = useActualizarParametrosReferencia();
   const actualizarValoracion = useActualizarValoracionBio();
+  const actualizarParametrosBio = useActualizarParametrosBioConfig();
 
   // Estado para datos de farmacia
   const [farmaciaData, setFarmaciaData] = useState({
@@ -62,6 +76,9 @@ export default function Configuracion() {
   // Estado para valoración bioquímica
   const [valoracionActiva, setValoracionActiva] = useState(true);
 
+  // Estado para configuración de parámetros bioquímicos
+  const [parametrosBioConfig, setParametrosBioConfig] = useState<ParametroBioConfig[]>(PARAMETROS_DEFAULT);
+
   // Cargar datos cuando se obtiene la configuración
   useEffect(() => {
     if (config) {
@@ -77,6 +94,12 @@ export default function Configuracion() {
       });
       setParametros(config.parametrosReferencia || {});
       setValoracionActiva(config.valoracionBioActiva ?? true);
+      // Si hay configuración guardada, usarla; si no, usar los valores por defecto
+      if (config.parametrosBioConfig && config.parametrosBioConfig.length > 0) {
+        setParametrosBioConfig(config.parametrosBioConfig);
+      } else {
+        setParametrosBioConfig(PARAMETROS_DEFAULT);
+      }
     }
   }, [config]);
 
@@ -307,56 +330,347 @@ export default function Configuracion() {
 
         {/* Tab: Parámetros Bioquímicos */}
         <TabsContent value="parametros">
-          <div className="space-y-6">
-            {/* Toggle para activar/desactivar valoración */}
-            <Card className="shadow-sm border-border/50">
-              <CardContent className="pt-6">
-                <div className="flex items-center justify-between">
-                  <div>
-                    <Label htmlFor="valoracion-activa" className="text-base font-semibold">
-                      Activar Valoración Automática
-                    </Label>
-                    <p className="text-sm text-muted-foreground mt-1">
-                      Muestra advertencias y estados según los rangos configurados
-                    </p>
-                  </div>
-                  <Switch
-                    id="valoracion-activa"
-                    checked={valoracionActiva}
-                    onCheckedChange={handleCambiarValoracion}
-                  />
-                </div>
-              </CardContent>
-            </Card>
+          <ParametrosBioquimicosTab
+            valoracionActiva={valoracionActiva}
+            onCambiarValoracion={handleCambiarValoracion}
+            parametros={parametros}
+            onActualizarParametro={actualizarParametro}
+            onGuardarParametros={handleGuardarParametros}
+            guardandoParametros={actualizarParametros.isPending}
+            parametrosBioConfig={parametrosBioConfig}
+            onActualizarParametrosBioConfig={async (nuevoConfig) => {
+              try {
+                await actualizarParametrosBio.mutateAsync(nuevoConfig);
+                setParametrosBioConfig(nuevoConfig);
+                toast.success("Configuración de parámetros actualizada");
+              } catch (error) {
+                console.error("Error:", error);
+                toast.error("Error al guardar la configuración");
+              }
+            }}
+            guardandoConfig={actualizarParametrosBio.isPending}
+          />
+        </TabsContent>
 
-            {/* Configuración de parámetros */}
-            <Card className="shadow-sm border-border/50">
-              <CardHeader>
-                <CardTitle>Valores de Referencia</CardTitle>
-                <CardDescription>
-                  Configura los rangos para cada parámetro bioquímico. Los valores se clasifican en:
-                  <ul className="list-disc list-inside mt-2 space-y-1">
-                    <li><strong>Normal:</strong> Valores correctos (verde)</li>
-                    <li><strong>Advertencia:</strong> Valores que requieren consejo sanitario (amarillo)</li>
-                    <li><strong>Crítico:</strong> Valores que requieren control médico (rojo)</li>
-                  </ul>
-                </CardDescription>
-              </CardHeader>
-              <CardContent className="space-y-8">
-                {Object.keys(PARAMETROS_INFO).map((parametroId) => {
-                  const info = PARAMETROS_INFO[parametroId];
-                  const param = parametros[parametroId] || {
+        {/* Tab: Calendario */}
+        <TabsContent value="calendario">
+          <CalendarioTab />
+        </TabsContent>
+
+      </Tabs>
+    </div>
+  );
+}
+
+// Componente para el tab de Parámetros Bioquímicos
+interface ParametrosBioquimicosTabProps {
+  valoracionActiva: boolean;
+  onCambiarValoracion: (activa: boolean) => void;
+  parametros: Record<string, ParametroReferencia>;
+  onActualizarParametro: (id: string, campo: keyof ParametroReferencia, valor: number | undefined) => void;
+  onGuardarParametros: () => void;
+  guardandoParametros: boolean;
+  parametrosBioConfig: ParametroBioConfig[];
+  onActualizarParametrosBioConfig: (config: ParametroBioConfig[]) => Promise<void>;
+  guardandoConfig: boolean;
+}
+
+function ParametrosBioquimicosTab({
+  valoracionActiva,
+  onCambiarValoracion,
+  parametros,
+  onActualizarParametro,
+  onGuardarParametros,
+  guardandoParametros,
+  parametrosBioConfig,
+  onActualizarParametrosBioConfig,
+  guardandoConfig,
+}: ParametrosBioquimicosTabProps) {
+  const [nuevoParametro, setNuevoParametro] = useState<Partial<ParametroBioConfig>>({
+    label: "",
+    unit: "",
+    grupo: "basicos",
+  });
+  const [dialogAbierto, setDialogAbierto] = useState(false);
+
+  // Agrupar parámetros por grupo
+  const parametrosPorGrupo = parametrosBioConfig.reduce((acc, param) => {
+    if (!acc[param.grupo]) acc[param.grupo] = [];
+    acc[param.grupo].push(param);
+    return acc;
+  }, {} as Record<string, ParametroBioConfig[]>);
+
+  // Ordenar parámetros dentro de cada grupo
+  Object.keys(parametrosPorGrupo).forEach((grupo) => {
+    parametrosPorGrupo[grupo].sort((a, b) => a.orden - b.orden);
+  });
+
+  const handleToggleActivo = (id: string) => {
+    const nuevaConfig = parametrosBioConfig.map((p) =>
+      p.id === id ? { ...p, activo: !p.activo } : p
+    );
+    onActualizarParametrosBioConfig(nuevaConfig);
+  };
+
+  const handleCrearParametro = () => {
+    if (!nuevoParametro.label || !nuevoParametro.unit || !nuevoParametro.grupo) {
+      toast.error("Completa todos los campos obligatorios");
+      return;
+    }
+
+    // Generar ID único
+    const id = `custom_${Date.now()}`;
+    
+    // Encontrar el mayor orden en el grupo
+    const parametrosGrupo = parametrosBioConfig.filter((p) => p.grupo === nuevoParametro.grupo);
+    const maxOrden = parametrosGrupo.length > 0 ? Math.max(...parametrosGrupo.map((p) => p.orden)) : 0;
+
+    const nuevo: ParametroBioConfig = {
+      id,
+      label: nuevoParametro.label,
+      unit: nuevoParametro.unit,
+      grupo: nuevoParametro.grupo as ParametroBioConfig["grupo"],
+      activo: true,
+      orden: maxOrden + 1,
+      esPersonalizado: true,
+    };
+
+    onActualizarParametrosBioConfig([...parametrosBioConfig, nuevo]);
+    setNuevoParametro({ label: "", unit: "", grupo: "basicos" });
+    setDialogAbierto(false);
+    toast.success("Parámetro creado correctamente");
+  };
+
+  const handleEliminarParametro = (id: string) => {
+    const param = parametrosBioConfig.find((p) => p.id === id);
+    if (param && !param.esPersonalizado) {
+      toast.error("Solo puedes eliminar parámetros personalizados");
+      return;
+    }
+    const nuevaConfig = parametrosBioConfig.filter((p) => p.id !== id);
+    onActualizarParametrosBioConfig(nuevaConfig);
+    toast.success("Parámetro eliminado");
+  };
+
+  return (
+    <div className="space-y-6">
+      {/* Toggle para activar/desactivar valoración */}
+      <Card className="shadow-sm border-border/50">
+        <CardContent className="pt-6">
+          <div className="flex items-center justify-between">
+            <div>
+              <Label htmlFor="valoracion-activa" className="text-base font-semibold">
+                Activar Valoración Automática
+              </Label>
+              <p className="text-sm text-muted-foreground mt-1">
+                Muestra advertencias y estados según los rangos configurados
+              </p>
+            </div>
+            <Switch
+              id="valoracion-activa"
+              checked={valoracionActiva}
+              onCheckedChange={onCambiarValoracion}
+            />
+          </div>
+        </CardContent>
+      </Card>
+
+      {/* Gestión de Parámetros */}
+      <Card className="shadow-sm border-border/50">
+        <CardHeader>
+          <div className="flex items-center justify-between">
+            <div>
+              <CardTitle>Parámetros Disponibles</CardTitle>
+              <CardDescription>
+                Activa o desactiva parámetros según el stock de reactivos. Crea nuevos parámetros personalizados.
+              </CardDescription>
+            </div>
+            <Dialog open={dialogAbierto} onOpenChange={setDialogAbierto}>
+              <DialogTrigger asChild>
+                <Button variant="outline" className="gap-2">
+                  <Plus className="h-4 w-4" />
+                  Nuevo Parámetro
+                </Button>
+              </DialogTrigger>
+              <DialogContent>
+                <DialogHeader>
+                  <DialogTitle>Crear Nuevo Parámetro</DialogTitle>
+                  <DialogDescription>
+                    Añade un nuevo parámetro bioquímico personalizado
+                  </DialogDescription>
+                </DialogHeader>
+                <div className="space-y-4 py-4">
+                  <div className="space-y-2">
+                    <Label htmlFor="nuevo-label">Nombre del Parámetro *</Label>
+                    <Input
+                      id="nuevo-label"
+                      value={nuevoParametro.label || ""}
+                      onChange={(e) => setNuevoParametro({ ...nuevoParametro, label: e.target.value })}
+                      placeholder="Ej: Ácido Úrico"
+                    />
+                  </div>
+                  <div className="space-y-2">
+                    <Label htmlFor="nuevo-unit">Unidad de Medida *</Label>
+                    <Input
+                      id="nuevo-unit"
+                      value={nuevoParametro.unit || ""}
+                      onChange={(e) => setNuevoParametro({ ...nuevoParametro, unit: e.target.value })}
+                      placeholder="Ej: mg/dL"
+                    />
+                  </div>
+                  <div className="space-y-2">
+                    <Label htmlFor="nuevo-grupo">Grupo *</Label>
+                    <Select
+                      value={nuevoParametro.grupo || "basicos"}
+                      onValueChange={(value) => setNuevoParametro({ ...nuevoParametro, grupo: value as ParametroBioConfig["grupo"] })}
+                    >
+                      <SelectTrigger>
+                        <SelectValue />
+                      </SelectTrigger>
+                      <SelectContent>
+                        {Object.entries(GRUPOS_INFO).map(([key, info]) => (
+                          <SelectItem key={key} value={key}>
+                            {info.label}
+                          </SelectItem>
+                        ))}
+                      </SelectContent>
+                    </Select>
+                  </div>
+                </div>
+                <DialogFooter>
+                  <Button variant="outline" onClick={() => setDialogAbierto(false)}>
+                    Cancelar
+                  </Button>
+                  <Button onClick={handleCrearParametro} disabled={guardandoConfig}>
+                    <Plus className="h-4 w-4 mr-2" />
+                    Crear
+                  </Button>
+                </DialogFooter>
+              </DialogContent>
+            </Dialog>
+          </div>
+        </CardHeader>
+        <CardContent>
+          <Accordion type="multiple" className="space-y-2">
+            {Object.entries(GRUPOS_INFO).map(([grupo, info]) => {
+              const parametrosGrupo = parametrosPorGrupo[grupo] || [];
+              const activos = parametrosGrupo.filter((p) => p.activo).length;
+              
+              return (
+                <AccordionItem key={grupo} value={grupo} className="border rounded-lg px-4">
+                  <AccordionTrigger className="hover:no-underline">
+                    <div className="flex items-center gap-3">
+                      <span className={cn("font-semibold", info.color)}>{info.label}</span>
+                      <Badge variant="secondary" className="text-xs">
+                        {activos}/{parametrosGrupo.length} activos
+                      </Badge>
+                    </div>
+                  </AccordionTrigger>
+                  <AccordionContent>
+                    <div className="space-y-2 pt-2">
+                      {parametrosGrupo.length === 0 ? (
+                        <p className="text-sm text-muted-foreground py-2">
+                          No hay parámetros en este grupo
+                        </p>
+                      ) : (
+                        parametrosGrupo.map((param) => (
+                          <div
+                            key={param.id}
+                            className={cn(
+                              "flex items-center justify-between p-3 rounded-md border",
+                              param.activo ? "bg-background" : "bg-muted/50"
+                            )}
+                          >
+                            <div className="flex items-center gap-3">
+                              <GripVertical className="h-4 w-4 text-muted-foreground" />
+                              <div>
+                                <div className="flex items-center gap-2">
+                                  <span className={cn("font-medium", !param.activo && "text-muted-foreground")}>
+                                    {param.label}
+                                  </span>
+                                  <span className="text-xs text-muted-foreground">({param.unit})</span>
+                                  {param.esPersonalizado && (
+                                    <Badge variant="outline" className="text-xs">
+                                      Personalizado
+                                    </Badge>
+                                  )}
+                                </div>
+                              </div>
+                            </div>
+                            <div className="flex items-center gap-2">
+                              <Button
+                                variant="ghost"
+                                size="icon"
+                                onClick={() => handleToggleActivo(param.id)}
+                                title={param.activo ? "Desactivar" : "Activar"}
+                              >
+                                {param.activo ? (
+                                  <Eye className="h-4 w-4 text-primary" />
+                                ) : (
+                                  <EyeOff className="h-4 w-4 text-muted-foreground" />
+                                )}
+                              </Button>
+                              {param.esPersonalizado && (
+                                <Button
+                                  variant="ghost"
+                                  size="icon"
+                                  onClick={() => handleEliminarParametro(param.id)}
+                                  className="text-destructive hover:text-destructive"
+                                >
+                                  <Trash2 className="h-4 w-4" />
+                                </Button>
+                              )}
+                            </div>
+                          </div>
+                        ))
+                      )}
+                    </div>
+                  </AccordionContent>
+                </AccordionItem>
+              );
+            })}
+          </Accordion>
+        </CardContent>
+      </Card>
+
+      {/* Valores de Referencia - Solo para parámetros activos */}
+      <Card className="shadow-sm border-border/50">
+        <CardHeader>
+          <CardTitle>Valores de Referencia</CardTitle>
+          <CardDescription>
+            Configura los rangos para cada parámetro bioquímico activo. Los valores se clasifican en:
+            <ul className="list-disc list-inside mt-2 space-y-1">
+              <li><strong>Normal:</strong> Valores correctos (verde)</li>
+              <li><strong>Advertencia:</strong> Valores que requieren consejo sanitario (amarillo)</li>
+              <li><strong>Crítico:</strong> Valores que requieren control médico (rojo)</li>
+            </ul>
+          </CardDescription>
+        </CardHeader>
+        <CardContent className="space-y-6">
+          <ScrollArea className="h-[600px] pr-4">
+            <div className="space-y-8">
+              {parametrosBioConfig
+                .filter((p) => p.activo)
+                .map((paramConfig) => {
+                  const param = parametros[paramConfig.id] || {
                     normalMin: 0,
                     normalMax: 0,
                   };
 
                   return (
-                    <div key={parametroId} className="border-b pb-6 last:border-0 last:pb-0">
-                      <h3 className="text-lg font-semibold mb-4">{info.label} ({info.unit})</h3>
+                    <div key={paramConfig.id} className="border-b pb-6 last:border-0 last:pb-0">
+                      <h3 className="text-lg font-semibold mb-4">
+                        {paramConfig.label} ({paramConfig.unit})
+                        {paramConfig.esPersonalizado && (
+                          <Badge variant="outline" className="ml-2 text-xs">
+                            Personalizado
+                          </Badge>
+                        )}
+                      </h3>
                       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
                         {/* Rango Normal */}
                         <div className="space-y-2">
-                          <Label className="text-success">Rango Normal</Label>
+                          <Label className="text-green-600">Rango Normal</Label>
                           <div className="grid grid-cols-2 gap-2">
                             <Input
                               type="number"
@@ -364,7 +678,7 @@ export default function Configuracion() {
                               placeholder="Mín"
                               value={param.normalMin || ""}
                               onChange={(e) =>
-                                actualizarParametro(parametroId, "normalMin", parseFloat(e.target.value) || 0)
+                                onActualizarParametro(paramConfig.id, "normalMin", parseFloat(e.target.value) || 0)
                               }
                             />
                             <Input
@@ -373,7 +687,7 @@ export default function Configuracion() {
                               placeholder="Máx"
                               value={param.normalMax || ""}
                               onChange={(e) =>
-                                actualizarParametro(parametroId, "normalMax", parseFloat(e.target.value) || 0)
+                                onActualizarParametro(paramConfig.id, "normalMax", parseFloat(e.target.value) || 0)
                               }
                             />
                           </div>
@@ -381,7 +695,7 @@ export default function Configuracion() {
 
                         {/* Rango Advertencia */}
                         <div className="space-y-2">
-                          <Label className="text-warning">Rango Advertencia</Label>
+                          <Label className="text-yellow-600">Rango Advertencia</Label>
                           <div className="grid grid-cols-2 gap-2">
                             <Input
                               type="number"
@@ -389,8 +703,8 @@ export default function Configuracion() {
                               placeholder="Mín"
                               value={param.advertenciaMin || ""}
                               onChange={(e) =>
-                                actualizarParametro(
-                                  parametroId,
+                                onActualizarParametro(
+                                  paramConfig.id,
                                   "advertenciaMin",
                                   e.target.value ? parseFloat(e.target.value) : undefined
                                 )
@@ -402,8 +716,8 @@ export default function Configuracion() {
                               placeholder="Máx"
                               value={param.advertenciaMax || ""}
                               onChange={(e) =>
-                                actualizarParametro(
-                                  parametroId,
+                                onActualizarParametro(
+                                  paramConfig.id,
                                   "advertenciaMax",
                                   e.target.value ? parseFloat(e.target.value) : undefined
                                 )
@@ -414,7 +728,7 @@ export default function Configuracion() {
 
                         {/* Rango Advertencia 2 (opcional) */}
                         <div className="space-y-2">
-                          <Label className="text-warning">Rango Advertencia 2 (opcional)</Label>
+                          <Label className="text-yellow-600">Rango Advertencia 2</Label>
                           <div className="grid grid-cols-2 gap-2">
                             <Input
                               type="number"
@@ -422,8 +736,8 @@ export default function Configuracion() {
                               placeholder="Mín"
                               value={param.advertenciaMin2 || ""}
                               onChange={(e) =>
-                                actualizarParametro(
-                                  parametroId,
+                                onActualizarParametro(
+                                  paramConfig.id,
                                   "advertenciaMin2",
                                   e.target.value ? parseFloat(e.target.value) : undefined
                                 )
@@ -435,8 +749,8 @@ export default function Configuracion() {
                               placeholder="Máx"
                               value={param.advertenciaMax2 || ""}
                               onChange={(e) =>
-                                actualizarParametro(
-                                  parametroId,
+                                onActualizarParametro(
+                                  paramConfig.id,
                                   "advertenciaMax2",
                                   e.target.value ? parseFloat(e.target.value) : undefined
                                 )
@@ -447,7 +761,7 @@ export default function Configuracion() {
 
                         {/* Rango Crítico */}
                         <div className="space-y-2">
-                          <Label className="text-destructive">Rango Crítico</Label>
+                          <Label className="text-red-600">Rango Crítico</Label>
                           <div className="grid grid-cols-2 gap-2">
                             <Input
                               type="number"
@@ -455,8 +769,8 @@ export default function Configuracion() {
                               placeholder="Mín"
                               value={param.criticoMin || ""}
                               onChange={(e) =>
-                                actualizarParametro(
-                                  parametroId,
+                                onActualizarParametro(
+                                  paramConfig.id,
                                   "criticoMin",
                                   e.target.value ? parseFloat(e.target.value) : undefined
                                 )
@@ -468,8 +782,8 @@ export default function Configuracion() {
                               placeholder="Máx"
                               value={param.criticoMax || ""}
                               onChange={(e) =>
-                                actualizarParametro(
-                                  parametroId,
+                                onActualizarParametro(
+                                  paramConfig.id,
                                   "criticoMax",
                                   e.target.value ? parseFloat(e.target.value) : undefined
                                 )
@@ -484,8 +798,8 @@ export default function Configuracion() {
                               placeholder="Mín 2"
                               value={param.criticoMin2 || ""}
                               onChange={(e) =>
-                                actualizarParametro(
-                                  parametroId,
+                                onActualizarParametro(
+                                  paramConfig.id,
                                   "criticoMin2",
                                   e.target.value ? parseFloat(e.target.value) : undefined
                                 )
@@ -497,8 +811,8 @@ export default function Configuracion() {
                               placeholder="Máx 2"
                               value={param.criticoMax2 || ""}
                               onChange={(e) =>
-                                actualizarParametro(
-                                  parametroId,
+                                onActualizarParametro(
+                                  paramConfig.id,
                                   "criticoMax2",
                                   e.target.value ? parseFloat(e.target.value) : undefined
                                 )
@@ -510,28 +824,21 @@ export default function Configuracion() {
                     </div>
                   );
                 })}
+            </div>
+          </ScrollArea>
 
-                <div className="flex justify-end pt-4">
-                  <Button
-                    onClick={handleGuardarParametros}
-                    disabled={actualizarParametros.isPending}
-                    className="gap-2"
-                  >
-                    <Save className="h-4 w-4" />
-                    {actualizarParametros.isPending ? "Guardando..." : "Guardar Parámetros"}
-                  </Button>
-                </div>
-              </CardContent>
-            </Card>
+          <div className="flex justify-end pt-4 border-t">
+            <Button
+              onClick={onGuardarParametros}
+              disabled={guardandoParametros}
+              className="gap-2"
+            >
+              <Save className="h-4 w-4" />
+              {guardandoParametros ? "Guardando..." : "Guardar Valores de Referencia"}
+            </Button>
           </div>
-        </TabsContent>
-
-        {/* Tab: Calendario */}
-        <TabsContent value="calendario">
-          <CalendarioTab />
-        </TabsContent>
-
-      </Tabs>
+        </CardContent>
+      </Card>
     </div>
   );
 }

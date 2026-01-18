@@ -1,6 +1,6 @@
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { api } from '@/lib/api';
-import type { Configuracion, ParametroReferencia } from '@/types';
+import type { Configuracion, ParametroReferencia, ParametroBioConfig } from '@/types';
 
 /**
  * Hook para obtener la configuración
@@ -56,6 +56,22 @@ export function useActualizarValoracionBio() {
   return useMutation({
     mutationFn: async (valoracionBioActiva: boolean) => {
       return api.put<Configuracion>('/configuracion/valoracion-bio', { valoracionBioActiva });
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['configuracion'] });
+    },
+  });
+}
+
+/**
+ * Hook para actualizar configuración de parámetros bioquímicos
+ */
+export function useActualizarParametrosBioConfig() {
+  const queryClient = useQueryClient();
+
+  return useMutation({
+    mutationFn: async (parametrosBioConfig: ParametroBioConfig[]) => {
+      return api.put<Configuracion>('/configuracion/parametros-bio', parametrosBioConfig);
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['configuracion'] });

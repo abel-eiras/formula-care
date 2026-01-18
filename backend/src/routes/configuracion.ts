@@ -4,6 +4,7 @@ import {
   actualizarFarmacia,
   actualizarParametrosReferencia,
   actualizarValoracionBio,
+  actualizarParametrosBioConfig,
   obtenerConfiguracionCalendario,
   actualizarConfiguracionCalendario,
   bloquearFechaHora,
@@ -23,6 +24,9 @@ configuracionRouter.put('/parametros', actualizarParametrosReferencia);
 
 // Actualizar estado de valoración bioquímica
 configuracionRouter.put('/valoracion-bio', actualizarValoracionBio);
+
+// Actualizar configuración de parámetros bioquímicos (dinámicos)
+configuracionRouter.put('/parametros-bio', actualizarParametrosBioConfig);
 
 // Configuración del calendario
 configuracionRouter.get('/calendario', obtenerConfiguracionCalendario);

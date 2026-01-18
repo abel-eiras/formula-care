@@ -1,4 +1,4 @@
-import { useState, useEffect, useMemo } from "react";
+import { useState, useEffect, useMemo, useCallback } from "react";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
@@ -14,11 +14,28 @@ import { useCrearAnalisisBio, useAnalisisBio, useActualizarAnalisisBio } from "@
 import { useConfiguracion } from "@/hooks/useConfiguracion";
 import { evaluarValor, getMensajeValoracion } from "@/lib/valoracionBio";
 import { cn } from "@/lib/utils";
-import type { AnalisisBio, ParametroReferencia } from "@/types";
-// Importaci?n din?mica para reducir el bundle inicial
+import type { AnalisisBio, ParametroReferencia, ParametroBioConfig } from "@/types";
+// Importación dinámica para reducir el bundle inicial
 const loadPDFGenerator = () => import("@/lib/pdfGenerator");
 
-// Componente para mostrar badge de valoraci?n
+// Parámetros por defecto (usados si no hay configuración guardada)
+const PARAMETROS_DEFAULT: ParametroBioConfig[] = [
+  { id: "glucemia", label: "Glucemia", unit: "mg/dL", grupo: "basicos", activo: true, orden: 1 },
+  { id: "cholesterol", label: "Colesterol Total", unit: "mg/dL", grupo: "basicos", activo: true, orden: 2 },
+  { id: "cholesterolHDL", label: "Colesterol HDL", unit: "mg/dL", grupo: "basicos", activo: true, orden: 3 },
+  { id: "cholesterolLDL", label: "Colesterol LDL", unit: "mg/dL", grupo: "basicos", activo: true, orden: 4 },
+  { id: "triglycerides", label: "Triglicéridos", unit: "mg/dL", grupo: "basicos", activo: true, orden: 5 },
+  { id: "hemoglobinaGlucosilada", label: "Hemoglobina Glucosilada (HbA1c)", unit: "%", grupo: "avanzados", activo: true, orden: 1 },
+  { id: "proteinaCReactiva", label: "Proteína C Reactiva (PCR)", unit: "mg/L", grupo: "avanzados", activo: true, orden: 2 },
+  { id: "vitaminaD", label: "Vitamina D", unit: "ng/mL", grupo: "avanzados", activo: true, orden: 3 },
+  { id: "ferritina", label: "Ferritina", unit: "ng/mL", grupo: "avanzados", activo: true, orden: 4 },
+  { id: "systolic", label: "Tensión Sistólica", unit: "mmHg", grupo: "tension", activo: true, orden: 1 },
+  { id: "diastolic", label: "Tensión Diastólica", unit: "mmHg", grupo: "tension", activo: true, orden: 2 },
+  { id: "pulsaciones", label: "Pulsaciones", unit: "lpm", grupo: "tension", activo: true, orden: 3 },
+  { id: "imc", label: "Índice de Masa Corporal (IMC)", unit: "kg/m²", grupo: "corporales", activo: true, orden: 1 },
+];
+
+// Componente para mostrar badge de valoración
 function ValoracionBadge({
   valor,
   parametroId,
@@ -52,7 +69,7 @@ function ValoracionBadge({
   );
 }
 
-// Funci?n para obtener clase CSS del input seg?n valoraci?n
+// Función para obtener clase CSS del input según valoración
 function getInputClass(estado: "normal" | "advertencia" | "critico" | null): string {
   if (!estado) return "";
   switch (estado) {
@@ -67,7 +84,7 @@ function getInputClass(estado: "normal" | "advertencia" | "critico" | null): str
   }
 }
 
-// Funci?n para crear campo de par?metro con valoraci?n
+// Función para crear campo de parámetro con valoración
 function ParametroInput({
   id,
   label,
@@ -137,12 +154,12 @@ export default function ServicioBio() {
     cholesterolHDL: "",
     cholesterolLDL: "",
     triglycerides: "",
-    // Par?metros avanzados
+    // Parámetros avanzados
     hemoglobinaGlucosilada: "",
     proteinaCReactiva: "",
     vitaminaD: "",
     ferritina: "",
-    // Tensi?n arterial y pulsaciones
+    // Tensión arterial y pulsaciones
     systolic: "",
     diastolic: "",
     pulsaciones: "",
@@ -185,6 +202,27 @@ export default function ServicioBio() {
     [pacientes, pacienteId]
   );
 
+  // Obtener parámetros configurados (activos y ordenados)
+  const parametrosBioConfig = useMemo(() => {
+    if (configuracion?.parametrosBioConfig && configuracion.parametrosBioConfig.length > 0) {
+      return configuracion.parametrosBioConfig;
+    }
+    return PARAMETROS_DEFAULT;
+  }, [configuracion]);
+
+  // Helper para verificar si un parámetro está activo
+  const isParametroActivo = useCallback((parametroId: string): boolean => {
+    const param = parametrosBioConfig.find(p => p.id === parametroId);
+    return param?.activo ?? true;
+  }, [parametrosBioConfig]);
+
+  // Obtener parámetros activos por grupo
+  const getParametrosGrupo = useCallback((grupo: string): ParametroBioConfig[] => {
+    return parametrosBioConfig
+      .filter(p => p.grupo === grupo && p.activo)
+      .sort((a, b) => a.orden - b.orden);
+  }, [parametrosBioConfig]);
+
   // Calcular IMC
   const imc = useMemo(() => {
     const weight = parseFloat(formData.weight);
@@ -194,7 +232,7 @@ export default function ServicioBio() {
     return Number((weight / (heightM * heightM)).toFixed(1));
   }, [formData.weight, formData.height]);
 
-  // Evaluar IMC si est? activa la valoraci?n
+  // Evaluar IMC si está activa la valoración
   const estadoIMC = useMemo(() => {
     if (!configuracion?.valoracionBioActiva || !imc) return null;
     return evaluarValor(imc, configuracion.parametrosReferencia?.imc);
@@ -234,11 +272,11 @@ export default function ServicioBio() {
 
       if (analisisId) {
         await actualizarAnalisis.mutateAsync({ id: analisisId, ...datosAnalisis });
-        toast.success("An?lisis actualizado correctamente");
+        toast.success("Análisis actualizado correctamente");
       } else {
         const nuevoAnalisis = await crearAnalisis.mutateAsync(datosAnalisis);
-        toast.success("An?lisis guardado correctamente");
-        // Actualizar la URL con el ID del an?lisis para habilitar los botones de imprimir y PDF
+        toast.success("Análisis guardado correctamente");
+        // Actualizar la URL con el ID del análisis para habilitar los botones de imprimir y PDF
         if (nuevoAnalisis?.id) {
           navigate(`/servicios/bio?id=${nuevoAnalisis.id}&pacienteId=${pacienteId}`, { replace: true });
         }
@@ -251,27 +289,27 @@ export default function ServicioBio() {
 
   const handleImprimir = () => {
     if (!analisisId) {
-      toast.info("Guarde el an?lisis primero para imprimir");
+      toast.info("Guarde el análisis primero para imprimir");
       return;
     }
     
-    // Abrir vista de impresi?n en nueva pesta?a
+    // Abrir vista de impresión en nueva pestaña
     window.open(`/servicios/bio/print?id=${analisisId}`, "_blank");
   };
 
   const handleDescargarPDF = async () => {
     if (!analisisId) {
-      toast.info("Guarde el an?lisis primero para descargar el PDF");
+      toast.info("Guarde el análisis primero para descargar el PDF");
       return;
     }
 
     try {
       toast.info("Generando PDF...", { duration: 2000 });
       
-      // Cargar el generador de PDF din?micamente
+      // Cargar el generador de PDF dinámicamente
       const { generatePDFFromElement, generatePDFFilename } = await loadPDFGenerator();
       
-      // Abrir la p?gina de impresi?n en un iframe oculto
+      // Abrir la página de impresión en un iframe oculto
       const iframe = document.createElement('iframe');
       iframe.style.position = 'fixed';
       iframe.style.right = '-9999px';
@@ -281,19 +319,19 @@ export default function ServicioBio() {
       iframe.style.opacity = '0';
       document.body.appendChild(iframe);
 
-      // Marcar que es una descarga de PDF para evitar auto-impresi?n
+      // Marcar que es una descarga de PDF para evitar auto-impresión
       sessionStorage.setItem('pdfDownload', 'true');
 
       // Esperar a que el iframe cargue completamente
       await new Promise<void>((resolve, reject) => {
         const timeout = setTimeout(() => {
           sessionStorage.removeItem('pdfDownload');
-          reject(new Error('Timeout al cargar la p?gina de impresi?n'));
+          reject(new Error('Timeout al cargar la página de impresión'));
         }, 10000);
 
         iframe.onload = () => {
           clearTimeout(timeout);
-          // Esperar un poco m?s para que los estilos se apliquen
+          // Esperar un poco más para que los estilos se apliquen
           setTimeout(() => {
             resolve();
           }, 1000);
@@ -302,7 +340,7 @@ export default function ServicioBio() {
         iframe.onerror = () => {
           clearTimeout(timeout);
           sessionStorage.removeItem('pdfDownload');
-          reject(new Error('Error al cargar la p?gina de impresi?n'));
+          reject(new Error('Error al cargar la página de impresión'));
         };
 
         iframe.src = `/servicios/bio/print?id=${analisisId}`;
@@ -331,7 +369,7 @@ export default function ServicioBio() {
       sessionStorage.removeItem('pdfDownload');
     } catch (error) {
       console.error("Error al descargar PDF:", error);
-      toast.error("Error al generar el PDF. Usa la opci?n de imprimir del navegador.");
+      toast.error("Error al generar el PDF. Usa la opción de imprimir del navegador.");
       sessionStorage.removeItem('pdfDownload');
       // Limpiar iframe si existe
       const iframe = document.querySelector('iframe[style*="-9999px"]');
@@ -409,144 +447,102 @@ export default function ServicioBio() {
         {/* Columna Izquierda */}
         <div className="space-y-6">
           {/* Bloque 1: Parámetros Básicos */}
-          <Card className="shadow-sm border-border/50">
-            <CardContent className="pt-6">
-              <h3 className="text-lg font-semibold mb-4 text-primary">Parámetros Básicos</h3>
-              <div className="space-y-4">
-                <ParametroInput
-                  id="glucemia"
-                  label="Glucemia"
-                  unit="mg/dL"
-                  value={formData.glucemia}
-                  onChange={(value) => handleChange("glucemia", value)}
-                  configuracion={configuracion}
-                  parametroId="glucemia"
-                />
-                <ParametroInput
-                  id="cholesterol"
-                  label="Colesterol Total"
-                  unit="mg/dL"
-                  value={formData.cholesterol}
-                  onChange={(value) => handleChange("cholesterol", value)}
-                  configuracion={configuracion}
-                  parametroId="cholesterol"
-                />
-                <ParametroInput
-                  id="cholesterolHDL"
-                  label="Colesterol HDL"
-                  unit="mg/dL"
-                  value={formData.cholesterolHDL}
-                  onChange={(value) => handleChange("cholesterolHDL", value)}
-                  configuracion={configuracion}
-                  parametroId="cholesterolHDL"
-                />
-                <ParametroInput
-                  id="cholesterolLDL"
-                  label="Colesterol LDL"
-                  unit="mg/dL"
-                  value={formData.cholesterolLDL}
-                  onChange={(value) => handleChange("cholesterolLDL", value)}
-                  configuracion={configuracion}
-                  parametroId="cholesterolLDL"
-                />
-                <ParametroInput
-                  id="triglycerides"
-                  label="Triglicéridos"
-                  unit="mg/dL"
-                  value={formData.triglycerides}
-                  onChange={(value) => handleChange("triglycerides", value)}
-                  configuracion={configuracion}
-                  parametroId="triglycerides"
-                />
-              </div>
-            </CardContent>
-          </Card>
+          {getParametrosGrupo("basicos").length > 0 && (
+            <Card className="shadow-sm border-border/50">
+              <CardContent className="pt-6">
+                <h3 className="text-lg font-semibold mb-4 text-primary">Parámetros Básicos</h3>
+                <div className="space-y-4">
+                  {getParametrosGrupo("basicos").map((param) => (
+                    <ParametroInput
+                      key={param.id}
+                      id={param.id}
+                      label={param.label}
+                      unit={param.unit}
+                      value={formData[param.id as keyof typeof formData] || ""}
+                      onChange={(value) => handleChange(param.id as keyof typeof formData, value)}
+                      configuracion={configuracion}
+                      parametroId={param.id}
+                    />
+                  ))}
+                </div>
+              </CardContent>
+            </Card>
+          )}
 
           {/* Bloque 2: Parámetros Avanzados */}
-          <Card className="shadow-sm border-border/50">
-            <CardContent className="pt-6">
-              <h3 className="text-lg font-semibold mb-4 text-secondary">Parámetros Avanzados</h3>
-              <div className="space-y-4">
-                <ParametroInput
-                  id="hemoglobinaGlucosilada"
-                  label="Hemoglobina Glucosilada - HbA1c"
-                  unit="%"
-                  value={formData.hemoglobinaGlucosilada}
-                  onChange={(value) => handleChange("hemoglobinaGlucosilada", value)}
-                  configuracion={configuracion}
-                  parametroId="hemoglobinaGlucosilada"
-                />
-                <ParametroInput
-                  id="proteinaCReactiva"
-                  label="Proteína C Reactiva - PCR"
-                  unit="mg/L"
-                  value={formData.proteinaCReactiva}
-                  onChange={(value) => handleChange("proteinaCReactiva", value)}
-                  configuracion={configuracion}
-                  parametroId="proteinaCReactiva"
-                />
-                <ParametroInput
-                  id="vitaminaD"
-                  label="Vitamina D"
-                  unit="ng/mL"
-                  value={formData.vitaminaD}
-                  onChange={(value) => handleChange("vitaminaD", value)}
-                  configuracion={configuracion}
-                  parametroId="vitaminaD"
-                />
-                <ParametroInput
-                  id="ferritina"
-                  label="Ferritina"
-                  unit="ng/mL"
-                  value={formData.ferritina}
-                  onChange={(value) => handleChange("ferritina", value)}
-                  configuracion={configuracion}
-                  parametroId="ferritina"
-                />
-              </div>
-            </CardContent>
-          </Card>
+          {getParametrosGrupo("avanzados").length > 0 && (
+            <Card className="shadow-sm border-border/50">
+              <CardContent className="pt-6">
+                <h3 className="text-lg font-semibold mb-4 text-secondary">Parámetros Avanzados</h3>
+                <div className="space-y-4">
+                  {getParametrosGrupo("avanzados").map((param) => (
+                    <ParametroInput
+                      key={param.id}
+                      id={param.id}
+                      label={param.label}
+                      unit={param.unit}
+                      value={formData[param.id as keyof typeof formData] || ""}
+                      onChange={(value) => handleChange(param.id as keyof typeof formData, value)}
+                      configuracion={configuracion}
+                      parametroId={param.id}
+                    />
+                  ))}
+                </div>
+              </CardContent>
+            </Card>
+          )}
         </div>
 
         {/* Columna Derecha */}
         <div className="space-y-6">
           {/* Bloque 3: Tensión Arterial y Pulsaciones */}
-          <Card className="shadow-sm border-border/50">
-            <CardContent className="pt-6">
-              <h3 className="text-lg font-semibold mb-4 text-destructive">Tensión Arterial y Pulsaciones</h3>
-              <div className="space-y-4">
-                <div className="grid grid-cols-2 gap-4">
-                  <ParametroInput
-                    id="systolic"
-                    label="Sistólica"
-                    unit="mmHg"
-                    value={formData.systolic}
-                    onChange={(value) => handleChange("systolic", value)}
-                    configuracion={configuracion}
-                    parametroId="systolic"
-                  />
-                  <ParametroInput
-                    id="diastolic"
-                    label="Diastólica"
-                    unit="mmHg"
-                    value={formData.diastolic}
-                    onChange={(value) => handleChange("diastolic", value)}
-                    configuracion={configuracion}
-                    parametroId="diastolic"
-                  />
+          {getParametrosGrupo("tension").length > 0 && (
+            <Card className="shadow-sm border-border/50">
+              <CardContent className="pt-6">
+                <h3 className="text-lg font-semibold mb-4 text-destructive">Tensión Arterial y Pulsaciones</h3>
+                <div className="space-y-4">
+                  {/* Sistólica y Diastólica en grid */}
+                  {(isParametroActivo("systolic") || isParametroActivo("diastolic")) && (
+                    <div className="grid grid-cols-2 gap-4">
+                      {isParametroActivo("systolic") && (
+                        <ParametroInput
+                          id="systolic"
+                          label="Sistólica"
+                          unit="mmHg"
+                          value={formData.systolic}
+                          onChange={(value) => handleChange("systolic", value)}
+                          configuracion={configuracion}
+                          parametroId="systolic"
+                        />
+                      )}
+                      {isParametroActivo("diastolic") && (
+                        <ParametroInput
+                          id="diastolic"
+                          label="Diastólica"
+                          unit="mmHg"
+                          value={formData.diastolic}
+                          onChange={(value) => handleChange("diastolic", value)}
+                          configuracion={configuracion}
+                          parametroId="diastolic"
+                        />
+                      )}
+                    </div>
+                  )}
+                  {isParametroActivo("pulsaciones") && (
+                    <ParametroInput
+                      id="pulsaciones"
+                      label="Pulsaciones"
+                      unit="lpm"
+                      value={formData.pulsaciones}
+                      onChange={(value) => handleChange("pulsaciones", value)}
+                      configuracion={configuracion}
+                      parametroId="pulsaciones"
+                    />
+                  )}
                 </div>
-                <ParametroInput
-                  id="pulsaciones"
-                  label="Pulsaciones"
-                  unit="lpm"
-                  value={formData.pulsaciones}
-                  onChange={(value) => handleChange("pulsaciones", value)}
-                  configuracion={configuracion}
-                  parametroId="pulsaciones"
-                />
-              </div>
-            </CardContent>
-          </Card>
+              </CardContent>
+            </Card>
+          )}
 
           {/* Bloque 4: Medidas Corporales */}
           <Card className="shadow-sm border-border/50">
@@ -643,7 +639,7 @@ export default function ServicioBio() {
               <Label htmlFor="observaciones">Observaciones</Label>
               <Textarea
                 id="observaciones"
-                placeholder="Anotaciones sobre el an?lisis..."
+                placeholder="Anotaciones sobre el análisis..."
                 value={formData.observaciones}
                 onChange={(e) => handleChange("observaciones", e.target.value)}
                 rows={6}
