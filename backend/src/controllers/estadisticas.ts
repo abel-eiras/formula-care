@@ -196,12 +196,10 @@ export async function obtenerProximasRevisiones(req: Request, res: Response) {
     // Obtener análisis dermocosméticos con próxima revisión
     const analisisConRevision = await prisma.analisisDermo.findMany({
       where: {
-        proximaRevision: {
-          not: null,
-        },
-        proximaRevision: {
-          gte: hoy,
-        },
+        AND: [
+          { proximaRevision: { not: null } },
+          { proximaRevision: { gte: hoy } },
+        ],
       },
       include: {
         paciente: {

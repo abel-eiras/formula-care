@@ -158,7 +158,15 @@ export async function actualizarEvento(req: Request, res: Response) {
     }
 
     // Preparar datos para actualizar
-    const datosActualizar: any = {};
+    const datosActualizar: {
+      nombre?: string;
+      activo?: boolean;
+      fechas?: string;
+      horas?: string;
+      duracion?: number;
+      maxAsistentes?: number;
+      descripcion?: string;
+    } = {};
     if (datos.nombre !== undefined) datosActualizar.nombre = datos.nombre;
     if (datos.activo !== undefined) datosActualizar.activo = datos.activo;
     if (datos.fechas !== undefined) datosActualizar.fechas = JSON.stringify(datos.fechas);

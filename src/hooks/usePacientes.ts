@@ -16,6 +16,9 @@ export function usePacientes(filtros?: FiltrosPacientes) {
       if (filtros?.busqueda) params.append('busqueda', filtros.busqueda);
       if (filtros?.email) params.append('email', filtros.email);
       if (filtros?.sexo) params.append('sexo', filtros.sexo);
+      if (filtros?.origen) params.append('origen', filtros.origen);
+      if (filtros?.edadMin !== undefined) params.append('edadMin', filtros.edadMin.toString());
+      if (filtros?.edadMax !== undefined) params.append('edadMax', filtros.edadMax.toString());
       if (filtros?.tieneDermo) params.append('tieneDermo', 'true');
       if (filtros?.tieneBio) params.append('tieneBio', 'true');
       if (filtros?.fechaDesde) params.append('fechaDesde', filtros.fechaDesde.toISOString());

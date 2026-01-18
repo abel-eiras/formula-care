@@ -11,6 +11,7 @@ import { LoadingSpinner } from "./components/ui/LoadingSpinner";
 const Index = lazy(() => import("./pages/Index"));
 const Pacientes = lazy(() => import("./pages/Pacientes"));
 const PacienteDetalle = lazy(() => import("./pages/PacienteDetalle"));
+const EditarPaciente = lazy(() => import("./pages/EditarPaciente"));
 const NuevoPaciente = lazy(() => import("./pages/NuevoPaciente"));
 const ServicioDermo = lazy(() => import("./pages/ServicioDermo"));
 const ServicioDermoPrint = lazy(() => import("./pages/ServicioDermoPrint"));
@@ -79,6 +80,7 @@ const App = () => (
             <Route path="pacientes" element={<Pacientes />} />
             <Route path="pacientes/nuevo" element={<NuevoPaciente />} />
             <Route path="pacientes/:id" element={<PacienteDetalle />} />
+            <Route path="pacientes/:id/editar" element={<EditarPaciente />} />
             <Route path="calendario" element={<Calendario />} />
             <Route path="servicios/dermo" element={<ServicioDermo />} />
             <Route path="servicios/bio" element={<ServicioBio />} />

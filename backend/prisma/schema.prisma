@@ -22,6 +22,7 @@ model Paciente {
   address     String?
   notes       String?
   lastVisit   String?  // Fecha en formato ISO
+  origen      String   @default("manual") // "manual" = registrado por farmacia, "autoregistro" = formulario público
   createdAt   DateTime @default(now())
   updatedAt   DateTime @updatedAt
 
@@ -34,6 +35,7 @@ model Paciente {
 
   @@index([name])
   @@index([phone])
+  @@index([origen])
 }
 
 // Modelo de Análisis Dermocosmético

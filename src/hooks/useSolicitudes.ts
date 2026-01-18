@@ -86,16 +86,25 @@ export function useSolicitud(id: string | null) {
 /**
  * Hook para aprobar una solicitud
  */
+// Tipo para la respuesta de aprobar solicitud
+interface AprobarSolicitudResponse {
+  solicitud: SolicitudCita;
+  cita: {
+    id: string;
+    titulo: string;
+    fecha: string;
+    hora: string;
+    tipo: string;
+  };
+  mensaje: string;
+}
+
 export function useAprobarSolicitud() {
   const queryClient = useQueryClient();
 
   return useMutation({
     mutationFn: async (id: string) => {
-      return api.post<{
-        solicitud: SolicitudCita;
-        cita: any;
-        mensaje: string;
-      }>(`/solicitudes/${id}/aprobar`);
+      return api.post<AprobarSolicitudResponse>(`/solicitudes/${id}/aprobar`);
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['solicitudes'] });

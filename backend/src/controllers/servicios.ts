@@ -2,6 +2,7 @@ import { Request, Response } from 'express';
 import { prisma } from '../lib/prisma.js';
 import { z } from 'zod';
 import { crearNotificacionRevision } from '../services/notificacionesService.js';
+import type { Prisma } from '@prisma/client';
 
 // Esquema de validación para análisis dermocosmético (plantilla completa)
 const crearAnalisisDermoSchema = z.object({
@@ -197,7 +198,7 @@ export async function obtenerTodosAnalisisDermo(req: Request, res: Response) {
       limit,
     } = req.query;
 
-    const condiciones: any[] = [];
+    const condiciones: Prisma.AnalisisDermoWhereInput[] = [];
 
     if (pacienteId) {
       condiciones.push({ pacienteId: pacienteId as string });
@@ -218,7 +219,7 @@ export async function obtenerTodosAnalisisDermo(req: Request, res: Response) {
     }
 
     if (fechaDesde || fechaHasta) {
-      const fechaFilter: any = {};
+      const fechaFilter: { gte?: string; lte?: string } = {};
       if (fechaDesde) {
         fechaFilter.gte = fechaDesde as string;
       }
@@ -394,12 +395,14 @@ export async function crearAnalisisBio(req: Request, res: Response) {
 
     // Manejar compatibilidad: si viene glucose, usar como glucemia
     const glucemia = datos.glucemia || datos.glucose;
+    
+    // Crear objeto sin el campo legacy 'glucose'
+    const { glucose: _glucose, ...datosLimpios } = datos;
 
     const analisis = await prisma.analisisBio.create({
       data: {
-        ...datos,
+        ...datosLimpios,
         glucemia,
-        glucose: undefined, // No guardar el campo legacy
         imc,
       },
       include: {
@@ -469,7 +472,7 @@ export async function obtenerTodosAnalisisBio(req: Request, res: Response) {
       limit,
     } = req.query;
 
-    const condiciones: any[] = [];
+    const condiciones: Prisma.AnalisisBioWhereInput[] = [];
 
     if (pacienteId) {
       condiciones.push({ pacienteId: pacienteId as string });
@@ -484,7 +487,7 @@ export async function obtenerTodosAnalisisBio(req: Request, res: Response) {
     }
 
     if (fechaDesde || fechaHasta) {
-      const fechaFilter: any = {};
+      const fechaFilter: { gte?: string; lte?: string } = {};
       if (fechaDesde) {
         fechaFilter.gte = fechaDesde as string;
       }
@@ -572,13 +575,15 @@ export async function actualizarAnalisisBio(req: Request, res: Response) {
 
     // Manejar compatibilidad: si viene glucose, usar como glucemia
     const glucemia = datos.glucemia || datos.glucose;
+    
+    // Crear objeto sin el campo legacy 'glucose'
+    const { glucose: _glucoseLegacy, ...datosLimpiosUpdate } = datos;
 
     const analisis = await prisma.analisisBio.update({
       where: { id },
       data: {
-        ...datos,
+        ...datosLimpiosUpdate,
         glucemia: glucemia !== undefined ? glucemia : undefined,
-        glucose: undefined, // No actualizar el campo legacy
         imc: imc !== undefined ? imc : undefined,
       },
       include: {

@@ -1,6 +1,7 @@
 import { Request, Response } from 'express';
 import { prisma } from '../lib/prisma.js';
 import { z } from 'zod';
+import type { Prisma } from '@prisma/client';
 
 // Esquema de validación para crear paciente
 const crearPacienteSchema = z.object({
@@ -25,7 +26,10 @@ export async function obtenerPacientes(req: Request, res: Response) {
     const { 
       busqueda, 
       email, 
-      sexo, 
+      sexo,
+      origen,
+      edadMin,
+      edadMax, 
       tieneDermo, 
       tieneBio,
       fechaDesde,
@@ -35,7 +39,7 @@ export async function obtenerPacientes(req: Request, res: Response) {
     } = req.query;
     
     // Construir condiciones de búsqueda
-    const condiciones: any[] = [];
+    const condiciones: Prisma.PacienteWhereInput[] = [];
     
     // Búsqueda general (nombre, teléfono, email)
     if (busqueda) {
@@ -58,10 +62,27 @@ export async function obtenerPacientes(req: Request, res: Response) {
     if (sexo && (sexo === 'M' || sexo === 'F' || sexo === 'O')) {
       condiciones.push({ sex: sexo });
     }
+
+    // Filtro por origen
+    if (origen && (origen === 'manual' || origen === 'autoregistro')) {
+      condiciones.push({ origen: origen });
+    }
+
+    // Filtro por rango de edad
+    if (edadMin !== undefined || edadMax !== undefined) {
+      const edadFilter: { gte?: number; lte?: number } = {};
+      if (edadMin) {
+        edadFilter.gte = parseInt(edadMin as string);
+      }
+      if (edadMax) {
+        edadFilter.lte = parseInt(edadMax as string);
+      }
+      condiciones.push({ age: edadFilter });
+    }
     
     // Filtro por fecha de creación
     if (fechaDesde || fechaHasta) {
-      const fechaFilter: any = {};
+      const fechaFilter: { gte?: Date; lte?: Date } = {};
       if (fechaDesde) {
         fechaFilter.gte = new Date(fechaDesde as string);
       }

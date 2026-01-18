@@ -16,11 +16,15 @@ dotenv.config();
 
 const app = express();
 const PORT = process.env.PORT || 3000;
-const CORS_ORIGIN = process.env.CORS_ORIGIN || 'http://localhost:5173';
+
+// Orígenes permitidos para CORS (desarrollo)
+const CORS_ORIGINS = process.env.CORS_ORIGIN 
+  ? process.env.CORS_ORIGIN.split(',') 
+  : ['http://localhost:5173', 'http://localhost:5174'];
 
 // Middleware
 app.use(cors({
-  origin: CORS_ORIGIN,
+  origin: CORS_ORIGINS,
   credentials: true,
 }));
 app.use(express.json());
@@ -61,5 +65,5 @@ app.use((err: Error, req: express.Request, res: express.Response, next: express.
 // Iniciar servidor
 app.listen(PORT, () => {
   console.log(`🚀 Servidor corriendo en http://localhost:${PORT}`);
-  console.log(`📡 CORS habilitado para: ${CORS_ORIGIN}`);
+  console.log(`📡 CORS habilitado para: ${CORS_ORIGINS.join(', ')}`);
 });

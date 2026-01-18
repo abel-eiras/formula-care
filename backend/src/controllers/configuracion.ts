@@ -355,7 +355,13 @@ export async function actualizarConfiguracionCalendario(req: Request, res: Respo
     });
 
     // Preparar datos para actualizar
-    const datosActualizar: any = {};
+    const datosActualizar: {
+      horariosPorTipo?: string;
+      fechasBloqueadas?: string;
+      horasBloqueadas?: string;
+      autoAceptar?: boolean;
+      duracionPorTipo?: string;
+    } = {};
 
     if (horariosPorTipo !== undefined) {
       datosActualizar.horariosPorTipo = JSON.stringify(horariosPorTipo);

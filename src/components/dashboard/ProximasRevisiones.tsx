@@ -5,8 +5,16 @@ import { ChevronRight, Calendar, Clock, User } from "lucide-react";
 import { Link } from "react-router-dom";
 import { useProximasRevisiones } from "@/hooks/useEstadisticas";
 import { LoadingSpinner } from "@/components/ui/LoadingSpinner";
-import { formatDistanceToNow } from "date-fns";
-import { es } from "date-fns/locale";
+
+// Tipo para revisión próxima
+interface RevisionProxima {
+  id: string;
+  pacienteId: string;
+  proximaRevision: string;
+  paciente?: {
+    name: string;
+  };
+}
 
 const formatearFecha = (fecha: string): string => {
   try {
@@ -54,7 +62,7 @@ export function ProximasRevisiones() {
       </CardHeader>
       <CardContent className="space-y-3">
         {revisiones.length > 0 ? (
-          revisiones.map((revision: any) => {
+          revisiones.map((revision: RevisionProxima) => {
             const fechaRevision = new Date(revision.proximaRevision);
             const diasRestantes = Math.ceil(
               (fechaRevision.getTime() - new Date().getTime()) / (1000 * 60 * 60 * 24)

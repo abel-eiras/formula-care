@@ -27,11 +27,11 @@ const actions = [
   },
   {
     title: "Agendar Cita",
-    description: "Próximamente",
+    description: "Nueva cita",
     icon: Calendar,
-    href: "#",
+    href: "/calendario",
     variant: "outline" as const,
-    disabled: true,
+    disabled: false,
   },
 ];
 

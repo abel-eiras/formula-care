@@ -132,10 +132,10 @@ export default function SolicitarCita() {
           description: 'Te contactaremos pronto para confirmar tu cita.',
         });
       }
-    } catch (error: any) {
+    } catch (error) {
       console.error('Error al enviar solicitud:', error);
       toast.error('Error al enviar solicitud', {
-        description: error?.message || 'Por favor, intenta de nuevo.',
+        description: error instanceof Error ? error.message : 'Por favor, intenta de nuevo.',
       });
     }
   };

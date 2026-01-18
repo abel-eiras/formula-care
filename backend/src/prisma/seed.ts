@@ -67,7 +67,7 @@ async function main() {
     data: {
       pacienteId: paciente2.id,
       fecha: '2024-01-14',
-      glucose: 95,
+      glucemia: 95, // Antes era 'glucose'
       cholesterol: 180,
       triglycerides: 120,
       systolic: 125,

@@ -3,11 +3,13 @@ import { api } from '@/lib/api';
 import type { Cita } from '@/types';
 
 /**
- * Hook para obtener las citas de un día específico
+ * Hook para obtener las citas
+ * Si se proporciona fecha, filtra por ese día
+ * Si no, obtiene todas las citas
  */
 export function useCitas(fecha?: Date) {
   return useQuery({
-    queryKey: ['citas', fecha?.toISOString()],
+    queryKey: ['citas', fecha?.toISOString().split('T')[0]],
     queryFn: async () => {
       const params = fecha ? `?fecha=${fecha.toISOString().split('T')[0]}` : '';
       return api.get<Cita[]>(`/citas${params}`);

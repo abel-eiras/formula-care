@@ -15,7 +15,7 @@ import { useConfiguracion } from "@/hooks/useConfiguracion";
 import { evaluarValor, getMensajeValoracion } from "@/lib/valoracionBio";
 import { cn } from "@/lib/utils";
 import type { AnalisisBio, ParametroReferencia } from "@/types";
-// Importación dinámica para reducir el bundle inicial
+// Importaci?n din?mica para reducir el bundle inicial
 const loadPDFGenerator = () => import("@/lib/pdfGenerator");
 
 // Componente para mostrar badge de valoraci?n
@@ -234,44 +234,44 @@ export default function ServicioBio() {
 
       if (analisisId) {
         await actualizarAnalisis.mutateAsync({ id: analisisId, ...datosAnalisis });
-        toast.success("Análisis actualizado correctamente");
+        toast.success("An?lisis actualizado correctamente");
       } else {
         const nuevoAnalisis = await crearAnalisis.mutateAsync(datosAnalisis);
-        toast.success("Análisis guardado correctamente");
-        // Actualizar la URL con el ID del análisis para habilitar los botones de imprimir y PDF
+        toast.success("An?lisis guardado correctamente");
+        // Actualizar la URL con el ID del an?lisis para habilitar los botones de imprimir y PDF
         if (nuevoAnalisis?.id) {
           navigate(`/servicios/bio?id=${nuevoAnalisis.id}&pacienteId=${pacienteId}`, { replace: true });
         }
       }
     } catch (error) {
-      console.error("Error al guardar an?lisis:", error);
-      toast.error("Error al guardar el an?lisis");
+      console.error("Error al guardar análisis:", error);
+      toast.error("Error al guardar el análisis");
     }
   };
 
   const handleImprimir = () => {
     if (!analisisId) {
-      toast.info("Guarde el análisis primero para imprimir");
+      toast.info("Guarde el an?lisis primero para imprimir");
       return;
     }
     
-    // Abrir vista de impresión en nueva pestaña
+    // Abrir vista de impresi?n en nueva pesta?a
     window.open(`/servicios/bio/print?id=${analisisId}`, "_blank");
   };
 
   const handleDescargarPDF = async () => {
     if (!analisisId) {
-      toast.info("Guarde el análisis primero para descargar el PDF");
+      toast.info("Guarde el an?lisis primero para descargar el PDF");
       return;
     }
 
     try {
       toast.info("Generando PDF...", { duration: 2000 });
       
-      // Cargar el generador de PDF dinámicamente
+      // Cargar el generador de PDF din?micamente
       const { generatePDFFromElement, generatePDFFilename } = await loadPDFGenerator();
       
-      // Abrir la página de impresión en un iframe oculto
+      // Abrir la p?gina de impresi?n en un iframe oculto
       const iframe = document.createElement('iframe');
       iframe.style.position = 'fixed';
       iframe.style.right = '-9999px';
@@ -281,19 +281,19 @@ export default function ServicioBio() {
       iframe.style.opacity = '0';
       document.body.appendChild(iframe);
 
-      // Marcar que es una descarga de PDF para evitar auto-impresión
+      // Marcar que es una descarga de PDF para evitar auto-impresi?n
       sessionStorage.setItem('pdfDownload', 'true');
 
       // Esperar a que el iframe cargue completamente
       await new Promise<void>((resolve, reject) => {
         const timeout = setTimeout(() => {
           sessionStorage.removeItem('pdfDownload');
-          reject(new Error('Timeout al cargar la página de impresión'));
+          reject(new Error('Timeout al cargar la p?gina de impresi?n'));
         }, 10000);
 
         iframe.onload = () => {
           clearTimeout(timeout);
-          // Esperar un poco más para que los estilos se apliquen
+          // Esperar un poco m?s para que los estilos se apliquen
           setTimeout(() => {
             resolve();
           }, 1000);
@@ -302,7 +302,7 @@ export default function ServicioBio() {
         iframe.onerror = () => {
           clearTimeout(timeout);
           sessionStorage.removeItem('pdfDownload');
-          reject(new Error('Error al cargar la página de impresión'));
+          reject(new Error('Error al cargar la p?gina de impresi?n'));
         };
 
         iframe.src = `/servicios/bio/print?id=${analisisId}`;
@@ -310,7 +310,7 @@ export default function ServicioBio() {
 
       const printPage = iframe.contentDocument?.querySelector('.print-page') as HTMLElement;
       if (!printPage) {
-        throw new Error('No se encontró el contenido para imprimir');
+        throw new Error('No se encontr? el contenido para imprimir');
       }
 
       const filename = generatePDFFilename(
@@ -331,7 +331,7 @@ export default function ServicioBio() {
       sessionStorage.removeItem('pdfDownload');
     } catch (error) {
       console.error("Error al descargar PDF:", error);
-      toast.error("Error al generar el PDF. Usa la opción de imprimir del navegador.");
+      toast.error("Error al generar el PDF. Usa la opci?n de imprimir del navegador.");
       sessionStorage.removeItem('pdfDownload');
       // Limpiar iframe si existe
       const iframe = document.querySelector('iframe[style*="-9999px"]');
@@ -357,9 +357,9 @@ export default function ServicioBio() {
           <div>
             <h1 className="text-2xl font-bold text-foreground flex items-center gap-2">
               <FlaskConical className="h-6 w-6 text-primary" />
-              An?lisis Bioqu?mico
+              Análisis Bioquímico
             </h1>
-            <p className="text-muted-foreground">Par?metros de salud</p>
+            <p className="text-muted-foreground">Parámetros de salud</p>
           </div>
         </div>
         <div className="flex gap-2">
@@ -373,7 +373,7 @@ export default function ServicioBio() {
           </Button>
           <Button size="lg" onClick={handleSubmit} className="shadow-md gap-2" disabled={isLoading}>
             <Save className="h-5 w-5" />
-            {isLoading ? "Guardando..." : analisisId ? "Actualizar" : "Guardar An?lisis"}
+            {isLoading ? "Guardando..." : analisisId ? "Actualizar" : "Guardar Análisis"}
           </Button>
         </div>
       </div>
@@ -408,10 +408,10 @@ export default function ServicioBio() {
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
         {/* Columna Izquierda */}
         <div className="space-y-6">
-          {/* Bloque 1: Par?metros B?sicos */}
+          {/* Bloque 1: Parámetros Básicos */}
           <Card className="shadow-sm border-border/50">
             <CardContent className="pt-6">
-              <h3 className="text-lg font-semibold mb-4 text-primary">Par?metros B?sicos</h3>
+              <h3 className="text-lg font-semibold mb-4 text-primary">Parámetros Básicos</h3>
               <div className="space-y-4">
                 <ParametroInput
                   id="glucemia"
@@ -451,7 +451,7 @@ export default function ServicioBio() {
                 />
                 <ParametroInput
                   id="triglycerides"
-                  label="Triglic?ridos"
+                  label="Triglicéridos"
                   unit="mg/dL"
                   value={formData.triglycerides}
                   onChange={(value) => handleChange("triglycerides", value)}
@@ -462,10 +462,10 @@ export default function ServicioBio() {
             </CardContent>
           </Card>
 
-          {/* Bloque 2: Par?metros Avanzados */}
+          {/* Bloque 2: Parámetros Avanzados */}
           <Card className="shadow-sm border-border/50">
             <CardContent className="pt-6">
-              <h3 className="text-lg font-semibold mb-4 text-secondary">Par?metros Avanzados</h3>
+              <h3 className="text-lg font-semibold mb-4 text-secondary">Parámetros Avanzados</h3>
               <div className="space-y-4">
                 <ParametroInput
                   id="hemoglobinaGlucosilada"
@@ -478,7 +478,7 @@ export default function ServicioBio() {
                 />
                 <ParametroInput
                   id="proteinaCReactiva"
-                  label="Prote?na C Reactiva - PCR"
+                  label="Proteína C Reactiva - PCR"
                   unit="mg/L"
                   value={formData.proteinaCReactiva}
                   onChange={(value) => handleChange("proteinaCReactiva", value)}
@@ -510,15 +510,15 @@ export default function ServicioBio() {
 
         {/* Columna Derecha */}
         <div className="space-y-6">
-          {/* Bloque 3: Tensi?n Arterial y Pulsaciones */}
+          {/* Bloque 3: Tensión Arterial y Pulsaciones */}
           <Card className="shadow-sm border-border/50">
             <CardContent className="pt-6">
-              <h3 className="text-lg font-semibold mb-4 text-destructive">Tensi?n Arterial y Pulsaciones</h3>
+              <h3 className="text-lg font-semibold mb-4 text-destructive">Tensión Arterial y Pulsaciones</h3>
               <div className="space-y-4">
                 <div className="grid grid-cols-2 gap-4">
                   <ParametroInput
                     id="systolic"
-                    label="Sist?lica"
+                    label="Sistólica"
                     unit="mmHg"
                     value={formData.systolic}
                     onChange={(value) => handleChange("systolic", value)}
@@ -527,7 +527,7 @@ export default function ServicioBio() {
                   />
                   <ParametroInput
                     id="diastolic"
-                    label="Diast?lica"
+                    label="Diastólica"
                     unit="mmHg"
                     value={formData.diastolic}
                     onChange={(value) => handleChange("diastolic", value)}
@@ -581,7 +581,7 @@ export default function ServicioBio() {
                     <div className="flex items-center justify-between">
                       <div>
                         <div className="flex items-center gap-2">
-                          <Label className="text-sm font-semibold">?ndice de Masa Corporal (IMC)</Label>
+                          <Label className="text-sm font-semibold">Índice de Masa Corporal (IMC)</Label>
                           {configuracion?.valoracionBioActiva && estadoIMC && (
                             <ValoracionBadge
                               valor={imc}
@@ -596,7 +596,7 @@ export default function ServicioBio() {
                           estadoIMC === "advertencia" && "text-warning",
                           estadoIMC === "critico" && "text-destructive"
                         )}>
-                          {imc} kg/m?
+                          {imc} kg/m²
                         </p>
                       </div>
                       <div className="text-right">
@@ -621,7 +621,7 @@ export default function ServicioBio() {
           <Card className="shadow-sm border-border/50">
             <CardContent className="pt-6">
               <div className="space-y-2">
-                <Label htmlFor="fecha">Fecha del An?lisis</Label>
+                <Label htmlFor="fecha">Fecha del Análisis</Label>
                 <Input
                   id="fecha"
                   type="date"
@@ -643,7 +643,7 @@ export default function ServicioBio() {
               <Label htmlFor="observaciones">Observaciones</Label>
               <Textarea
                 id="observaciones"
-                placeholder="Anotaciones sobre el análisis..."
+                placeholder="Anotaciones sobre el an?lisis..."
                 value={formData.observaciones}
                 onChange={(e) => handleChange("observaciones", e.target.value)}
                 rows={6}

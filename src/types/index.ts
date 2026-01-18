@@ -74,6 +74,7 @@ export interface Paciente {
   address?: string;
   notes?: string;
   lastVisit?: string;
+  origen?: 'manual' | 'autoregistro'; // "manual" = registrado por farmacia, "autoregistro" = formulario público
   createdAt?: string;
   updatedAt?: string;
 }
@@ -137,6 +138,24 @@ export interface ConfiguracionCalendario {
 }
 
 // Tipos auxiliares para ConfiguracionCalendario
+export interface Cita {
+  id: string;
+  titulo: string;
+  pacienteId: string;
+  fecha: string; // Formato ISO
+  hora: string; // Formato "HH:mm"
+  tipo: 'dermo' | 'bio' | 'consulta' | 'seguimiento';
+  notas?: string;
+  recordatorioEnviado?: boolean;
+  createdAt?: string;
+  updatedAt?: string;
+  paciente?: {
+    id: string;
+    name: string;
+    phone?: string;
+  };
+}
+
 export type DiaSemana = 'lunes' | 'martes' | 'miercoles' | 'jueves' | 'viernes' | 'sabado' | 'domingo';
 
 export interface HorariosPorTipo {
@@ -147,4 +166,17 @@ export interface HorariosPorTipo {
 
 export interface DuracionPorTipo {
   [tipo: string]: number; // Duración en minutos
+}
+
+export interface Evento {
+  id: string;
+  nombre: string;
+  activo: boolean;
+  fechas: string; // JSON array de fechas
+  horas: string; // JSON array de rangos horarios
+  duracion: number; // En minutos
+  maxAsistentes: number;
+  descripcion?: string;
+  createdAt?: string;
+  updatedAt?: string;
 }

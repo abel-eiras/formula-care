@@ -618,11 +618,10 @@ function CalendarioTab() {
         maxAsistentes: 1,
         activo: true,
       });
-    } catch (error: any) {
+    } catch (error) {
       console.error('Error al crear evento:', error);
-      const errorMessage = error?.response?.data?.error || error?.message || 'Error al crear el evento';
-      const detalles = error?.response?.data?.detalles;
-      toast.error(detalles ? `${errorMessage}: ${JSON.stringify(detalles)}` : errorMessage);
+      const errorMessage = error instanceof Error ? error.message : 'Error al crear el evento';
+      toast.error(errorMessage);
     }
   };
 
