@@ -6,9 +6,12 @@ import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { BrowserRouter, Routes, Route, Outlet } from "react-router-dom";
 import { MainLayout } from "./components/layout/MainLayout";
 import { LoadingSpinner } from "./components/ui/LoadingSpinner";
+import { AuthProvider } from "./contexts/AuthContext";
+import { ProtectedRoute } from "./components/auth/ProtectedRoute";
 
 // Lazy loading de páginas para code splitting (mejora bundle size)
 const Index = lazy(() => import("./pages/Index"));
+const Login = lazy(() => import("./pages/Login"));
 const Pacientes = lazy(() => import("./pages/Pacientes"));
 const PacienteDetalle = lazy(() => import("./pages/PacienteDetalle"));
 const EditarPaciente = lazy(() => import("./pages/EditarPaciente"));
@@ -38,56 +41,72 @@ const App = () => (
       <Toaster />
       <Sonner />
       <BrowserRouter>
-        <Routes>
-          {/* Rutas públicas sin layout - deben ir antes */}
-          <Route
-            path="/solicitar-cita"
-            element={
-              <Suspense fallback={<LoadingSpinner />}>
-                <SolicitarCita />
-              </Suspense>
-            }
-          />
-          {/* Rutas de impresión sin layout */}
-          <Route
-            path="/servicios/dermo/print"
-            element={
-              <Suspense fallback={<LoadingSpinner />}>
-                <ServicioDermoPrint />
-              </Suspense>
-            }
-          />
-          <Route
-            path="/servicios/bio/print"
-            element={
-              <Suspense fallback={<LoadingSpinner />}>
-                <ServicioBioPrint />
-              </Suspense>
-            }
-          />
-          {/* Rutas con layout usando Outlet */}
-          <Route
-            path="/"
-            element={
-              <MainLayout>
+        <AuthProvider>
+          <Routes>
+            {/* Rutas públicas sin autenticación */}
+            <Route
+              path="/login"
+              element={
                 <Suspense fallback={<LoadingSpinner />}>
-                  <Outlet />
+                  <Login />
                 </Suspense>
-              </MainLayout>
-            }
-          >
-            <Route index element={<Index />} />
-            <Route path="pacientes" element={<Pacientes />} />
-            <Route path="pacientes/nuevo" element={<NuevoPaciente />} />
-            <Route path="pacientes/:id" element={<PacienteDetalle />} />
-            <Route path="pacientes/:id/editar" element={<EditarPaciente />} />
-            <Route path="calendario" element={<Calendario />} />
-            <Route path="servicios/dermo" element={<ServicioDermo />} />
-            <Route path="servicios/bio" element={<ServicioBio />} />
-            <Route path="configuracion" element={<Configuracion />} />
-            <Route path="*" element={<NotFound />} />
-          </Route>
-        </Routes>
+              }
+            />
+            <Route
+              path="/solicitar-cita"
+              element={
+                <Suspense fallback={<LoadingSpinner />}>
+                  <SolicitarCita />
+                </Suspense>
+              }
+            />
+            {/* Rutas de impresión (protegidas) */}
+            <Route
+              path="/servicios/dermo/print"
+              element={
+                <ProtectedRoute>
+                  <Suspense fallback={<LoadingSpinner />}>
+                    <ServicioDermoPrint />
+                  </Suspense>
+                </ProtectedRoute>
+              }
+            />
+            <Route
+              path="/servicios/bio/print"
+              element={
+                <ProtectedRoute>
+                  <Suspense fallback={<LoadingSpinner />}>
+                    <ServicioBioPrint />
+                  </Suspense>
+                </ProtectedRoute>
+              }
+            />
+            {/* Rutas protegidas con layout */}
+            <Route
+              path="/"
+              element={
+                <ProtectedRoute>
+                  <MainLayout>
+                    <Suspense fallback={<LoadingSpinner />}>
+                      <Outlet />
+                    </Suspense>
+                  </MainLayout>
+                </ProtectedRoute>
+              }
+            >
+              <Route index element={<Index />} />
+              <Route path="pacientes" element={<Pacientes />} />
+              <Route path="pacientes/nuevo" element={<NuevoPaciente />} />
+              <Route path="pacientes/:id" element={<PacienteDetalle />} />
+              <Route path="pacientes/:id/editar" element={<EditarPaciente />} />
+              <Route path="calendario" element={<Calendario />} />
+              <Route path="servicios/dermo" element={<ServicioDermo />} />
+              <Route path="servicios/bio" element={<ServicioBio />} />
+              <Route path="configuracion" element={<Configuracion />} />
+              <Route path="*" element={<NotFound />} />
+            </Route>
+          </Routes>
+        </AuthProvider>
       </BrowserRouter>
     </TooltipProvider>
   </QueryClientProvider>

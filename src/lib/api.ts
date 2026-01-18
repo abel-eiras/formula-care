@@ -41,12 +41,67 @@ if (import.meta.env.DEV) {
 
 /**
  * Cliente HTTP simple para hacer peticiones a la API
+ * Incluye soporte para autenticación JWT
  */
 class ApiClient {
   private baseURL: string;
+  private authToken: string | null = null;
 
   constructor(baseURL: string) {
     this.baseURL = baseURL;
+    // Cargar token de localStorage al iniciar
+    if (typeof window !== 'undefined') {
+      this.authToken = localStorage.getItem('auth_token');
+    }
+  }
+
+  /**
+   * Configura el token de autenticación
+   */
+  setAuthToken(token: string | null) {
+    this.authToken = token;
+  }
+
+  /**
+   * Obtiene los headers comunes incluyendo autenticación si existe
+   */
+  private getHeaders(): HeadersInit {
+    const headers: HeadersInit = {
+      'Content-Type': 'application/json',
+    };
+
+    if (this.authToken) {
+      headers['Authorization'] = `Bearer ${this.authToken}`;
+    }
+
+    return headers;
+  }
+
+  /**
+   * Maneja errores de respuesta, incluyendo 401 (token expirado)
+   */
+  private async handleResponseError(response: Response): Promise<never> {
+    let errorMessage = `${response.status}: ${response.statusText}`;
+    
+    try {
+      const errorData = await response.json();
+      if (errorData.error) {
+        errorMessage = errorData.mensaje || errorData.error;
+      }
+    } catch {
+      // Si no se puede parsear el JSON, usar el mensaje por defecto
+    }
+
+    // Si es 401, limpiar la sesión
+    if (response.status === 401 && typeof window !== 'undefined') {
+      localStorage.removeItem('auth_token');
+      localStorage.removeItem('auth_user');
+      this.authToken = null;
+      // Redirigir a login
+      window.location.href = '/login';
+    }
+
+    throw new Error(errorMessage);
   }
 
   /**
@@ -55,13 +110,11 @@ class ApiClient {
   async get<T>(endpoint: string): Promise<T> {
     const response = await fetch(`${this.baseURL}${endpoint}`, {
       method: 'GET',
-      headers: {
-        'Content-Type': 'application/json',
-      },
+      headers: this.getHeaders(),
     });
 
     if (!response.ok) {
-      throw new Error(`Error ${response.status}: ${response.statusText}`);
+      await this.handleResponseError(response);
     }
 
     return response.json();
@@ -73,27 +126,12 @@ class ApiClient {
   async post<T>(endpoint: string, data: unknown): Promise<T> {
     const response = await fetch(`${this.baseURL}${endpoint}`, {
       method: 'POST',
-      headers: {
-        'Content-Type': 'application/json',
-      },
+      headers: this.getHeaders(),
       body: JSON.stringify(data),
     });
 
     if (!response.ok) {
-      // Intentar obtener el mensaje de error del backend
-      let errorMessage = `${response.status}: ${response.statusText}`;
-      try {
-        const errorData = await response.json();
-        if (errorData.error) {
-          errorMessage = `Error ${response.status}: ${errorData.error}`;
-          if (errorData.detalles) {
-            errorMessage += ` - ${JSON.stringify(errorData.detalles)}`;
-          }
-        }
-      } catch {
-        // Si no se puede parsear el JSON, usar el mensaje por defecto
-      }
-      throw new Error(errorMessage);
+      await this.handleResponseError(response);
     }
 
     return response.json();
@@ -105,14 +143,12 @@ class ApiClient {
   async put<T>(endpoint: string, data: unknown): Promise<T> {
     const response = await fetch(`${this.baseURL}${endpoint}`, {
       method: 'PUT',
-      headers: {
-        'Content-Type': 'application/json',
-      },
+      headers: this.getHeaders(),
       body: JSON.stringify(data),
     });
 
     if (!response.ok) {
-      throw new Error(`Error ${response.status}: ${response.statusText}`);
+      await this.handleResponseError(response);
     }
 
     return response.json();
@@ -124,13 +160,11 @@ class ApiClient {
   async delete<T>(endpoint: string): Promise<T> {
     const response = await fetch(`${this.baseURL}${endpoint}`, {
       method: 'DELETE',
-      headers: {
-        'Content-Type': 'application/json',
-      },
+      headers: this.getHeaders(),
     });
 
     if (!response.ok) {
-      throw new Error(`Error ${response.status}: ${response.statusText}`);
+      await this.handleResponseError(response);
     }
 
     return response.json();

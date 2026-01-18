@@ -10,6 +10,24 @@ datasource db {
   url      = env("DATABASE_URL")
 }
 
+// ==========================================
+// MODELO DE USUARIO (Autenticación)
+// ==========================================
+model Usuario {
+  id            String   @id @default(cuid())
+  email         String   @unique
+  password      String   // Hash bcrypt
+  nombre        String
+  rol           String   @default("usuario") // "admin", "farmaceutico", "usuario"
+  activo        Boolean  @default(true)
+  ultimoAcceso  DateTime?
+  createdAt     DateTime @default(now())
+  updatedAt     DateTime @updatedAt
+
+  @@index([email])
+  @@index([rol])
+}
+
 // Modelo de Paciente
 model Paciente {
   id          String   @id @default(cuid())

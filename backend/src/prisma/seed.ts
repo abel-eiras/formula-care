@@ -1,4 +1,5 @@
 import { PrismaClient } from '@prisma/client';
+import bcrypt from 'bcryptjs';
 
 const prisma = new PrismaClient();
 
@@ -7,6 +8,30 @@ const prisma = new PrismaClient();
  */
 async function main() {
   console.log('🌱 Sembrando base de datos...');
+
+  // ==========================================
+  // CREAR USUARIO ADMIN POR DEFECTO
+  // ==========================================
+  const existeAdmin = await prisma.usuario.findFirst({
+    where: { rol: 'admin' }
+  });
+
+  if (!existeAdmin) {
+    const salt = await bcrypt.genSalt(10);
+    const passwordHash = await bcrypt.hash('admin123', salt);
+
+    await prisma.usuario.create({
+      data: {
+        email: 'admin@farmaciapontevea.com',
+        password: passwordHash,
+        nombre: 'Administrador',
+        rol: 'admin',
+      },
+    });
+    console.log('✅ Usuario admin creado: admin@farmaciapontevea.com / admin123');
+  } else {
+    console.log('ℹ️ Ya existe un usuario admin');
+  }
 
   // Crear pacientes de ejemplo
   const paciente1 = await prisma.paciente.create({

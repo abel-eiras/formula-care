@@ -6,12 +6,14 @@ import {
   CalendarDays,
   Settings,
   LogOut,
-  Menu
+  Menu,
+  User
 } from "lucide-react";
-import { NavLink, useLocation } from "react-router-dom";
+import { NavLink, useLocation, useNavigate } from "react-router-dom";
 import { cn } from "@/lib/utils";
 import { Button } from "@/components/ui/button";
 import { useState } from "react";
+import { useAuthContext } from "@/contexts/AuthContext";
 
 const navigationItems = [
   {
@@ -43,7 +45,14 @@ const navigationItems = [
 
 export function AppSidebar() {
   const location = useLocation();
+  const navigate = useNavigate();
+  const { usuario, logout } = useAuthContext();
   const [collapsed, setCollapsed] = useState(false);
+
+  const handleLogout = () => {
+    logout();
+    navigate('/login');
+  };
 
   return (
     <aside 
@@ -100,6 +109,18 @@ export function AppSidebar() {
 
       {/* Footer */}
       <div className="p-3 border-t border-sidebar-border space-y-2">
+        {/* Usuario actual */}
+        {usuario && !collapsed && (
+          <div className="px-4 py-2 text-xs text-sidebar-muted">
+            <div className="flex items-center gap-2">
+              <User className="h-4 w-4" />
+              <div className="truncate">
+                <p className="font-medium text-sidebar-foreground truncate">{usuario.nombre}</p>
+                <p className="truncate">{usuario.email}</p>
+              </div>
+            </div>
+          </div>
+        )}
         <NavLink
           to="/configuracion"
           className={cn(
@@ -112,9 +133,10 @@ export function AppSidebar() {
           {!collapsed && <span>Configuración</span>}
         </NavLink>
         <button
+          onClick={handleLogout}
           className={cn(
             "flex items-center gap-3 px-4 py-3 rounded-lg transition-all duration-200 w-full",
-            "text-sidebar-muted hover:bg-sidebar-accent hover:text-sidebar-accent-foreground",
+            "text-sidebar-muted hover:bg-destructive/10 hover:text-destructive",
             collapsed && "justify-center px-3"
           )}
         >
