@@ -1,6 +1,7 @@
 import { Request, Response } from 'express';
 import { prisma } from '../lib/prisma.js';
 import { verificarDisponibilidad } from '../services/disponibilidadService.js';
+import { getQueryString, getParamString } from '../lib/queryHelpers.js';
 
 /**
  * Obtener todas las solicitudes con filtro opcional por estado
@@ -8,12 +9,10 @@ import { verificarDisponibilidad } from '../services/disponibilidadService.js';
  */
 export async function obtenerSolicitudes(req: Request, res: Response) {
   try {
-    const { estado } = req.query;
+    const estado = getQueryString(req.query.estado);
 
     const where = estado
-      ? {
-          estado: estado as string,
-        }
+      ? { estado }
       : {};
 
     const solicitudes = await prisma.solicitudCita.findMany({
@@ -54,7 +53,7 @@ export async function obtenerSolicitudes(req: Request, res: Response) {
  */
 export async function obtenerSolicitud(req: Request, res: Response) {
   try {
-    const { id } = req.params;
+    const id = getParamString(req.params.id);
 
     const solicitud = await prisma.solicitudCita.findUnique({
       where: { id },
@@ -81,31 +80,31 @@ export async function obtenerSolicitud(req: Request, res: Response) {
  */
 export async function aprobarSolicitud(req: Request, res: Response) {
   try {
-    const { id } = req.params;
+    const id = getParamString(req.params.id);
 
-    // Obtener la solicitud
-    const solicitud = await prisma.solicitudCita.findUnique({
+    // Obtener la solicitud con el paciente incluido
+    const solicitudConPaciente = await prisma.solicitudCita.findUnique({
       where: { id },
       include: {
         paciente: true,
       },
     });
 
-    if (!solicitud) {
+    if (!solicitudConPaciente) {
       return res.status(404).json({ error: 'Solicitud no encontrada' });
     }
 
-    if (solicitud.estado !== 'pendiente') {
+    if (solicitudConPaciente.estado !== 'pendiente') {
       return res.status(400).json({
-        error: `La solicitud ya está ${solicitud.estado}`,
+        error: `La solicitud ya está ${solicitudConPaciente.estado}`,
       });
     }
 
     // Verificar disponibilidad (por si acaso cambió desde que se creó)
     const disponible = await verificarDisponibilidad(
-      solicitud.tipo,
-      solicitud.fecha,
-      solicitud.hora
+      solicitudConPaciente.tipo,
+      solicitudConPaciente.fecha,
+      solicitudConPaciente.hora
     );
 
     if (!disponible) {
@@ -115,13 +114,13 @@ export async function aprobarSolicitud(req: Request, res: Response) {
     }
 
     // Buscar o crear paciente
-    let paciente = solicitud.paciente;
+    let paciente = solicitudConPaciente.paciente;
 
     if (!paciente) {
       // Si no tiene paciente asociado, buscarlo por email o crearlo
       paciente = await prisma.paciente.findFirst({
         where: {
-          email: solicitud.emailCliente,
+          email: solicitudConPaciente.emailCliente,
         },
       });
 
@@ -129,9 +128,9 @@ export async function aprobarSolicitud(req: Request, res: Response) {
         // Crear paciente con datos de la solicitud
         paciente = await prisma.paciente.create({
           data: {
-            name: solicitud.nombreCliente,
-            email: solicitud.emailCliente,
-            phone: solicitud.telefonoCliente,
+            name: solicitudConPaciente.nombreCliente,
+            email: solicitudConPaciente.emailCliente,
+            phone: solicitudConPaciente.telefonoCliente,
             age: 0, // Se puede actualizar después
             sex: 'O', // Por defecto "Otro"
           },
@@ -142,12 +141,12 @@ export async function aprobarSolicitud(req: Request, res: Response) {
     // Crear la cita
     const cita = await prisma.cita.create({
       data: {
-        titulo: `Cita ${solicitud.tipo} - ${solicitud.nombreCliente}`,
+        titulo: `Cita ${solicitudConPaciente.tipo} - ${solicitudConPaciente.nombreCliente}`,
         pacienteId: paciente.id,
-        fecha: solicitud.fecha,
-        hora: solicitud.hora,
-        tipo: solicitud.tipo,
-        notas: solicitud.notas || `Solicitud aprobada desde panel de administración`,
+        fecha: solicitudConPaciente.fecha,
+        hora: solicitudConPaciente.hora,
+        tipo: solicitudConPaciente.tipo,
+        notas: solicitudConPaciente.notas || `Solicitud aprobada desde panel de administración`,
       },
     });
 
@@ -185,7 +184,7 @@ export async function aprobarSolicitud(req: Request, res: Response) {
         pacienteId: paciente.id,
         tipo: 'cita',
         mensaje: {
-          contains: `solicitado una cita ${solicitud.tipo}`,
+          contains: `solicitado una cita ${solicitudConPaciente.tipo}`,
         },
       },
     });
@@ -200,8 +199,8 @@ export async function aprobarSolicitud(req: Request, res: Response) {
         },
         data: {
           citaId: cita.id,
-          titulo: `Cita ${solicitud.tipo} aprobada`,
-          mensaje: `Se ha aprobado la solicitud de cita ${solicitud.tipo} para ${solicitud.nombreCliente} el ${solicitud.fecha} a las ${solicitud.hora}`,
+          titulo: `Cita ${solicitudConPaciente.tipo} aprobada`,
+          mensaje: `Se ha aprobado la solicitud de cita ${solicitudConPaciente.tipo} para ${solicitudConPaciente.nombreCliente} el ${solicitudConPaciente.fecha} a las ${solicitudConPaciente.hora}`,
           leida: false,
         },
       });
@@ -212,8 +211,8 @@ export async function aprobarSolicitud(req: Request, res: Response) {
           tipo: 'cita',
           pacienteId: paciente.id,
           citaId: cita.id,
-          titulo: `Cita ${solicitud.tipo} aprobada`,
-          mensaje: `Se ha aprobado la solicitud de cita ${solicitud.tipo} para ${solicitud.nombreCliente} el ${solicitud.fecha} a las ${solicitud.hora}`,
+          titulo: `Cita ${solicitudConPaciente.tipo} aprobada`,
+          mensaje: `Se ha aprobado la solicitud de cita ${solicitudConPaciente.tipo} para ${solicitudConPaciente.nombreCliente} el ${solicitudConPaciente.fecha} a las ${solicitudConPaciente.hora}`,
           canal: 'interno',
           enviada: false,
           leida: false,
@@ -245,7 +244,7 @@ export async function aprobarSolicitud(req: Request, res: Response) {
  */
 export async function rechazarSolicitud(req: Request, res: Response) {
   try {
-    const { id } = req.params;
+    const id = getParamString(req.params.id);
     const { motivo } = req.body; // Opcional: motivo del rechazo
 
     // Obtener la solicitud

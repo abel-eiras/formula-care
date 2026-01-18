@@ -1,6 +1,7 @@
 import { Request, Response } from 'express';
 import { z } from 'zod';
 import { prisma } from '../lib/prisma.js';
+import { getParamString } from '../lib/queryHelpers.js';
 
 // Esquema de validación para crear/actualizar evento
 const eventoSchema = z.object({
@@ -68,7 +69,7 @@ export async function obtenerEventosActivos(req: Request, res: Response) {
  */
 export async function obtenerEvento(req: Request, res: Response) {
   try {
-    const { id } = req.params;
+    const id = getParamString(req.params.id);
 
     const evento = await prisma.evento.findUnique({
       where: { id },
@@ -145,7 +146,7 @@ export async function crearEvento(req: Request, res: Response) {
  */
 export async function actualizarEvento(req: Request, res: Response) {
   try {
-    const { id } = req.params;
+    const id = getParamString(req.params.id);
     const datos = eventoSchema.partial().parse(req.body);
 
     // Verificar que el evento existe
@@ -206,7 +207,7 @@ export async function actualizarEvento(req: Request, res: Response) {
  */
 export async function eliminarEvento(req: Request, res: Response) {
   try {
-    const { id } = req.params;
+    const id = getParamString(req.params.id);
 
     const evento = await prisma.evento.findUnique({
       where: { id },

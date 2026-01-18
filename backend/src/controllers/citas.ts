@@ -1,6 +1,7 @@
 import { Request, Response } from 'express';
 import { prisma } from '../lib/prisma.js';
 import { z } from 'zod';
+import { getQueryString, getParamString } from '../lib/queryHelpers.js';
 
 // Esquema de validación para crear cita
 const crearCitaSchema = z.object({
@@ -20,12 +21,10 @@ const actualizarCitaSchema = crearCitaSchema.partial();
  */
 export async function obtenerCitas(req: Request, res: Response) {
   try {
-    const { fecha } = req.query;
+    const fecha = getQueryString(req.query.fecha);
 
     const where = fecha
-      ? {
-          fecha: fecha as string,
-        }
+      ? { fecha }
       : {};
 
     const citas = await prisma.cita.findMany({
@@ -57,7 +56,7 @@ export async function obtenerCitas(req: Request, res: Response) {
  */
 export async function obtenerCita(req: Request, res: Response) {
   try {
-    const { id } = req.params;
+    const id = getParamString(req.params.id);
 
     const cita = await prisma.cita.findUnique({
       where: { id },
@@ -126,7 +125,7 @@ export async function crearCita(req: Request, res: Response) {
  */
 export async function actualizarCita(req: Request, res: Response) {
   try {
-    const { id } = req.params;
+    const id = getParamString(req.params.id);
     const datos = actualizarCitaSchema.parse(req.body);
 
     // Si se actualiza el pacienteId, verificar que existe
@@ -153,7 +152,7 @@ export async function actualizarCita(req: Request, res: Response) {
     // Obtener paciente (puede haber cambiado)
     const pacienteActual = datos.pacienteId
       ? await prisma.paciente.findUnique({ where: { id: datos.pacienteId } })
-      : citaAnterior.paciente;
+      : citaAnterior.paciente; // citaAnterior incluye paciente por el include
 
     if (!pacienteActual) {
       return res.status(404).json({ error: 'Paciente no encontrado' });
@@ -197,7 +196,7 @@ export async function actualizarCita(req: Request, res: Response) {
  */
 export async function eliminarCita(req: Request, res: Response) {
   try {
-    const { id } = req.params;
+    const id = getParamString(req.params.id);
 
     await prisma.cita.delete({
       where: { id },

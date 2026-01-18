@@ -2,6 +2,7 @@ import { Request, Response } from 'express';
 import { prisma } from '../lib/prisma.js';
 import { z } from 'zod';
 import type { Prisma } from '@prisma/client';
+import { getQueryString, getParamString, getQueryNumber } from '../lib/queryHelpers.js';
 
 // Esquema de validación para crear paciente
 const crearPacienteSchema = z.object({
@@ -23,39 +24,36 @@ const actualizarPacienteSchema = crearPacienteSchema.partial();
  */
 export async function obtenerPacientes(req: Request, res: Response) {
   try {
-    const { 
-      busqueda, 
-      email, 
-      sexo,
-      origen,
-      edadMin,
-      edadMax, 
-      tieneDermo, 
-      tieneBio,
-      fechaDesde,
-      fechaHasta,
-      ordenarPor = 'createdAt',
-      orden = 'desc'
-    } = req.query;
+    const busqueda = getQueryString(req.query.busqueda);
+    const email = getQueryString(req.query.email);
+    const sexo = getQueryString(req.query.sexo);
+    const origen = getQueryString(req.query.origen);
+    const edadMin = getQueryNumber(req.query.edadMin);
+    const edadMax = getQueryNumber(req.query.edadMax);
+    const tieneDermo = getQueryString(req.query.tieneDermo);
+    const tieneBio = getQueryString(req.query.tieneBio);
+    const fechaDesde = getQueryString(req.query.fechaDesde);
+    const fechaHasta = getQueryString(req.query.fechaHasta);
+    const ordenarPor = getQueryString(req.query.ordenarPor) ?? 'createdAt';
+    const orden = getQueryString(req.query.orden) ?? 'desc';
     
     // Construir condiciones de búsqueda
     const condiciones: Prisma.PacienteWhereInput[] = [];
     
     // Búsqueda general (nombre, teléfono, email)
     if (busqueda) {
-      const term = busqueda as string;
       condiciones.push({
         OR: [
-          { name: { contains: term } },
-          { phone: { contains: term } },
-          { email: { contains: term } },
+          { name: { contains: busqueda } },
+          { phone: { contains: busqueda } },
+          { email: { contains: busqueda } },
         ],
       });
     }
     
     // Filtro por email específico
     if (email) {
-      condiciones.push({ email: { contains: email as string } });
+      condiciones.push({ email: { contains: email } });
     }
     
     // Filtro por sexo
@@ -71,11 +69,11 @@ export async function obtenerPacientes(req: Request, res: Response) {
     // Filtro por rango de edad
     if (edadMin !== undefined || edadMax !== undefined) {
       const edadFilter: { gte?: number; lte?: number } = {};
-      if (edadMin) {
-        edadFilter.gte = parseInt(edadMin as string);
+      if (edadMin !== undefined) {
+        edadFilter.gte = edadMin;
       }
-      if (edadMax) {
-        edadFilter.lte = parseInt(edadMax as string);
+      if (edadMax !== undefined) {
+        edadFilter.lte = edadMax;
       }
       condiciones.push({ age: edadFilter });
     }
@@ -84,10 +82,10 @@ export async function obtenerPacientes(req: Request, res: Response) {
     if (fechaDesde || fechaHasta) {
       const fechaFilter: { gte?: Date; lte?: Date } = {};
       if (fechaDesde) {
-        fechaFilter.gte = new Date(fechaDesde as string);
+        fechaFilter.gte = new Date(fechaDesde);
       }
       if (fechaHasta) {
-        fechaFilter.lte = new Date(fechaHasta as string);
+        fechaFilter.lte = new Date(fechaHasta);
       }
       condiciones.push({ createdAt: fechaFilter });
     }
@@ -98,7 +96,7 @@ export async function obtenerPacientes(req: Request, res: Response) {
     const pacientes = await prisma.paciente.findMany({
       where,
       orderBy: { 
-        [ordenarPor as string]: orden === 'asc' ? 'asc' : 'desc' 
+        [ordenarPor]: orden === 'asc' ? 'asc' : 'desc' 
       },
       include: {
         _count: {
@@ -134,7 +132,7 @@ export async function obtenerPacientes(req: Request, res: Response) {
  */
 export async function obtenerPaciente(req: Request, res: Response) {
   try {
-    const { id } = req.params;
+    const id = getParamString(req.params.id);
 
     const paciente = await prisma.paciente.findUnique({
       where: { id },
@@ -198,7 +196,7 @@ export async function crearPaciente(req: Request, res: Response) {
  */
 export async function actualizarPaciente(req: Request, res: Response) {
   try {
-    const { id } = req.params;
+    const id = getParamString(req.params.id);
     const datos = actualizarPacienteSchema.parse(req.body);
 
     const paciente = await prisma.paciente.update({
@@ -230,7 +228,7 @@ export async function actualizarPaciente(req: Request, res: Response) {
  */
 export async function eliminarPaciente(req: Request, res: Response) {
   try {
-    const { id } = req.params;
+    const id = getParamString(req.params.id);
 
     await prisma.paciente.delete({
       where: { id },

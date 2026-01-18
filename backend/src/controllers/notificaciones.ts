@@ -1,14 +1,15 @@
 import { Request, Response } from 'express';
 import { z } from 'zod';
 import { prisma } from '../lib/prisma.js';
+import { getQueryString, getParamString, getQueryNumber } from '../lib/queryHelpers.js';
 
 /**
  * Obtener notificaciones no leídas
  */
 export async function obtenerNotificaciones(req: Request, res: Response) {
   try {
-    const { leidas, limit } = req.query;
-    const limite = limit ? parseInt(limit as string) : 50;
+    const leidas = getQueryString(req.query.leidas);
+    const limite = getQueryNumber(req.query.limit) ?? 50;
 
     const notificaciones = await prisma.notificacion.findMany({
       where: {
@@ -50,7 +51,7 @@ export async function obtenerNotificaciones(req: Request, res: Response) {
  */
 export async function marcarNotificacionLeida(req: Request, res: Response) {
   try {
-    const { id } = req.params;
+    const id = getParamString(req.params.id);
 
     const notificacion = await prisma.notificacion.update({
       where: { id },

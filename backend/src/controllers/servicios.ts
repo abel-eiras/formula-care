@@ -3,6 +3,7 @@ import { prisma } from '../lib/prisma.js';
 import { z } from 'zod';
 import { crearNotificacionRevision } from '../services/notificacionesService.js';
 import type { Prisma } from '@prisma/client';
+import { getQueryString, getParamString, getQueryNumber } from '../lib/queryHelpers.js';
 
 // Esquema de validación para análisis dermocosmético (plantilla completa)
 const crearAnalisisDermoSchema = z.object({
@@ -153,7 +154,7 @@ export async function crearAnalisisDermo(req: Request, res: Response) {
  */
 export async function obtenerAnalisisDermo(req: Request, res: Response) {
   try {
-    const { id } = req.params;
+    const id = getParamString(req.params.id);
 
     const analisis = await prisma.analisisDermo.findUnique({
       where: { id },
@@ -187,44 +188,42 @@ export async function obtenerAnalisisDermo(req: Request, res: Response) {
  */
 export async function obtenerTodosAnalisisDermo(req: Request, res: Response) {
   try {
-    const {
-      pacienteId,
-      pacienteNombre,
-      fechaDesde,
-      fechaHasta,
-      motivoConsulta,
-      ordenarPor = 'fecha',
-      orden = 'desc',
-      limit,
-    } = req.query;
+    const pacienteId = getQueryString(req.query.pacienteId);
+    const pacienteNombre = getQueryString(req.query.pacienteNombre);
+    const fechaDesde = getQueryString(req.query.fechaDesde);
+    const fechaHasta = getQueryString(req.query.fechaHasta);
+    const motivoConsulta = getQueryString(req.query.motivoConsulta);
+    const ordenarPor = getQueryString(req.query.ordenarPor) ?? 'fecha';
+    const orden = getQueryString(req.query.orden) ?? 'desc';
+    const limit = getQueryNumber(req.query.limit);
 
     const condiciones: Prisma.AnalisisDermoWhereInput[] = [];
 
     if (pacienteId) {
-      condiciones.push({ pacienteId: pacienteId as string });
+      condiciones.push({ pacienteId });
     }
 
     if (pacienteNombre) {
       condiciones.push({
         paciente: {
-          name: { contains: pacienteNombre as string },
+          name: { contains: pacienteNombre },
         },
       });
     }
 
     if (motivoConsulta) {
       condiciones.push({
-        motivoConsulta: { contains: motivoConsulta as string },
+        motivoConsulta: { contains: motivoConsulta },
       });
     }
 
     if (fechaDesde || fechaHasta) {
       const fechaFilter: { gte?: string; lte?: string } = {};
       if (fechaDesde) {
-        fechaFilter.gte = fechaDesde as string;
+        fechaFilter.gte = fechaDesde;
       }
       if (fechaHasta) {
-        fechaFilter.lte = fechaHasta as string;
+        fechaFilter.lte = fechaHasta;
       }
       condiciones.push({ fecha: fechaFilter });
     }
@@ -244,9 +243,9 @@ export async function obtenerTodosAnalisisDermo(req: Request, res: Response) {
         },
       },
       orderBy: {
-        [ordenarPor as string]: orden === 'asc' ? 'asc' : 'desc',
+        [ordenarPor]: orden === 'asc' ? 'asc' : 'desc',
       },
-      take: limit ? parseInt(limit as string) : undefined,
+      take: limit,
     });
 
     // Parsear campos JSON
@@ -272,7 +271,7 @@ export async function obtenerTodosAnalisisDermo(req: Request, res: Response) {
  */
 export async function obtenerAnalisisDermoPorPaciente(req: Request, res: Response) {
   try {
-    const { pacienteId } = req.params;
+    const pacienteId = getParamString(req.params.pacienteId);
 
     const analisis = await prisma.analisisDermo.findMany({
       where: { pacienteId },
@@ -304,7 +303,7 @@ export async function obtenerAnalisisDermoPorPaciente(req: Request, res: Respons
  */
 export async function actualizarAnalisisDermo(req: Request, res: Response) {
   try {
-    const { id } = req.params;
+    const id = getParamString(req.params.id);
     const datos = crearAnalisisDermoSchema.partial().parse(req.body);
 
     // Verificar que el análisis existe
@@ -436,7 +435,7 @@ export async function crearAnalisisBio(req: Request, res: Response) {
  */
 export async function obtenerAnalisisBio(req: Request, res: Response) {
   try {
-    const { id } = req.params;
+    const id = getParamString(req.params.id);
 
     const analisis = await prisma.analisisBio.findUnique({
       where: { id },
@@ -461,27 +460,24 @@ export async function obtenerAnalisisBio(req: Request, res: Response) {
  */
 export async function obtenerTodosAnalisisBio(req: Request, res: Response) {
   try {
-    const {
-      pacienteId,
-      pacienteNombre,
-      fechaDesde,
-      fechaHasta,
-      parametroAlterado,
-      ordenarPor = 'fecha',
-      orden = 'desc',
-      limit,
-    } = req.query;
+    const pacienteId = getQueryString(req.query.pacienteId);
+    const pacienteNombre = getQueryString(req.query.pacienteNombre);
+    const fechaDesde = getQueryString(req.query.fechaDesde);
+    const fechaHasta = getQueryString(req.query.fechaHasta);
+    const ordenarPor = getQueryString(req.query.ordenarPor) ?? 'fecha';
+    const orden = getQueryString(req.query.orden) ?? 'desc';
+    const limit = getQueryNumber(req.query.limit);
 
     const condiciones: Prisma.AnalisisBioWhereInput[] = [];
 
     if (pacienteId) {
-      condiciones.push({ pacienteId: pacienteId as string });
+      condiciones.push({ pacienteId });
     }
 
     if (pacienteNombre) {
       condiciones.push({
         paciente: {
-          name: { contains: pacienteNombre as string },
+          name: { contains: pacienteNombre },
         },
       });
     }
@@ -489,10 +485,10 @@ export async function obtenerTodosAnalisisBio(req: Request, res: Response) {
     if (fechaDesde || fechaHasta) {
       const fechaFilter: { gte?: string; lte?: string } = {};
       if (fechaDesde) {
-        fechaFilter.gte = fechaDesde as string;
+        fechaFilter.gte = fechaDesde;
       }
       if (fechaHasta) {
-        fechaFilter.lte = fechaHasta as string;
+        fechaFilter.lte = fechaHasta;
       }
       condiciones.push({ fecha: fechaFilter });
     }
@@ -515,9 +511,9 @@ export async function obtenerTodosAnalisisBio(req: Request, res: Response) {
         },
       },
       orderBy: {
-        [ordenarPor as string]: orden === 'asc' ? 'asc' : 'desc',
+        [ordenarPor]: orden === 'asc' ? 'asc' : 'desc',
       },
-      take: limit ? parseInt(limit as string) : undefined,
+      take: limit,
     });
 
     res.json(analisis);
@@ -532,7 +528,7 @@ export async function obtenerTodosAnalisisBio(req: Request, res: Response) {
  */
 export async function obtenerAnalisisBioPorPaciente(req: Request, res: Response) {
   try {
-    const { pacienteId } = req.params;
+    const pacienteId = getParamString(req.params.pacienteId);
 
     const analisis = await prisma.analisisBio.findMany({
       where: { pacienteId },
@@ -554,7 +550,7 @@ export async function obtenerAnalisisBioPorPaciente(req: Request, res: Response)
  */
 export async function actualizarAnalisisBio(req: Request, res: Response) {
   try {
-    const { id } = req.params;
+    const id = getParamString(req.params.id);
     const datos = crearAnalisisBioSchema.partial().parse(req.body);
 
     // Verificar que el análisis existe
