@@ -11,6 +11,7 @@ import { publicRouter } from './routes/public.js';
 import { solicitudesRouter } from './routes/solicitudes.js';
 import { eventosRouter } from './routes/eventos.js';
 import { authRouter } from './routes/auth.js';
+import { plantillasEmailRouter } from './routes/plantillasEmail.js';
 import { verificarToken } from './middleware/auth.js';
 
 // Cargar variables de entorno
@@ -61,6 +62,7 @@ app.use('/api/estadisticas', authMiddleware, estadisticasRouter);
 app.use('/api/notificaciones', authMiddleware, notificacionesRouter);
 app.use('/api/solicitudes', authMiddleware, solicitudesRouter);
 app.use('/api/eventos', authMiddleware, eventosRouter);
+app.use('/api/plantillas-email', authMiddleware, plantillasEmailRouter);
 
 // Ruta de salud
 app.get('/api/health', (req, res) => {

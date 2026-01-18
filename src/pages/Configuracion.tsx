@@ -13,12 +13,14 @@ import { Calendar } from "@/components/ui/calendar";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
 import { Textarea } from "@/components/ui/textarea";
-import { ArrowLeft, Save, Settings, Building2, FlaskConical, Calendar as CalendarIcon, Plus, Trash2, GripVertical, Eye, EyeOff, Pencil, Shield, FileText, AlertTriangle } from "lucide-react";
+import { ArrowLeft, Save, Settings, Building2, FlaskConical, Calendar as CalendarIcon, Plus, Trash2, GripVertical, Eye, EyeOff, Pencil, Shield, FileText, AlertTriangle, Mail } from "lucide-react";
 import { Link } from "react-router-dom";
 import { toast } from "sonner";
 import { useConfiguracion, useActualizarFarmacia, useActualizarParametrosReferencia, useActualizarValoracionBio, useActualizarParametrosBioConfig, useConfiguracionCalendario, useActualizarConfiguracionCalendario, useConfiguracionRgpd, useActualizarRgpd } from "@/hooks/useConfiguracion";
 import { useEventos, useCrearEvento, useActualizarEvento, useEliminarEvento } from "@/hooks/useEventos";
-import type { Evento, ParametroBioConfig, ConfiguracionRgpd } from "@/types";
+import { usePlantillasEmail, useVariablesPlantilla, useActualizarPlantilla, useRestaurarPlantilla } from "@/hooks/usePlantillasEmail";
+import { EditorPlantillaEmail } from "@/components/configuracion/EditorPlantillaEmail";
+import type { Evento, ParametroBioConfig, ConfiguracionRgpd, PlantillaEmail } from "@/types";
 import { cn } from "@/lib/utils";
 import type { ParametroReferencia } from "@/types";
 import { format } from "date-fns";
@@ -173,7 +175,7 @@ export default function Configuracion() {
       </div>
 
       <Tabs defaultValue="farmacia" className="space-y-6">
-        <TabsList className="grid w-full grid-cols-4">
+        <TabsList className="grid w-full grid-cols-5">
           <TabsTrigger value="farmacia" className="gap-2">
             <Building2 className="h-4 w-4" />
             <span className="hidden sm:inline">Datos de la Farmacia</span>
@@ -187,6 +189,11 @@ export default function Configuracion() {
           <TabsTrigger value="calendario" className="gap-2">
             <CalendarIcon className="h-4 w-4" />
             Calendario
+          </TabsTrigger>
+          <TabsTrigger value="plantillas" className="gap-2">
+            <Mail className="h-4 w-4" />
+            <span className="hidden sm:inline">Plantillas Email</span>
+            <span className="sm:hidden">Emails</span>
           </TabsTrigger>
           <TabsTrigger value="rgpd" className="gap-2">
             <Shield className="h-4 w-4" />
@@ -363,6 +370,11 @@ export default function Configuracion() {
         {/* Tab: Calendario */}
         <TabsContent value="calendario">
           <CalendarioTab />
+        </TabsContent>
+
+        {/* Tab: Plantillas Email */}
+        <TabsContent value="plantillas">
+          <PlantillasEmailTab />
         </TabsContent>
 
         {/* Tab: RGPD y Legal */}
@@ -1842,6 +1854,97 @@ function RgpdTab() {
           {actualizarRgpd.isPending ? 'Guardando...' : 'Guardar Configuración RGPD'}
         </Button>
       </div>
+    </div>
+  );
+}
+
+// ==========================================
+// Componente para el tab de Plantillas de Email
+// ==========================================
+function PlantillasEmailTab() {
+  const { data: plantillas, isLoading } = usePlantillasEmail();
+  const { data: variables = [] } = useVariablesPlantilla();
+  const actualizarPlantilla = useActualizarPlantilla();
+  const restaurarPlantilla = useRestaurarPlantilla();
+  const [plantillaSeleccionada, setPlantillaSeleccionada] = useState<string | null>(null);
+
+  // Encontrar la plantilla actualmente seleccionada
+  const plantillaActual = plantillas?.find(p => p.tipo === plantillaSeleccionada);
+
+  // Seleccionar la primera plantilla por defecto
+  useEffect(() => {
+    if (plantillas && plantillas.length > 0 && !plantillaSeleccionada) {
+      setPlantillaSeleccionada(plantillas[0].tipo);
+    }
+  }, [plantillas, plantillaSeleccionada]);
+
+  const handleSave = async (datos: Partial<PlantillaEmail>) => {
+    if (!plantillaSeleccionada) return;
+    await actualizarPlantilla.mutateAsync({ tipo: plantillaSeleccionada, datos });
+  };
+
+  const handleRestore = async () => {
+    if (!plantillaSeleccionada) return;
+    await restaurarPlantilla.mutateAsync(plantillaSeleccionada);
+  };
+
+  if (isLoading) {
+    return (
+      <Card className="shadow-sm border-border/50">
+        <CardContent className="py-12 text-center">
+          <div className="animate-spin h-8 w-8 border-4 border-primary border-t-transparent rounded-full mx-auto mb-4" />
+          <p className="text-muted-foreground">Cargando plantillas...</p>
+        </CardContent>
+      </Card>
+    );
+  }
+
+  return (
+    <div className="space-y-6">
+      <Card className="shadow-sm border-border/50">
+        <CardHeader>
+          <CardTitle className="flex items-center gap-2">
+            <Mail className="h-5 w-5" />
+            Plantillas de Email
+          </CardTitle>
+          <CardDescription>
+            Personaliza los emails que se envían a los pacientes. 
+            Puedes usar variables como {"{{nombrePaciente}}"} que se reemplazarán con los datos reales.
+          </CardDescription>
+        </CardHeader>
+        <CardContent>
+          {/* Selector de plantilla */}
+          <div className="mb-6">
+            <Label>Seleccionar plantilla</Label>
+            <div className="flex flex-wrap gap-2 mt-2">
+              {plantillas?.map((p) => (
+                <Button
+                  key={p.tipo}
+                  variant={plantillaSeleccionada === p.tipo ? 'default' : 'outline'}
+                  size="sm"
+                  onClick={() => setPlantillaSeleccionada(p.tipo)}
+                >
+                  {p.nombre}
+                  {!p.activa && (
+                    <Badge variant="secondary" className="ml-2 text-xs">Inactiva</Badge>
+                  )}
+                </Button>
+              ))}
+            </div>
+          </div>
+
+          {/* Editor de plantilla */}
+          {plantillaActual && (
+            <EditorPlantillaEmail
+              plantilla={plantillaActual}
+              variables={variables}
+              onSave={handleSave}
+              onRestore={handleRestore}
+              isLoading={actualizarPlantilla.isPending || restaurarPlantilla.isPending}
+            />
+          )}
+        </CardContent>
+      </Card>
     </div>
   );
 }

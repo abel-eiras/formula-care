@@ -24,6 +24,9 @@ const Configuracion = lazy(() => import("./pages/Configuracion"));
 const Calendario = lazy(() => import("./pages/Calendario"));
 const SolicitarCita = lazy(() => import("./pages/SolicitarCita"));
 const Legal = lazy(() => import("./pages/Legal"));
+const ConfirmarCita = lazy(() => import("./pages/ConfirmarCita"));
+const ModificarCita = lazy(() => import("./pages/ModificarCita"));
+const CancelarCita = lazy(() => import("./pages/CancelarCita"));
 const NotFound = lazy(() => import("./pages/NotFound"));
 
 const queryClient = new QueryClient({
@@ -67,6 +70,31 @@ const App = () => (
               element={
                 <Suspense fallback={<LoadingSpinner />}>
                   <Legal />
+                </Suspense>
+              }
+            />
+            {/* Rutas de gestión de citas desde email (públicas) */}
+            <Route
+              path="/cita/confirmar/:token"
+              element={
+                <Suspense fallback={<LoadingSpinner />}>
+                  <ConfirmarCita />
+                </Suspense>
+              }
+            />
+            <Route
+              path="/cita/modificar/:token"
+              element={
+                <Suspense fallback={<LoadingSpinner />}>
+                  <ModificarCita />
+                </Suspense>
+              }
+            />
+            <Route
+              path="/cita/cancelar/:token"
+              element={
+                <Suspense fallback={<LoadingSpinner />}>
+                  <CancelarCita />
                 </Suspense>
               }
             />
