@@ -9,11 +9,17 @@ import { useAuthContext } from '@/contexts/AuthContext';
 interface ProtectedRouteProps {
   children: React.ReactNode;
   requiredRoles?: string[];
+  requiredRole?: string; // Alias para un solo rol
 }
 
-export function ProtectedRoute({ children, requiredRoles }: ProtectedRouteProps) {
-  const { isAuthenticated, isLoading, usuario, tieneRol } = useAuthContext();
+export function ProtectedRoute({ children, requiredRoles, requiredRole }: ProtectedRouteProps) {
+  const { isAuthenticated, isLoading, tieneRol } = useAuthContext();
   const location = useLocation();
+
+  // Combinar requiredRole con requiredRoles
+  const rolesRequeridos = requiredRole 
+    ? [requiredRole, ...(requiredRoles || [])]
+    : requiredRoles;
 
   // Mostrar loading mientras se verifica autenticación
   if (isLoading) {
@@ -30,8 +36,8 @@ export function ProtectedRoute({ children, requiredRoles }: ProtectedRouteProps)
   }
 
   // Si se requieren roles específicos, verificar
-  if (requiredRoles && requiredRoles.length > 0) {
-    if (!tieneRol(...requiredRoles)) {
+  if (rolesRequeridos && rolesRequeridos.length > 0) {
+    if (!tieneRol(...rolesRequeridos)) {
       // No tiene permisos, redirigir a dashboard con mensaje
       return <Navigate to="/" state={{ error: 'No tienes permisos para acceder a esta página' }} replace />;
     }

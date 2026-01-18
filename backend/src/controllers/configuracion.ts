@@ -1,6 +1,7 @@
 import { Request, Response } from 'express';
 import { z } from 'zod';
 import { prisma } from '../lib/prisma.js';
+import { obtenerFarmaciaIdRequerido } from '../middleware/tenant.js';
 
 // Esquema de validación para datos de farmacia
 const farmaciaSchema = z.object({
@@ -51,35 +52,40 @@ const rangoParametroSchema = z.object({
 // Esquema de validación para parámetros de referencia
 const parametrosReferenciaSchema = z.record(z.string(), rangoParametroSchema);
 
+// Parámetros de referencia por defecto
+const PARAMETROS_REFERENCIA_DEFAULT = {
+  glucemia: { normalMin: 70, normalMax: 100, advertenciaMin: 100, advertenciaMax: 125, criticoMin: 0, criticoMax: 70, criticoMin2: 125, criticoMax2: 999 },
+  cholesterol: { normalMin: 0, normalMax: 200, advertenciaMin: 200, advertenciaMax: 240, criticoMin: 240, criticoMax: 999 },
+  cholesterolHDL: { normalMin: 40, normalMax: 999, advertenciaMin: 35, advertenciaMax: 40, criticoMin: 0, criticoMax: 35 },
+  cholesterolLDL: { normalMin: 0, normalMax: 100, advertenciaMin: 100, advertenciaMax: 160, criticoMin: 160, criticoMax: 999 },
+  triglycerides: { normalMin: 0, normalMax: 150, advertenciaMin: 150, advertenciaMax: 200, criticoMin: 200, criticoMax: 999 },
+  hemoglobinaGlucosilada: { normalMin: 0, normalMax: 5.7, advertenciaMin: 5.7, advertenciaMax: 6.4, criticoMin: 6.4, criticoMax: 999 },
+  proteinaCReactiva: { normalMin: 0, normalMax: 3, advertenciaMin: 3, advertenciaMax: 10, criticoMin: 10, criticoMax: 999 },
+  vitaminaD: { normalMin: 30, normalMax: 100, advertenciaMin: 20, advertenciaMax: 30, criticoMin: 0, criticoMax: 20 },
+  ferritina: { normalMin: 15, normalMax: 200, advertenciaMin: 10, advertenciaMax: 15, advertenciaMin2: 200, advertenciaMax2: 300, criticoMin: 0, criticoMax: 10, criticoMin2: 300, criticoMax2: 999 },
+  systolic: { normalMin: 90, normalMax: 120, advertenciaMin: 120, advertenciaMax: 140, criticoMin: 0, criticoMax: 90, criticoMin2: 140, criticoMax2: 999 },
+  diastolic: { normalMin: 60, normalMax: 80, advertenciaMin: 80, advertenciaMax: 90, criticoMin: 0, criticoMax: 60, criticoMin2: 90, criticoMax2: 999 },
+  pulsaciones: { normalMin: 60, normalMax: 100, advertenciaMin: 50, advertenciaMax: 60, advertenciaMin2: 100, advertenciaMax2: 120, criticoMin: 0, criticoMax: 50, criticoMin2: 120, criticoMax2: 999 },
+  imc: { normalMin: 18.5, normalMax: 25, advertenciaMin: 17, advertenciaMax: 18.5, advertenciaMin2: 25, advertenciaMax2: 30, criticoMin: 0, criticoMax: 17, criticoMin2: 30, criticoMax2: 999 },
+};
+
 /**
  * Obtener la configuración actual
  */
 export async function obtenerConfiguracion(req: Request, res: Response) {
   try {
+    const farmaciaId = obtenerFarmaciaIdRequerido(req);
+    
     let config = await prisma.configuracion.findUnique({
-      where: { id: 'config' },
+      where: { farmaciaId },
     });
 
     // Si no existe, crear con valores por defecto
     if (!config) {
       config = await prisma.configuracion.create({
         data: {
-          id: 'config',
-          parametrosReferencia: JSON.stringify({
-            glucemia: { normalMin: 70, normalMax: 100, advertenciaMin: 100, advertenciaMax: 125, criticoMin: 0, criticoMax: 70, criticoMin2: 125, criticoMax2: 999 },
-            cholesterol: { normalMin: 0, normalMax: 200, advertenciaMin: 200, advertenciaMax: 240, criticoMin: 240, criticoMax: 999 },
-            cholesterolHDL: { normalMin: 40, normalMax: 999, advertenciaMin: 35, advertenciaMax: 40, criticoMin: 0, criticoMax: 35 },
-            cholesterolLDL: { normalMin: 0, normalMax: 100, advertenciaMin: 100, advertenciaMax: 160, criticoMin: 160, criticoMax: 999 },
-            triglycerides: { normalMin: 0, normalMax: 150, advertenciaMin: 150, advertenciaMax: 200, criticoMin: 200, criticoMax: 999 },
-            hemoglobinaGlucosilada: { normalMin: 0, normalMax: 5.7, advertenciaMin: 5.7, advertenciaMax: 6.4, criticoMin: 6.4, criticoMax: 999 },
-            proteinaCReactiva: { normalMin: 0, normalMax: 3, advertenciaMin: 3, advertenciaMax: 10, criticoMin: 10, criticoMax: 999 },
-            vitaminaD: { normalMin: 30, normalMax: 100, advertenciaMin: 20, advertenciaMax: 30, criticoMin: 0, criticoMax: 20 },
-            ferritina: { normalMin: 15, normalMax: 200, advertenciaMin: 10, advertenciaMax: 15, advertenciaMin2: 200, advertenciaMax2: 300, criticoMin: 0, criticoMax: 10, criticoMin2: 300, criticoMax2: 999 },
-            systolic: { normalMin: 90, normalMax: 120, advertenciaMin: 120, advertenciaMax: 140, criticoMin: 0, criticoMax: 90, criticoMin2: 140, criticoMax2: 999 },
-            diastolic: { normalMin: 60, normalMax: 80, advertenciaMin: 80, advertenciaMax: 90, criticoMin: 0, criticoMax: 60, criticoMin2: 90, criticoMax2: 999 },
-            pulsaciones: { normalMin: 60, normalMax: 100, advertenciaMin: 50, advertenciaMax: 60, advertenciaMin2: 100, advertenciaMax2: 120, criticoMin: 0, criticoMax: 50, criticoMin2: 120, criticoMax2: 999 },
-            imc: { normalMin: 18.5, normalMax: 25, advertenciaMin: 17, advertenciaMax: 18.5, advertenciaMin2: 25, advertenciaMax2: 30, criticoMin: 0, criticoMax: 17, criticoMin2: 30, criticoMax2: 999 },
-          }),
+          farmaciaId,
+          parametrosReferencia: JSON.stringify(PARAMETROS_REFERENCIA_DEFAULT),
         },
       });
     }
@@ -110,25 +116,26 @@ export async function obtenerConfiguracion(req: Request, res: Response) {
  */
 export async function actualizarFarmacia(req: Request, res: Response) {
   try {
+    const farmaciaId = obtenerFarmaciaIdRequerido(req);
     const datos = farmaciaSchema.parse(req.body);
 
     // Verificar que existe la configuración
     let config = await prisma.configuracion.findUnique({
-      where: { id: 'config' },
+      where: { farmaciaId },
     });
 
     if (!config) {
       // Crear si no existe
       config = await prisma.configuracion.create({
         data: {
-          id: 'config',
+          farmaciaId,
           ...datos,
         },
       });
     } else {
       // Actualizar
       config = await prisma.configuracion.update({
-        where: { id: 'config' },
+        where: { farmaciaId },
         data: datos,
       });
     }
@@ -152,25 +159,26 @@ export async function actualizarFarmacia(req: Request, res: Response) {
  */
 export async function actualizarParametrosReferencia(req: Request, res: Response) {
   try {
+    const farmaciaId = obtenerFarmaciaIdRequerido(req);
     const parametros = parametrosReferenciaSchema.parse(req.body);
 
     // Verificar que existe la configuración
     let config = await prisma.configuracion.findUnique({
-      where: { id: 'config' },
+      where: { farmaciaId },
     });
 
     if (!config) {
       // Crear si no existe
       config = await prisma.configuracion.create({
         data: {
-          id: 'config',
+          farmaciaId,
           parametrosReferencia: JSON.stringify(parametros),
         },
       });
     } else {
       // Actualizar
       config = await prisma.configuracion.update({
-        where: { id: 'config' },
+        where: { farmaciaId },
         data: {
           parametrosReferencia: JSON.stringify(parametros),
         },
@@ -204,6 +212,7 @@ export async function actualizarParametrosReferencia(req: Request, res: Response
  */
 export async function actualizarValoracionBio(req: Request, res: Response) {
   try {
+    const farmaciaId = obtenerFarmaciaIdRequerido(req);
     const { valoracionBioActiva } = req.body;
 
     if (typeof valoracionBioActiva !== 'boolean') {
@@ -212,21 +221,21 @@ export async function actualizarValoracionBio(req: Request, res: Response) {
 
     // Verificar que existe la configuración
     let config = await prisma.configuracion.findUnique({
-      where: { id: 'config' },
+      where: { farmaciaId },
     });
 
     if (!config) {
       // Crear si no existe
       config = await prisma.configuracion.create({
         data: {
-          id: 'config',
+          farmaciaId,
           valoracionBioActiva,
         },
       });
     } else {
       // Actualizar
       config = await prisma.configuracion.update({
-        where: { id: 'config' },
+        where: { farmaciaId },
         data: { valoracionBioActiva },
       });
     }
@@ -244,6 +253,7 @@ export async function actualizarValoracionBio(req: Request, res: Response) {
  */
 export async function actualizarParametrosBioConfig(req: Request, res: Response) {
   try {
+    const farmaciaId = obtenerFarmaciaIdRequerido(req);
     const parametrosBioConfig = req.body;
 
     // Validar que sea un array
@@ -275,19 +285,19 @@ export async function actualizarParametrosBioConfig(req: Request, res: Response)
 
     // Verificar que existe la configuración
     let config = await prisma.configuracion.findUnique({
-      where: { id: 'config' },
+      where: { farmaciaId },
     });
 
     if (!config) {
       config = await prisma.configuracion.create({
         data: {
-          id: 'config',
+          farmaciaId,
           parametrosBioConfig: JSON.stringify(parametrosBioConfig),
         },
       });
     } else {
       config = await prisma.configuracion.update({
-        where: { id: 'config' },
+        where: { farmaciaId },
         data: {
           parametrosBioConfig: JSON.stringify(parametrosBioConfig),
         },
@@ -310,15 +320,17 @@ export async function actualizarParametrosBioConfig(req: Request, res: Response)
  */
 export async function obtenerConfiguracionCalendario(req: Request, res: Response) {
   try {
+    const farmaciaId = obtenerFarmaciaIdRequerido(req);
+    
     let config = await prisma.configuracionCalendario.findUnique({
-      where: { id: 'calendario' },
+      where: { farmaciaId },
     });
 
     // Si no existe, crear con valores por defecto
     if (!config) {
       config = await prisma.configuracionCalendario.create({
         data: {
-          id: 'calendario',
+          farmaciaId,
           horariosPorTipo: '{}',
           fechasBloqueadas: '[]',
           horasBloqueadas: '{}',
@@ -364,6 +376,7 @@ export async function obtenerConfiguracionCalendario(req: Request, res: Response
  */
 export async function actualizarConfiguracionCalendario(req: Request, res: Response) {
   try {
+    const farmaciaId = obtenerFarmaciaIdRequerido(req);
     const {
       horariosPorTipo,
       fechasBloqueadas,
@@ -443,7 +456,7 @@ export async function actualizarConfiguracionCalendario(req: Request, res: Respo
 
     // Obtener configuración actual
     let config = await prisma.configuracionCalendario.findUnique({
-      where: { id: 'calendario' },
+      where: { farmaciaId },
     });
 
     // Preparar datos para actualizar
@@ -475,7 +488,7 @@ export async function actualizarConfiguracionCalendario(req: Request, res: Respo
       // Crear si no existe
       config = await prisma.configuracionCalendario.create({
         data: {
-          id: 'calendario',
+          farmaciaId,
           horariosPorTipo: datosActualizar.horariosPorTipo || '{}',
           fechasBloqueadas: datosActualizar.fechasBloqueadas || '[]',
           horasBloqueadas: datosActualizar.horasBloqueadas || '{}',
@@ -489,7 +502,7 @@ export async function actualizarConfiguracionCalendario(req: Request, res: Respo
     } else {
       // Actualizar
       config = await prisma.configuracionCalendario.update({
-        where: { id: 'calendario' },
+        where: { farmaciaId },
         data: datosActualizar,
       });
     }
@@ -532,6 +545,7 @@ export async function actualizarConfiguracionCalendario(req: Request, res: Respo
  */
 export async function bloquearFechaHora(req: Request, res: Response) {
   try {
+    const farmaciaId = obtenerFarmaciaIdRequerido(req);
     const { fecha, hora } = req.body;
 
     if (!fecha) {
@@ -554,13 +568,13 @@ export async function bloquearFechaHora(req: Request, res: Response) {
 
     // Obtener configuración actual
     let config = await prisma.configuracionCalendario.findUnique({
-      where: { id: 'calendario' },
+      where: { farmaciaId },
     });
 
     if (!config) {
       config = await prisma.configuracionCalendario.create({
         data: {
-          id: 'calendario',
+          farmaciaId,
           horariosPorTipo: '{}',
           fechasBloqueadas: '[]',
           horasBloqueadas: '{}',
@@ -597,7 +611,7 @@ export async function bloquearFechaHora(req: Request, res: Response) {
 
     // Actualizar configuración
     config = await prisma.configuracionCalendario.update({
-      where: { id: 'calendario' },
+      where: { farmaciaId },
       data: {
         fechasBloqueadas: JSON.stringify(fechasBloqueadas),
         horasBloqueadas: JSON.stringify(horasBloqueadas),
@@ -621,6 +635,7 @@ export async function bloquearFechaHora(req: Request, res: Response) {
  */
 export async function desbloquearFechaHora(req: Request, res: Response) {
   try {
+    const farmaciaId = obtenerFarmaciaIdRequerido(req);
     const { fecha, hora } = req.query;
 
     if (!fecha) {
@@ -643,7 +658,7 @@ export async function desbloquearFechaHora(req: Request, res: Response) {
 
     // Obtener configuración actual
     const config = await prisma.configuracionCalendario.findUnique({
-      where: { id: 'calendario' },
+      where: { farmaciaId },
     });
 
     if (!config) {
@@ -675,7 +690,7 @@ export async function desbloquearFechaHora(req: Request, res: Response) {
 
     // Actualizar configuración
     const configActualizada = await prisma.configuracionCalendario.update({
-      where: { id: 'calendario' },
+      where: { farmaciaId },
       data: {
         fechasBloqueadas: JSON.stringify(fechasBloqueadas),
         horasBloqueadas: JSON.stringify(horasBloqueadas),
@@ -699,8 +714,10 @@ export async function desbloquearFechaHora(req: Request, res: Response) {
  */
 export async function obtenerRgpd(req: Request, res: Response) {
   try {
+    const farmaciaId = obtenerFarmaciaIdRequerido(req);
+    
     let config = await prisma.configuracion.findUnique({
-      where: { id: 'config' },
+      where: { farmaciaId },
       select: {
         rgpdRazonSocial: true,
         rgpdCif: true,
@@ -721,7 +738,7 @@ export async function obtenerRgpd(req: Request, res: Response) {
     if (!config) {
       // Crear configuración por defecto
       await prisma.configuracion.create({
-        data: { id: 'config' },
+        data: { farmaciaId },
       });
       config = {
         rgpdRazonSocial: null,
@@ -753,25 +770,26 @@ export async function obtenerRgpd(req: Request, res: Response) {
  */
 export async function actualizarRgpd(req: Request, res: Response) {
   try {
+    const farmaciaId = obtenerFarmaciaIdRequerido(req);
     const datos = rgpdSchema.parse(req.body);
 
     // Verificar que existe la configuración
     let config = await prisma.configuracion.findUnique({
-      where: { id: 'config' },
+      where: { farmaciaId },
     });
 
     if (!config) {
       // Crear si no existe
       config = await prisma.configuracion.create({
         data: {
-          id: 'config',
+          farmaciaId,
           ...datos,
         },
       });
     } else {
       // Actualizar
       config = await prisma.configuracion.update({
-        where: { id: 'config' },
+        where: { farmaciaId },
         data: datos,
       });
     }

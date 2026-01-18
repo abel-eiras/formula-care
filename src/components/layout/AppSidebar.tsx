@@ -7,14 +7,18 @@ import {
   Settings,
   LogOut,
   Menu,
-  User
+  User,
+  Building2,
+  Shield,
 } from "lucide-react";
 import { NavLink, useLocation, useNavigate } from "react-router-dom";
 import { cn } from "@/lib/utils";
 import { Button } from "@/components/ui/button";
-import { useState } from "react";
+import { useMemo, useState } from "react";
 import { useAuthContext } from "@/contexts/AuthContext";
+import { Separator } from "@/components/ui/separator";
 
+// Navegación principal para usuarios de farmacia
 const navigationItems = [
   {
     title: "Dashboard",
@@ -43,11 +47,28 @@ const navigationItems = [
   },
 ];
 
+// Navegación para superadmin
+const adminNavigationItems = [
+  {
+    title: "Panel Admin",
+    url: "/admin",
+    icon: Shield,
+  },
+  {
+    title: "Farmacias",
+    url: "/admin/farmacias",
+    icon: Building2,
+  },
+];
+
 export function AppSidebar() {
   const location = useLocation();
   const navigate = useNavigate();
   const { usuario, logout } = useAuthContext();
   const [collapsed, setCollapsed] = useState(false);
+
+  // Verificar si es superadmin
+  const isSuperadmin = useMemo(() => usuario?.rol === 'superadmin', [usuario]);
 
   const handleLogout = () => {
     logout();
@@ -80,10 +101,42 @@ export function AppSidebar() {
       </div>
 
       {/* Navigation */}
-      <nav className="flex-1 px-3 py-6 space-y-2">
+      <nav className="flex-1 px-3 py-6 space-y-2 overflow-y-auto">
+        {/* Menú de superadmin */}
+        {isSuperadmin && (
+          <>
+            {adminNavigationItems.map((item) => {
+              const isActive = location.pathname === item.url || 
+                (item.url !== "/admin" && location.pathname.startsWith(item.url));
+              
+              return (
+                <NavLink
+                  key={item.title}
+                  to={item.url}
+                  className={cn(
+                    "flex items-center gap-3 px-4 py-3 rounded-lg transition-all duration-200",
+                    "hover:bg-sidebar-accent hover:text-sidebar-accent-foreground",
+                    isActive 
+                      ? "bg-amber-600 text-white font-semibold shadow-md" 
+                      : "text-sidebar-foreground",
+                    collapsed && "justify-center px-3"
+                  )}
+                >
+                  <item.icon className={cn("h-5 w-5 flex-shrink-0", isActive && "animate-slide-in")} />
+                  {!collapsed && (
+                    <span className="animate-fade-in truncate">{item.title}</span>
+                  )}
+                </NavLink>
+              );
+            })}
+            <Separator className="my-4 bg-sidebar-border" />
+          </>
+        )}
+        
+        {/* Menú normal */}
         {navigationItems.map((item) => {
           const isActive = location.pathname === item.url || 
-            (item.url !== "/" && location.pathname.startsWith(item.url));
+            (item.url !== "/" && location.pathname.startsWith(item.url) && !location.pathname.startsWith("/admin"));
           
           return (
             <NavLink

@@ -1,25 +1,98 @@
+/**
+ * Seed de base de datos
+ * Crea datos iniciales para desarrollo
+ * 
+ * Arquitectura Multi-Tenant: Crea superadmin + farmacia de ejemplo
+ */
+
 import { PrismaClient } from '@prisma/client';
 import bcrypt from 'bcryptjs';
 
 const prisma = new PrismaClient();
 
-/**
- * Script para poblar la base de datos con datos de prueba
- */
-async function main() {
-  console.log('🌱 Sembrando base de datos...');
+// Función para generar slug a partir del nombre
+function generarSlug(nombre: string): string {
+  return nombre
+    .toLowerCase()
+    .normalize('NFD')
+    .replace(/[\u0300-\u036f]/g, '')
+    .replace(/[^a-z0-9]+/g, '-')
+    .replace(/^-+|-+$/g, '');
+}
 
-  // ==========================================
-  // CREAR USUARIO ADMIN POR DEFECTO
-  // ==========================================
-  const existeAdmin = await prisma.usuario.findFirst({
-    where: { rol: 'admin' }
+async function main() {
+  console.log('🌱 Iniciando seed de base de datos...\n');
+
+  // =============================================
+  // 1. CREAR SUPERADMIN
+  // =============================================
+  const superadminEmail = process.env.SUPERADMIN_EMAIL || 'superadmin@sistema.local';
+  const superadminPassword = process.env.SUPERADMIN_PASSWORD || 'superadmin123';
+
+  const superadminExiste = await prisma.usuario.findUnique({
+    where: { email: superadminEmail }
   });
 
-  if (!existeAdmin) {
-    const adminEmail = process.env.ADMIN_EMAIL || 'admin@tufarmacia.local';
-    const adminPassword = process.env.ADMIN_PASSWORD || 'admin123';
-    
+  if (!superadminExiste) {
+    const salt = await bcrypt.genSalt(10);
+    const passwordHash = await bcrypt.hash(superadminPassword, salt);
+
+    await prisma.usuario.create({
+      data: {
+        email: superadminEmail,
+        password: passwordHash,
+        nombre: 'Super Administrador',
+        rol: 'superadmin',
+        farmaciaId: null,
+      },
+    });
+    console.log(`✅ Superadmin creado: ${superadminEmail} / ${superadminPassword}`);
+  } else {
+    console.log(`ℹ️ Superadmin ya existe: ${superadminEmail}`);
+  }
+
+  // =============================================
+  // 2. CREAR FARMACIA DE EJEMPLO
+  // =============================================
+  const nombreFarmacia = 'Farmacia Demo';
+  const slugFarmacia = generarSlug(nombreFarmacia);
+
+  let farmacia = await prisma.farmacia.findUnique({
+    where: { slug: slugFarmacia }
+  });
+
+  if (!farmacia) {
+    farmacia = await prisma.farmacia.create({
+      data: {
+        nombre: nombreFarmacia,
+        slug: slugFarmacia,
+        direccion: 'Calle Ejemplo 123',
+        ciudad: 'Madrid',
+        telefono: '900 123 456',
+        email: 'demo@farmaciademo.com',
+        web: 'www.farmaciademo.com',
+        activa: true,
+        plan: 'profesional',
+        maxUsuarios: 5,
+        maxPacientes: 1000,
+      },
+    });
+    console.log(`✅ Farmacia creada: ${nombreFarmacia} (${slugFarmacia})`);
+  } else {
+    console.log(`ℹ️ Farmacia ya existe: ${nombreFarmacia}`);
+  }
+
+  // =============================================
+  // 3. CREAR ADMIN DE LA FARMACIA
+  // =============================================
+  const adminEmail = process.env.ADMIN_EMAIL || 'admin@farmaciademo.com';
+  const adminPassword = process.env.ADMIN_PASSWORD || 'admin123';
+
+  const adminExiste = await prisma.usuario.findUnique({
+    where: { email: adminEmail }
+  });
+
+  if (!adminExiste) {
     const salt = await bcrypt.genSalt(10);
     const passwordHash = await bcrypt.hash(adminPassword, salt);
 
@@ -27,113 +100,185 @@ async function main() {
       data: {
         email: adminEmail,
         password: passwordHash,
-        nombre: 'Administrador',
+        nombre: 'Administrador Farmacia',
         rol: 'admin',
+        farmaciaId: farmacia.id,
       },
     });
-    console.log(`✅ Usuario admin creado: ${adminEmail} / ${adminPassword}`);
+    console.log(`✅ Admin farmacia creado: ${adminEmail} / ${adminPassword}`);
   } else {
-    console.log('ℹ️ Ya existe un usuario admin');
+    console.log(`ℹ️ Admin farmacia ya existe: ${adminEmail}`);
   }
 
-  // Crear pacientes de ejemplo
-  const paciente1 = await prisma.paciente.create({
-    data: {
-      name: 'María García López',
-      age: 45,
-      sex: 'F',
-      phone: '612345678',
-      email: 'maria.garcia@email.com',
-      birthDate: '1979-03-15',
-      address: 'Calle Mayor 15, Pontevea',
-      notes: 'Piel sensible, evitar productos con alcohol',
-    },
+  // =============================================
+  // 4. CREAR CONFIGURACIÓN DE LA FARMACIA
+  // =============================================
+  const configExiste = await prisma.configuracion.findUnique({
+    where: { farmaciaId: farmacia.id }
   });
 
-  const paciente2 = await prisma.paciente.create({
-    data: {
-      name: 'Carlos Rodríguez',
-      age: 62,
-      sex: 'M',
-      phone: '698765432',
-      email: 'carlos.rodriguez@email.com',
-      birthDate: '1962-07-20',
-    },
+  if (!configExiste) {
+    await prisma.configuracion.create({
+      data: {
+        farmaciaId: farmacia.id,
+        farmaciaNombre: farmacia.nombre,
+        farmaciaDireccion: farmacia.direccion,
+        farmaciaCiudad: farmacia.ciudad,
+        farmaciaTelefono: farmacia.telefono,
+        farmaciaEmail: farmacia.email,
+        farmaciaWeb: farmacia.web,
+        valoracionBioActiva: true,
+        parametrosReferencia: JSON.stringify({
+          glucemia: { normalMin: 70, normalMax: 100, advertenciaMin: 60, advertenciaMax: 125, criticoMin: 50, criticoMax: 180 },
+          cholesterol: { normalMin: 0, normalMax: 200, advertenciaMax: 240, criticoMax: 280 },
+        }),
+        parametrosBioConfig: JSON.stringify([
+          { id: 'glucemia', label: 'Glucemia', unit: 'mg/dL', grupo: 'basicos', activo: true, orden: 1 },
+          { id: 'cholesterol', label: 'Colesterol total', unit: 'mg/dL', grupo: 'basicos', activo: true, orden: 2 },
+          { id: 'cholesterolHDL', label: 'Colesterol HDL', unit: 'mg/dL', grupo: 'basicos', activo: true, orden: 3 },
+          { id: 'cholesterolLDL', label: 'Colesterol LDL', unit: 'mg/dL', grupo: 'basicos', activo: true, orden: 4 },
+          { id: 'triglycerides', label: 'Triglicéridos', unit: 'mg/dL', grupo: 'basicos', activo: true, orden: 5 },
+        ]),
+      },
+    });
+    console.log('✅ Configuración de farmacia creada');
+  } else {
+    console.log('ℹ️ Configuración de farmacia ya existe');
+  }
+
+  // =============================================
+  // 5. CREAR CONFIGURACIÓN DE CALENDARIO
+  // =============================================
+  const calExiste = await prisma.configuracionCalendario.findUnique({
+    where: { farmaciaId: farmacia.id }
   });
 
-  const paciente3 = await prisma.paciente.create({
-    data: {
-      name: 'Ana Fernández',
-      age: 33,
-      sex: 'F',
-      phone: '654321987',
-      birthDate: '1991-11-10',
-    },
+  if (!calExiste) {
+    await prisma.configuracionCalendario.create({
+      data: {
+        farmaciaId: farmacia.id,
+        horariosPorTipo: JSON.stringify({
+          dermo: {
+            lunes: ['09:00-14:00', '16:00-20:00'],
+            martes: ['09:00-14:00', '16:00-20:00'],
+            miercoles: ['09:00-14:00', '16:00-20:00'],
+            jueves: ['09:00-14:00', '16:00-20:00'],
+            viernes: ['09:00-14:00', '16:00-20:00'],
+          },
+          bio: {
+            lunes: ['09:00-14:00'],
+            martes: ['09:00-14:00'],
+            miercoles: ['09:00-14:00'],
+            jueves: ['09:00-14:00'],
+            viernes: ['09:00-14:00'],
+          },
+        }),
+        duracionPorTipo: JSON.stringify({
+          dermo: 45,
+          bio: 20,
+          consulta: 30,
+          evento: 60,
+        }),
+        autoAceptar: false,
+      },
+    });
+    console.log('✅ Configuración de calendario creada');
+  } else {
+    console.log('ℹ️ Configuración de calendario ya existe');
+  }
+
+  // =============================================
+  // 6. CREAR PACIENTES DE EJEMPLO
+  // =============================================
+  const pacientesCount = await prisma.paciente.count({
+    where: { farmaciaId: farmacia.id }
   });
 
-  // Crear análisis dermocosmético
-  await prisma.analisisDermo.create({
-    data: {
-      pacienteId: paciente1.id,
-      fecha: '2024-01-15',
-      skinType: 'mixta',
-      phototype: 'III - Intermedia',
-      concerns: JSON.stringify(['manchas', 'deshidratacion']),
-      hydration: 65,
-      sebum: 45,
-      elasticity: 70,
-      spots: 3,
-      ph: 5.5,
-      treatment: 'Crema con vitamina C y ácido hialurónico',
-      cleaning: 'Limpieza suave mañana y noche',
-      sunProtection: 'SPF 50+ diario',
-    },
-  });
+  if (pacientesCount === 0) {
+    const paciente1 = await prisma.paciente.create({
+      data: {
+        farmaciaId: farmacia.id,
+        name: 'María García López',
+        age: 45,
+        sex: 'F',
+        phone: '600123456',
+        email: 'maria.garcia@email.com',
+        birthDate: '1981-03-15',
+        address: 'Calle Mayor 10, Madrid',
+        origen: 'manual',
+      },
+    });
 
-  // Crear análisis bioquímico
-  await prisma.analisisBio.create({
-    data: {
-      pacienteId: paciente2.id,
-      fecha: '2024-01-14',
-      glucemia: 95, // Antes era 'glucose'
-      cholesterol: 180,
-      triglycerides: 120,
-      systolic: 125,
-      diastolic: 80,
-      weight: 75,
-      height: 170,
-      imc: 25.95,
-    },
-  });
+    const paciente2 = await prisma.paciente.create({
+      data: {
+        farmaciaId: farmacia.id,
+        name: 'Juan Martínez Ruiz',
+        age: 62,
+        sex: 'M',
+        phone: '600654321',
+        email: 'juan.martinez@email.com',
+        birthDate: '1964-07-22',
+        address: 'Avenida Principal 25, Madrid',
+        origen: 'manual',
+      },
+    });
 
-  // Crear citas
-  await prisma.cita.create({
-    data: {
-      titulo: 'Análisis Dermocosmético',
-      pacienteId: paciente1.id,
-      fecha: new Date().toISOString().split('T')[0],
-      hora: '10:00',
-      tipo: 'dermo',
-      notas: 'Primera consulta',
-    },
-  });
+    console.log('✅ Pacientes de ejemplo creados');
 
-  await prisma.cita.create({
-    data: {
-      titulo: 'Control Bioquímico',
-      pacienteId: paciente2.id,
-      fecha: new Date().toISOString().split('T')[0],
-      hora: '11:30',
-      tipo: 'bio',
-    },
-  });
+    // Crear análisis de ejemplo
+    await prisma.analisisBio.create({
+      data: {
+        pacienteId: paciente2.id,
+        fecha: new Date().toISOString().split('T')[0],
+        glucemia: 95,
+        cholesterol: 210,
+        cholesterolHDL: 55,
+        cholesterolLDL: 130,
+        triglycerides: 125,
+        systolic: 130,
+        diastolic: 85,
+        weight: 78,
+        height: 175,
+        imc: 25.5,
+        observaciones: 'Paciente con colesterol ligeramente elevado',
+        recomendaciones: 'Dieta baja en grasas saturadas',
+      },
+    });
+    console.log('✅ Análisis bioquímico de ejemplo creado');
 
-  console.log('✅ Base de datos sembrada correctamente');
+    await prisma.analisisDermo.create({
+      data: {
+        pacienteId: paciente1.id,
+        fecha: new Date().toISOString().split('T')[0],
+        motivoConsulta: 'Hidratación y antienvejecimiento',
+        valoracionPiel: JSON.stringify(['piel_seca', 'arrugas']),
+        habitos: JSON.stringify(['estres']),
+        rutinaDia: JSON.stringify({
+          higiene: 'Leche limpiadora',
+          hidratacion: 'Crema hidratante SPF30',
+          proteccionSolar: 'Incluida en hidratante',
+        }),
+        farmaceutico: 'Dra. López',
+        proximaRevision: new Date(Date.now() + 90 * 24 * 60 * 60 * 1000).toISOString().split('T')[0],
+      },
+    });
+    console.log('✅ Análisis dermocosmético de ejemplo creado');
+  } else {
+    console.log('ℹ️ Ya existen pacientes de ejemplo');
+  }
+
+  console.log('\n═══════════════════════════════════════════════════════');
+  console.log('🎉 Seed completado exitosamente');
+  console.log('═══════════════════════════════════════════════════════');
+  console.log('\n📋 Credenciales:');
+  console.log(`   Superadmin: ${superadminEmail} / ${superadminPassword}`);
+  console.log(`   Admin farmacia: ${adminEmail} / ${adminPassword}`);
+  console.log('\n');
 }
 
 main()
   .catch((e) => {
-    console.error('❌ Error al sembrar base de datos:', e);
+    console.error('❌ Error en seed:', e);
     process.exit(1);
   })
   .finally(async () => {

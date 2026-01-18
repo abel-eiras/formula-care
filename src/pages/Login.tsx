@@ -12,15 +12,13 @@ import { Label } from '@/components/ui/label';
 import { Alert, AlertDescription } from '@/components/ui/alert';
 import { Loader2, Lock, Mail, Building2 } from 'lucide-react';
 import { useAuthContext } from '@/contexts/AuthContext';
-import { useConfiguracion } from '@/hooks/useConfiguracion';
 
 export default function Login() {
   const navigate = useNavigate();
   const { login, isAuthenticated, isLoading: authLoading, error: authError } = useAuthContext();
-  const { data: config } = useConfiguracion();
 
-  // Nombre de la farmacia (configurable)
-  const nombreFarmacia = config?.farmaciaNombre || 'Sistema de Gestión';
+  // Nombre genérico para login (no necesitamos autenticación para esto)
+  const nombreFarmacia = 'Sistema de Gestión';
 
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
@@ -163,37 +161,76 @@ export default function Login() {
         {/* Credenciales de desarrollo */}
         {import.meta.env.DEV && (
           <Card className="mt-4 border-dashed border-amber-300 bg-amber-50/50">
-            <CardContent className="pt-4">
-              <p className="text-xs font-semibold text-amber-700 mb-2">Credenciales de desarrollo:</p>
-              <div className="font-mono text-xs bg-white p-2 rounded border space-y-1">
-                <p className="flex justify-between">
-                  <span className="text-muted-foreground">Email:</span>
-                  <code 
-                    className="text-amber-800 cursor-pointer hover:bg-amber-100 px-1 rounded"
-                    onClick={() => {
-                      navigator.clipboard.writeText('admin@tufarmacia.local');
-                      setEmail('admin@tufarmacia.local');
-                    }}
-                    title="Click para copiar y rellenar"
-                  >
-                    admin@tufarmacia.local
-                  </code>
-                </p>
-                <p className="flex justify-between">
-                  <span className="text-muted-foreground">Password:</span>
-                  <code 
-                    className="text-amber-800 cursor-pointer hover:bg-amber-100 px-1 rounded"
-                    onClick={() => {
-                      navigator.clipboard.writeText('admin123');
-                      setPassword('admin123');
-                    }}
-                    title="Click para copiar y rellenar"
-                  >
-                    admin123
-                  </code>
-                </p>
+            <CardContent className="pt-4 space-y-3">
+              <p className="text-xs font-semibold text-amber-700">Credenciales de desarrollo:</p>
+              
+              {/* Superadmin */}
+              <div className="font-mono text-xs bg-white p-2 rounded border">
+                <p className="text-[10px] font-semibold text-purple-700 mb-1">Superadmin (Gestión Plataforma)</p>
+                <div className="space-y-1">
+                  <p className="flex justify-between">
+                    <span className="text-muted-foreground">Email:</span>
+                    <code 
+                      className="text-purple-800 cursor-pointer hover:bg-purple-100 px-1 rounded"
+                      onClick={() => {
+                        navigator.clipboard.writeText('superadmin@sistema.local');
+                        setEmail('superadmin@sistema.local');
+                      }}
+                      title="Click para copiar y rellenar"
+                    >
+                      superadmin@sistema.local
+                    </code>
+                  </p>
+                  <p className="flex justify-between">
+                    <span className="text-muted-foreground">Password:</span>
+                    <code 
+                      className="text-purple-800 cursor-pointer hover:bg-purple-100 px-1 rounded"
+                      onClick={() => {
+                        navigator.clipboard.writeText('superadmin123');
+                        setPassword('superadmin123');
+                      }}
+                      title="Click para copiar y rellenar"
+                    >
+                      superadmin123
+                    </code>
+                  </p>
+                </div>
               </div>
-              <p className="text-[10px] text-amber-600 mt-2">
+
+              {/* Admin Farmacia */}
+              <div className="font-mono text-xs bg-white p-2 rounded border">
+                <p className="text-[10px] font-semibold text-amber-700 mb-1">Admin Farmacia Demo</p>
+                <div className="space-y-1">
+                  <p className="flex justify-between">
+                    <span className="text-muted-foreground">Email:</span>
+                    <code 
+                      className="text-amber-800 cursor-pointer hover:bg-amber-100 px-1 rounded"
+                      onClick={() => {
+                        navigator.clipboard.writeText('admin@farmaciademo.com');
+                        setEmail('admin@farmaciademo.com');
+                      }}
+                      title="Click para copiar y rellenar"
+                    >
+                      admin@farmaciademo.com
+                    </code>
+                  </p>
+                  <p className="flex justify-between">
+                    <span className="text-muted-foreground">Password:</span>
+                    <code 
+                      className="text-amber-800 cursor-pointer hover:bg-amber-100 px-1 rounded"
+                      onClick={() => {
+                        navigator.clipboard.writeText('admin123');
+                        setPassword('admin123');
+                      }}
+                      title="Click para copiar y rellenar"
+                    >
+                      admin123
+                    </code>
+                  </p>
+                </div>
+              </div>
+
+              <p className="text-[10px] text-amber-600">
                 Click en los valores para copiar y rellenar automáticamente
               </p>
             </CardContent>

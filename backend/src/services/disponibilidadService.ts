@@ -82,18 +82,34 @@ function citasSeSolapan(
 }
 
 /**
- * Obtiene la configuración del calendario
+ * Obtiene la configuración del calendario para una farmacia
+ * Si no se proporciona farmaciaId, obtiene la primera farmacia activa
  */
-async function obtenerConfiguracionCalendario() {
+async function obtenerConfiguracionCalendario(farmaciaId?: string) {
+  // Si no hay farmaciaId, obtener la primera farmacia activa
+  let targetFarmaciaId = farmaciaId;
+  if (!targetFarmaciaId) {
+    const primeraFarmacia = await prisma.farmacia.findFirst({
+      where: { activa: true },
+      select: { id: true },
+    });
+    targetFarmaciaId = primeraFarmacia?.id;
+  }
+
+  if (!targetFarmaciaId) {
+    // No hay farmacias, retornar config vacía
+    return null;
+  }
+
   let config = await prisma.configuracionCalendario.findUnique({
-    where: { id: 'calendario' },
+    where: { farmaciaId: targetFarmaciaId },
   });
 
   // Si no existe, crear con valores por defecto
   if (!config) {
     config = await prisma.configuracionCalendario.create({
       data: {
-        id: 'calendario',
+        farmaciaId: targetFarmaciaId,
         horariosPorTipo: '{}',
         fechasBloqueadas: '[]',
         horasBloqueadas: '{}',
@@ -181,6 +197,12 @@ export async function obtenerDisponibilidad(tipo: string, fecha: string, eventoI
 
   // Obtener configuración
   const config = await obtenerConfiguracionCalendario();
+  
+  // Si no hay configuración, retornar array vacío
+  if (!config) {
+    return [];
+  }
+  
   const horariosPorTipo: HorariosPorTipo = JSON.parse(config.horariosPorTipo || '{}');
   const fechasBloqueadas: string[] = JSON.parse(config.fechasBloqueadas || '[]');
   const horasBloqueadas: Record<string, string[]> = JSON.parse(config.horasBloqueadas || '{}');

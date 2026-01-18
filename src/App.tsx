@@ -29,6 +29,12 @@ const ModificarCita = lazy(() => import("./pages/ModificarCita"));
 const CancelarCita = lazy(() => import("./pages/CancelarCita"));
 const NotFound = lazy(() => import("./pages/NotFound"));
 
+// Páginas de administración de plataforma (superadmin)
+const AdminDashboard = lazy(() => import("./pages/admin/AdminDashboard"));
+const AdminFarmacias = lazy(() => import("./pages/admin/Farmacias"));
+const NuevaFarmacia = lazy(() => import("./pages/admin/NuevaFarmacia"));
+const FarmaciaDetalle = lazy(() => import("./pages/admin/FarmaciaDetalle"));
+
 const queryClient = new QueryClient({
   defaultOptions: {
     queries: {
@@ -119,6 +125,24 @@ const App = () => (
                 </ProtectedRoute>
               }
             />
+            {/* Rutas de administración de plataforma (superadmin) */}
+            <Route
+              path="/admin"
+              element={
+                <ProtectedRoute requiredRole="superadmin">
+                  <MainLayout>
+                    <Suspense fallback={<LoadingSpinner />}>
+                      <Outlet />
+                    </Suspense>
+                  </MainLayout>
+                </ProtectedRoute>
+              }
+            >
+              <Route index element={<AdminDashboard />} />
+              <Route path="farmacias" element={<AdminFarmacias />} />
+              <Route path="farmacias/nueva" element={<NuevaFarmacia />} />
+              <Route path="farmacias/:id" element={<FarmaciaDetalle />} />
+            </Route>
             {/* Rutas protegidas con layout */}
             <Route
               path="/"

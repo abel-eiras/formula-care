@@ -97,8 +97,10 @@ class ApiClient {
       localStorage.removeItem('auth_token');
       localStorage.removeItem('auth_user');
       this.authToken = null;
-      // Redirigir a login
-      window.location.href = '/login';
+      // Redirigir a login solo si no estamos ya en login
+      if (!window.location.pathname.startsWith('/login')) {
+        window.location.href = '/login';
+      }
     }
 
     throw new Error(errorMessage);
