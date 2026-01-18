@@ -3,21 +3,76 @@ import { api } from '@/lib/api';
 import type { SolicitudCita } from '@/types';
 
 /**
+ * Tipo para datos públicos de una farmacia
+ */
+export interface FarmaciaPublica {
+  slug: string;
+  nombre: string | null;
+  logo: string | null;
+  direccion: string | null;
+  ciudad: string | null;
+  telefono: string | null;
+  email: string | null;
+  whatsapp: string | null;
+  web: string | null;
+}
+
+/**
+ * Hook para obtener datos públicos de una farmacia por su slug
+ */
+export function useFarmaciaPublica(slug: string | null) {
+  return useQuery({
+    queryKey: ['farmacia-publica', slug],
+    queryFn: async () => {
+      if (!slug) return null;
+      return api.get<FarmaciaPublica>(`/public/farmacia/${slug}`);
+    },
+    enabled: !!slug,
+    staleTime: 5 * 60 * 1000, // 5 minutos
+    retry: 1,
+  });
+}
+
+/**
+ * Hook para obtener eventos activos de una farmacia por su slug
+ */
+export function useEventosFarmacia(slug: string | null) {
+  return useQuery({
+    queryKey: ['eventos-farmacia', slug],
+    queryFn: async () => {
+      if (!slug) return [];
+      return api.get<Array<{
+        id: string;
+        nombre: string;
+        descripcion: string | null;
+        fechas: string[];
+        horas: string[];
+      }>>(`/public/farmacia/${slug}/eventos`);
+    },
+    enabled: !!slug,
+    staleTime: 5 * 60 * 1000, // 5 minutos
+    retry: 1,
+  });
+}
+
+/**
  * Hook para obtener disponibilidad pública (sin autenticación)
  */
-export function useDisponibilidad(tipo: string | null, fecha: string | null) {
+export function useDisponibilidad(farmaciaSlug: string | null, tipo: string | null, fecha: string | null, eventoId?: string | null) {
   return useQuery({
-    queryKey: ['disponibilidad', tipo, fecha],
+    queryKey: ['disponibilidad', farmaciaSlug, tipo, fecha, eventoId],
     queryFn: async () => {
-      if (!tipo || !fecha) {
+      if (!farmaciaSlug || !tipo || !fecha) {
         return { disponible: false, horasDisponibles: [] };
       }
-      const response = await api.get<{ disponible: boolean; horasDisponibles: string[] }>(
-        `/public/disponibilidad?tipo=${tipo}&fecha=${fecha}`
-      );
+      let url = `/public/disponibilidad?farmaciaSlug=${farmaciaSlug}&tipo=${tipo}&fecha=${fecha}`;
+      if (eventoId) {
+        url += `&eventoId=${eventoId}`;
+      }
+      const response = await api.get<{ disponible: boolean; horasDisponibles: string[] }>(url);
       return response;
     },
-    enabled: !!tipo && !!fecha,
+    enabled: !!farmaciaSlug && !!tipo && !!fecha,
     staleTime: 1 * 60 * 1000, // 1 minuto (disponibilidad cambia frecuentemente)
     refetchOnWindowFocus: false,
     retry: 1,
@@ -32,6 +87,7 @@ export function useSolicitarCita() {
 
   return useMutation({
     mutationFn: async (datos: {
+      farmaciaSlug: string;
       nombreCliente: string;
       emailCliente: string;
       telefonoCliente: string;

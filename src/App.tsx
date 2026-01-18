@@ -63,7 +63,7 @@ const App = () => (
               }
             />
             <Route
-              path="/solicitar-cita"
+              path="/cita/:slug"
               element={
                 <Suspense fallback={<LoadingSpinner />}>
                   <SolicitarCita />

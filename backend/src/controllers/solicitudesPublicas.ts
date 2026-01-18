@@ -17,7 +17,7 @@ const solicitarCitaSchema = z.object({
 });
 
 /**
- * Obtener farmacia por slug (helper)
+ * Obtener farmacia por slug (helper interno)
  */
 async function obtenerFarmaciaPorSlug(slug: string) {
   const farmacia = await prisma.farmacia.findUnique({
@@ -28,17 +28,138 @@ async function obtenerFarmaciaPorSlug(slug: string) {
 }
 
 /**
+ * Obtener datos públicos de una farmacia por su slug
+ * GET /api/public/farmacia/:slug
+ */
+export async function obtenerFarmaciaPublica(req: Request, res: Response) {
+  try {
+    const slug = req.params.slug as string;
+
+    if (!slug) {
+      return res.status(400).json({ error: 'Slug de farmacia requerido' });
+    }
+
+    // Obtener farmacia con su configuración
+    const farmacia = await prisma.farmacia.findUnique({
+      where: { slug },
+      include: {
+        configuracion: {
+          select: {
+            farmaciaNombre: true,
+            farmaciaLogo: true,
+            farmaciaDireccion: true,
+            farmaciaCiudad: true,
+            farmaciaTelefono: true,
+            farmaciaEmail: true,
+            farmaciaWhatsapp: true,
+            farmaciaWeb: true,
+          },
+        },
+      },
+    });
+
+    if (!farmacia) {
+      return res.status(404).json({ error: 'Farmacia no encontrada' });
+    }
+
+    if (!farmacia.activa) {
+      return res.status(403).json({ error: 'Esta farmacia no está disponible actualmente' });
+    }
+
+    // Combinar datos de Farmacia con Configuracion (priorizar Configuracion si existe)
+    const config = farmacia.configuracion;
+    const datosPublicos = {
+      slug: farmacia.slug,
+      nombre: config?.farmaciaNombre || farmacia.nombre,
+      logo: config?.farmaciaLogo || farmacia.logo,
+      direccion: config?.farmaciaDireccion || farmacia.direccion,
+      ciudad: config?.farmaciaCiudad || farmacia.ciudad,
+      telefono: config?.farmaciaTelefono || farmacia.telefono,
+      email: config?.farmaciaEmail || farmacia.email,
+      whatsapp: config?.farmaciaWhatsapp || null,
+      web: config?.farmaciaWeb || farmacia.web,
+    };
+
+    res.json(datosPublicos);
+  } catch (error) {
+    console.error('Error al obtener farmacia pública:', error);
+    res.status(500).json({ error: 'Error al obtener datos de la farmacia' });
+  }
+}
+
+/**
+ * Obtener eventos activos de una farmacia por su slug
+ * GET /api/public/farmacia/:slug/eventos
+ */
+export async function obtenerEventosFarmacia(req: Request, res: Response) {
+  try {
+    const slug = req.params.slug as string;
+
+    const farmacia = await obtenerFarmaciaPorSlug(slug);
+    if (!farmacia) {
+      return res.status(404).json({ error: 'Farmacia no encontrada' });
+    }
+    if (!farmacia.activa) {
+      return res.status(403).json({ error: 'Esta farmacia no está disponible' });
+    }
+
+    const hoy = new Date().toISOString().split('T')[0];
+
+    const eventos = await prisma.evento.findMany({
+      where: {
+        farmaciaId: farmacia.id,
+        activo: true,
+      },
+      select: {
+        id: true,
+        nombre: true,
+        descripcion: true,
+        fechas: true,
+        horas: true,
+      },
+      orderBy: { createdAt: 'desc' },
+    });
+
+    // Filtrar eventos que tengan al menos una fecha futura
+    const eventosActivos = eventos.filter((evento) => {
+      const fechas = JSON.parse(evento.fechas) as string[];
+      return fechas.some(f => f >= hoy);
+    }).map((evento) => ({
+      id: evento.id,
+      nombre: evento.nombre,
+      descripcion: evento.descripcion,
+      fechas: JSON.parse(evento.fechas),
+      horas: JSON.parse(evento.horas),
+    }));
+
+    res.json(eventosActivos);
+  } catch (error) {
+    console.error('Error al obtener eventos:', error);
+    res.status(500).json({ error: 'Error al obtener eventos' });
+  }
+}
+
+/**
  * Obtener disponibilidad para un tipo de servicio en una fecha
- * GET /api/public/disponibilidad?tipo=dermo&fecha=2026-01-20
+ * GET /api/public/disponibilidad?farmaciaSlug=farmacia-pontevea&tipo=dermo&fecha=2026-01-20
  */
 export async function obtenerDisponibilidadPublica(req: Request, res: Response) {
   try {
-    const { tipo, fecha, eventoId } = req.query;
+    const { farmaciaSlug, tipo, fecha, eventoId } = req.query;
 
-    if (!tipo || !fecha) {
+    if (!farmaciaSlug || !tipo || !fecha) {
       return res.status(400).json({
-        error: 'Parámetros requeridos: tipo y fecha',
+        error: 'Parámetros requeridos: farmaciaSlug, tipo y fecha',
       });
+    }
+
+    // Verificar que la farmacia existe y está activa
+    const farmacia = await obtenerFarmaciaPorSlug(farmaciaSlug as string);
+    if (!farmacia) {
+      return res.status(404).json({ error: 'Farmacia no encontrada' });
+    }
+    if (!farmacia.activa) {
+      return res.status(403).json({ error: 'Esta farmacia no está disponible' });
     }
 
     // Si es evento, eventoId es requerido
@@ -51,7 +172,8 @@ export async function obtenerDisponibilidadPublica(req: Request, res: Response) 
     const horasDisponibles = await obtenerDisponibilidad(
       tipo as string,
       fecha as string,
-      eventoId as string | undefined
+      eventoId as string | undefined,
+      farmacia.id // Pasar farmaciaId al servicio
     );
 
     res.json({
@@ -88,7 +210,7 @@ export async function solicitarCita(req: Request, res: Response) {
     const farmaciaId = farmacia.id;
 
     // Verificar disponibilidad
-    const disponible = await verificarDisponibilidad(datos.tipo, datos.fecha, datos.hora);
+    const disponible = await verificarDisponibilidad(datos.tipo, datos.fecha, datos.hora, farmaciaId);
     if (!disponible) {
       return res.status(400).json({
         error: 'La fecha y hora seleccionadas no están disponibles',

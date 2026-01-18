@@ -1,5 +1,10 @@
 import { Router } from 'express';
-import { obtenerDisponibilidadPublica, solicitarCita } from '../controllers/solicitudesPublicas.js';
+import { 
+  obtenerDisponibilidadPublica, 
+  solicitarCita, 
+  obtenerFarmaciaPublica,
+  obtenerEventosFarmacia 
+} from '../controllers/solicitudesPublicas.js';
 import { 
   verificarTokenCita, 
   confirmarCita, 
@@ -10,7 +15,17 @@ import {
 
 export const publicRouter = Router();
 
-// Endpoints públicos (sin autenticación)
+// ==========================================
+// DATOS PÚBLICOS DE FARMACIA
+// ==========================================
+// Obtener datos públicos de una farmacia por su slug
+publicRouter.get('/farmacia/:slug', obtenerFarmaciaPublica);
+// Obtener eventos activos de una farmacia
+publicRouter.get('/farmacia/:slug/eventos', obtenerEventosFarmacia);
+
+// ==========================================
+// DISPONIBILIDAD Y SOLICITUDES
+// ==========================================
 publicRouter.get('/disponibilidad', obtenerDisponibilidadPublica);
 publicRouter.post('/solicitar-cita', solicitarCita);
 
