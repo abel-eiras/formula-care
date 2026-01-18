@@ -12,12 +12,13 @@ import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover
 import { Calendar } from "@/components/ui/calendar";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
-import { ArrowLeft, Save, Settings, Building2, FlaskConical, Calendar as CalendarIcon, Plus, Trash2, GripVertical, Eye, EyeOff, Pencil } from "lucide-react";
+import { Textarea } from "@/components/ui/textarea";
+import { ArrowLeft, Save, Settings, Building2, FlaskConical, Calendar as CalendarIcon, Plus, Trash2, GripVertical, Eye, EyeOff, Pencil, Shield, FileText, AlertTriangle } from "lucide-react";
 import { Link } from "react-router-dom";
 import { toast } from "sonner";
-import { useConfiguracion, useActualizarFarmacia, useActualizarParametrosReferencia, useActualizarValoracionBio, useActualizarParametrosBioConfig, useConfiguracionCalendario, useActualizarConfiguracionCalendario } from "@/hooks/useConfiguracion";
+import { useConfiguracion, useActualizarFarmacia, useActualizarParametrosReferencia, useActualizarValoracionBio, useActualizarParametrosBioConfig, useConfiguracionCalendario, useActualizarConfiguracionCalendario, useConfiguracionRgpd, useActualizarRgpd } from "@/hooks/useConfiguracion";
 import { useEventos, useCrearEvento, useActualizarEvento, useEliminarEvento } from "@/hooks/useEventos";
-import type { Evento, ParametroBioConfig } from "@/types";
+import type { Evento, ParametroBioConfig, ConfiguracionRgpd } from "@/types";
 import { cn } from "@/lib/utils";
 import type { ParametroReferencia } from "@/types";
 import { format } from "date-fns";
@@ -172,18 +173,25 @@ export default function Configuracion() {
       </div>
 
       <Tabs defaultValue="farmacia" className="space-y-6">
-        <TabsList>
+        <TabsList className="grid w-full grid-cols-4">
           <TabsTrigger value="farmacia" className="gap-2">
             <Building2 className="h-4 w-4" />
-            Datos de la Farmacia
+            <span className="hidden sm:inline">Datos de la Farmacia</span>
+            <span className="sm:hidden">Farmacia</span>
           </TabsTrigger>
           <TabsTrigger value="parametros" className="gap-2">
             <FlaskConical className="h-4 w-4" />
-            Parámetros Bioquímicos
+            <span className="hidden sm:inline">Parámetros Bioquímicos</span>
+            <span className="sm:hidden">Parámetros</span>
           </TabsTrigger>
           <TabsTrigger value="calendario" className="gap-2">
             <CalendarIcon className="h-4 w-4" />
             Calendario
+          </TabsTrigger>
+          <TabsTrigger value="rgpd" className="gap-2">
+            <Shield className="h-4 w-4" />
+            <span className="hidden sm:inline">RGPD y Legal</span>
+            <span className="sm:hidden">RGPD</span>
           </TabsTrigger>
         </TabsList>
 
@@ -355,6 +363,11 @@ export default function Configuracion() {
         {/* Tab: Calendario */}
         <TabsContent value="calendario">
           <CalendarioTab />
+        </TabsContent>
+
+        {/* Tab: RGPD y Legal */}
+        <TabsContent value="rgpd">
+          <RgpdTab />
         </TabsContent>
 
       </Tabs>
@@ -1311,6 +1324,524 @@ function CalendarioTab() {
           </div>
         </CardContent>
       </Card>
+    </div>
+  );
+}
+
+// Plantillas de textos legales por defecto
+const PLANTILLA_AVISO_LEGAL = `AVISO LEGAL
+
+1. DATOS IDENTIFICATIVOS
+
+En cumplimiento con el deber de información recogido en el artículo 10 de la Ley 34/2002, de 11 de julio, de Servicios de la Sociedad de la Información y del Comercio Electrónico, a continuación se reflejan los siguientes datos:
+
+[NOMBRE_EMPRESA] con CIF [CIF] y domicilio a efectos de notificaciones en [DIRECCION].
+
+2. USUARIOS
+
+El acceso y/o uso de este portal atribuye la condición de USUARIO, que acepta, desde dicho acceso y/o uso, las Condiciones Generales de Uso aquí reflejadas.
+
+3. USO DEL PORTAL
+
+El portal proporciona el acceso a información, servicios y datos (en adelante, "los contenidos") propiedad de [NOMBRE_EMPRESA]. El USUARIO asume la responsabilidad del uso del portal.
+
+4. PROTECCIÓN DE DATOS
+
+[NOMBRE_EMPRESA] cumple con las directrices de la Ley Orgánica 3/2018, de 5 de diciembre, de Protección de Datos Personales y garantía de los derechos digitales y del Reglamento (UE) 2016/679 del Parlamento Europeo.
+
+5. PROPIEDAD INTELECTUAL E INDUSTRIAL
+
+[NOMBRE_EMPRESA] es titular de todos los derechos de propiedad intelectual e industrial de su página web, así como de los elementos contenidos en la misma.
+
+6. LEGISLACIÓN APLICABLE Y JURISDICCIÓN
+
+Para la resolución de todas las controversias o cuestiones relacionadas con el presente sitio web o de las actividades en él desarrolladas, será de aplicación la legislación española.`;
+
+const PLANTILLA_POLITICA_PRIVACIDAD = `POLÍTICA DE PRIVACIDAD
+
+1. RESPONSABLE DEL TRATAMIENTO
+
+Identidad: [NOMBRE_EMPRESA]
+CIF: [CIF]
+Dirección: [DIRECCION]
+Email de contacto: [EMAIL]
+
+2. FINALIDADES DEL TRATAMIENTO
+
+Los datos personales serán tratados con las siguientes finalidades:
+- Gestión de la relación con el paciente
+- Prestación de servicios sanitarios de farmacia
+- Elaboración de análisis y seguimientos de salud
+- Envío de recordatorios de citas y revisiones
+
+3. LEGITIMACIÓN
+
+La base legal para el tratamiento de sus datos es:
+- El consentimiento del interesado
+- La ejecución de un contrato de prestación de servicios
+- El cumplimiento de obligaciones legales (normativa sanitaria)
+
+4. CATEGORÍAS DE DATOS
+
+Tratamos las siguientes categorías de datos:
+- Datos identificativos (nombre, teléfono, email)
+- Datos de salud (análisis bioquímicos, valoraciones dermatológicas)
+- Datos de historial de visitas y tratamientos
+
+5. DESTINATARIOS
+
+Los datos no se cederán a terceros salvo obligación legal.
+
+6. DERECHOS DEL INTERESADO
+
+Puede ejercer sus derechos de acceso, rectificación, supresión, limitación, portabilidad y oposición enviando un email a [EMAIL].
+
+También puede presentar una reclamación ante la Agencia Española de Protección de Datos (www.aepd.es).
+
+7. PERÍODO DE CONSERVACIÓN
+
+Los datos se conservarán durante [RETENCION] años desde la última visita, o el tiempo necesario para cumplir obligaciones legales.`;
+
+const PLANTILLA_POLITICA_COOKIES = `POLÍTICA DE COOKIES
+
+1. ¿QUÉ SON LAS COOKIES?
+
+Las cookies son pequeños archivos de texto que los sitios web almacenan en su dispositivo cuando los visita.
+
+2. ¿QUÉ COOKIES UTILIZAMOS?
+
+Cookies técnicas (necesarias):
+- Cookies de sesión para mantener su estado de autenticación
+- Cookies de preferencias de usuario
+
+Cookies analíticas (opcionales):
+- Solo se activan con su consentimiento
+- Nos ayudan a entender cómo se usa la aplicación
+
+3. ¿CÓMO GESTIONAR LAS COOKIES?
+
+Puede configurar su navegador para rechazar cookies. Sin embargo, algunas funcionalidades pueden no estar disponibles.
+
+4. CONSENTIMIENTO
+
+Al acceder a las páginas públicas, le solicitamos su consentimiento para las cookies no esenciales.
+
+5. ACTUALIZACIÓN DE ESTA POLÍTICA
+
+Esta política puede actualizarse. Le recomendamos revisarla periódicamente.`;
+
+const PLANTILLA_CONSENTIMIENTO = `CONSENTIMIENTO INFORMADO PARA EL TRATAMIENTO DE DATOS DE SALUD
+
+Yo, el/la abajo firmante, AUTORIZO expresamente a [NOMBRE_EMPRESA] a:
+
+1. Recoger y almacenar mis datos personales (nombre, teléfono, email) y datos de salud (resultados de análisis, valoraciones dermatológicas, historial de visitas).
+
+2. Utilizar estos datos para:
+   - Realizar análisis bioquímicos y valoraciones dermatológicas
+   - Elaborar informes de evolución de mi salud
+   - Enviarme recordatorios de citas y revisiones por email o teléfono
+   - Proporcionarme recomendaciones personalizadas
+
+3. Conservar estos datos durante un período de [RETENCION] años.
+
+He sido informado/a de que:
+- Puedo revocar este consentimiento en cualquier momento
+- Puedo ejercer mis derechos ARCO-POL contactando con [EMAIL]
+- Mis datos no serán cedidos a terceros salvo obligación legal
+- Puedo solicitar la portabilidad de mis datos
+
+Fecha: _________________
+
+Firma del paciente: _________________`;
+
+// Componente para el tab de RGPD y Legal
+function RgpdTab() {
+  const { data: rgpdData, isLoading } = useConfiguracionRgpd();
+  const actualizarRgpd = useActualizarRgpd();
+
+  const [formData, setFormData] = useState<ConfiguracionRgpd>({
+    rgpdRazonSocial: '',
+    rgpdCif: '',
+    rgpdDireccionFiscal: '',
+    rgpdEmailContacto: '',
+    rgpdResponsable: '',
+    rgpdDpo: '',
+    textoAvisoLegal: '',
+    textoPoliticaPrivacidad: '',
+    textoPoliticaCookies: '',
+    textoConsentimiento: '',
+    consentimientoRequerido: true,
+    consentimientoVersion: 'v1.0',
+    retencionDatosMeses: 60,
+  });
+
+  useEffect(() => {
+    if (rgpdData) {
+      setFormData({
+        rgpdRazonSocial: rgpdData.rgpdRazonSocial || '',
+        rgpdCif: rgpdData.rgpdCif || '',
+        rgpdDireccionFiscal: rgpdData.rgpdDireccionFiscal || '',
+        rgpdEmailContacto: rgpdData.rgpdEmailContacto || '',
+        rgpdResponsable: rgpdData.rgpdResponsable || '',
+        rgpdDpo: rgpdData.rgpdDpo || '',
+        textoAvisoLegal: rgpdData.textoAvisoLegal || '',
+        textoPoliticaPrivacidad: rgpdData.textoPoliticaPrivacidad || '',
+        textoPoliticaCookies: rgpdData.textoPoliticaCookies || '',
+        textoConsentimiento: rgpdData.textoConsentimiento || '',
+        consentimientoRequerido: rgpdData.consentimientoRequerido ?? true,
+        consentimientoVersion: rgpdData.consentimientoVersion || 'v1.0',
+        retencionDatosMeses: rgpdData.retencionDatosMeses || 60,
+      });
+    }
+  }, [rgpdData]);
+
+  const handleGuardar = async () => {
+    try {
+      await actualizarRgpd.mutateAsync(formData);
+      toast.success('Configuración RGPD guardada correctamente');
+    } catch (error) {
+      console.error('Error al guardar:', error);
+      toast.error('Error al guardar la configuración RGPD');
+    }
+  };
+
+  const handleCargarPlantilla = (tipo: 'avisoLegal' | 'privacidad' | 'cookies' | 'consentimiento') => {
+    const reemplazarVariables = (texto: string) => {
+      return texto
+        .replace(/\[NOMBRE_EMPRESA\]/g, formData.rgpdRazonSocial || '[NOMBRE_EMPRESA]')
+        .replace(/\[CIF\]/g, formData.rgpdCif || '[CIF]')
+        .replace(/\[DIRECCION\]/g, formData.rgpdDireccionFiscal || '[DIRECCION]')
+        .replace(/\[EMAIL\]/g, formData.rgpdEmailContacto || '[EMAIL]')
+        .replace(/\[RETENCION\]/g, String(Math.floor((formData.retencionDatosMeses || 60) / 12)));
+    };
+
+    switch (tipo) {
+      case 'avisoLegal':
+        setFormData({ ...formData, textoAvisoLegal: reemplazarVariables(PLANTILLA_AVISO_LEGAL) });
+        toast.success('Plantilla de Aviso Legal cargada');
+        break;
+      case 'privacidad':
+        setFormData({ ...formData, textoPoliticaPrivacidad: reemplazarVariables(PLANTILLA_POLITICA_PRIVACIDAD) });
+        toast.success('Plantilla de Política de Privacidad cargada');
+        break;
+      case 'cookies':
+        setFormData({ ...formData, textoPoliticaCookies: reemplazarVariables(PLANTILLA_POLITICA_COOKIES) });
+        toast.success('Plantilla de Política de Cookies cargada');
+        break;
+      case 'consentimiento':
+        setFormData({ ...formData, textoConsentimiento: reemplazarVariables(PLANTILLA_CONSENTIMIENTO) });
+        toast.success('Plantilla de Consentimiento cargada');
+        break;
+    }
+  };
+
+  if (isLoading) {
+    return <div className="text-center py-8">Cargando configuración RGPD...</div>;
+  }
+
+  return (
+    <div className="space-y-6">
+      {/* Aviso informativo */}
+      <Card className="border-amber-200 bg-amber-50/50">
+        <CardContent className="pt-6">
+          <div className="flex gap-3">
+            <AlertTriangle className="h-5 w-5 text-amber-600 flex-shrink-0 mt-0.5" />
+            <div className="text-sm text-amber-800">
+              <p className="font-semibold mb-1">Información importante</p>
+              <p>
+                Los textos legales y el banner de cookies solo se mostrarán en las páginas públicas 
+                (solicitud de citas, login). El panel interno de la farmacia no requiere estos avisos 
+                ya que es de uso exclusivo del personal autorizado.
+              </p>
+            </div>
+          </div>
+        </CardContent>
+      </Card>
+
+      {/* Datos del Responsable */}
+      <Card className="shadow-sm border-border/50">
+        <CardHeader>
+          <CardTitle className="flex items-center gap-2">
+            <Building2 className="h-5 w-5" />
+            Datos del Responsable del Tratamiento
+          </CardTitle>
+          <CardDescription>
+            Información de la empresa que aparecerá en los textos legales
+          </CardDescription>
+        </CardHeader>
+        <CardContent className="space-y-4">
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+            <div className="space-y-2">
+              <Label htmlFor="rgpdRazonSocial">Razón Social *</Label>
+              <Input
+                id="rgpdRazonSocial"
+                value={formData.rgpdRazonSocial || ''}
+                onChange={(e) => setFormData({ ...formData, rgpdRazonSocial: e.target.value })}
+                placeholder="Ej: Farmacia Pontevea S.L."
+              />
+            </div>
+            <div className="space-y-2">
+              <Label htmlFor="rgpdCif">CIF/NIF *</Label>
+              <Input
+                id="rgpdCif"
+                value={formData.rgpdCif || ''}
+                onChange={(e) => setFormData({ ...formData, rgpdCif: e.target.value })}
+                placeholder="Ej: B12345678"
+              />
+            </div>
+            <div className="space-y-2 md:col-span-2">
+              <Label htmlFor="rgpdDireccionFiscal">Dirección Fiscal *</Label>
+              <Input
+                id="rgpdDireccionFiscal"
+                value={formData.rgpdDireccionFiscal || ''}
+                onChange={(e) => setFormData({ ...formData, rgpdDireccionFiscal: e.target.value })}
+                placeholder="Ej: Avda. Ignacio Varela 16, 15883 Teo, A Coruña"
+              />
+            </div>
+            <div className="space-y-2">
+              <Label htmlFor="rgpdEmailContacto">Email de Contacto RGPD *</Label>
+              <Input
+                id="rgpdEmailContacto"
+                type="email"
+                value={formData.rgpdEmailContacto || ''}
+                onChange={(e) => setFormData({ ...formData, rgpdEmailContacto: e.target.value })}
+                placeholder="Ej: protecciondatos@farmacia.com"
+              />
+            </div>
+            <div className="space-y-2">
+              <Label htmlFor="rgpdResponsable">Responsable del Tratamiento *</Label>
+              <Input
+                id="rgpdResponsable"
+                value={formData.rgpdResponsable || ''}
+                onChange={(e) => setFormData({ ...formData, rgpdResponsable: e.target.value })}
+                placeholder="Nombre del titular o responsable"
+              />
+            </div>
+            <div className="space-y-2 md:col-span-2">
+              <Label htmlFor="rgpdDpo">Delegado de Protección de Datos (DPO)</Label>
+              <Input
+                id="rgpdDpo"
+                value={formData.rgpdDpo || ''}
+                onChange={(e) => setFormData({ ...formData, rgpdDpo: e.target.value })}
+                placeholder="Opcional - Solo si dispone de DPO"
+              />
+              <p className="text-xs text-muted-foreground">
+                El DPO es obligatorio para centros sanitarios que traten datos de salud a gran escala
+              </p>
+            </div>
+          </div>
+        </CardContent>
+      </Card>
+
+      {/* Configuración de Consentimiento */}
+      <Card className="shadow-sm border-border/50">
+        <CardHeader>
+          <CardTitle className="flex items-center gap-2">
+            <Shield className="h-5 w-5" />
+            Configuración de Consentimiento
+          </CardTitle>
+          <CardDescription>
+            Opciones para la gestión del consentimiento de pacientes
+          </CardDescription>
+        </CardHeader>
+        <CardContent className="space-y-4">
+          <div className="flex items-center justify-between">
+            <div>
+              <Label htmlFor="consentimientoRequerido" className="text-base">
+                Requerir consentimiento al crear paciente
+              </Label>
+              <p className="text-sm text-muted-foreground mt-1">
+                Muestra un checkbox de confirmación en el formulario interno
+              </p>
+            </div>
+            <Switch
+              id="consentimientoRequerido"
+              checked={formData.consentimientoRequerido}
+              onCheckedChange={(checked) => setFormData({ ...formData, consentimientoRequerido: checked })}
+            />
+          </div>
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+            <div className="space-y-2">
+              <Label htmlFor="consentimientoVersion">Versión del Consentimiento</Label>
+              <Input
+                id="consentimientoVersion"
+                value={formData.consentimientoVersion || ''}
+                onChange={(e) => setFormData({ ...formData, consentimientoVersion: e.target.value })}
+                placeholder="Ej: v1.0 - Enero 2026"
+              />
+              <p className="text-xs text-muted-foreground">
+                Actualiza la versión cuando modifiques el texto del consentimiento
+              </p>
+            </div>
+            <div className="space-y-2">
+              <Label htmlFor="retencionDatosMeses">Período de Retención (meses)</Label>
+              <Input
+                id="retencionDatosMeses"
+                type="number"
+                min="12"
+                value={formData.retencionDatosMeses || 60}
+                onChange={(e) => setFormData({ ...formData, retencionDatosMeses: parseInt(e.target.value) || 60 })}
+              />
+              <p className="text-xs text-muted-foreground">
+                {formData.retencionDatosMeses ? `${Math.floor(formData.retencionDatosMeses / 12)} años` : '5 años'} - 
+                La normativa sanitaria recomienda mínimo 5 años
+              </p>
+            </div>
+          </div>
+        </CardContent>
+      </Card>
+
+      {/* Textos Legales */}
+      <Card className="shadow-sm border-border/50">
+        <CardHeader>
+          <CardTitle className="flex items-center gap-2">
+            <FileText className="h-5 w-5" />
+            Textos Legales
+          </CardTitle>
+          <CardDescription>
+            Configura los textos que se mostrarán en las páginas públicas. 
+            Puedes usar las plantillas como base y personalizarlas.
+          </CardDescription>
+        </CardHeader>
+        <CardContent>
+          <Accordion type="single" collapsible className="space-y-2">
+            {/* Aviso Legal */}
+            <AccordionItem value="aviso-legal" className="border rounded-lg px-4">
+              <AccordionTrigger className="hover:no-underline">
+                <div className="flex items-center gap-2">
+                  <span className="font-semibold">Aviso Legal</span>
+                  {formData.textoAvisoLegal && (
+                    <Badge variant="secondary" className="text-xs">Configurado</Badge>
+                  )}
+                </div>
+              </AccordionTrigger>
+              <AccordionContent className="space-y-3 pt-2">
+                <div className="flex justify-end">
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    onClick={() => handleCargarPlantilla('avisoLegal')}
+                  >
+                    <FileText className="h-4 w-4 mr-2" />
+                    Cargar Plantilla
+                  </Button>
+                </div>
+                <Textarea
+                  value={formData.textoAvisoLegal || ''}
+                  onChange={(e) => setFormData({ ...formData, textoAvisoLegal: e.target.value })}
+                  placeholder="Introduce el texto del Aviso Legal..."
+                  className="min-h-[300px] font-mono text-sm"
+                />
+              </AccordionContent>
+            </AccordionItem>
+
+            {/* Política de Privacidad */}
+            <AccordionItem value="politica-privacidad" className="border rounded-lg px-4">
+              <AccordionTrigger className="hover:no-underline">
+                <div className="flex items-center gap-2">
+                  <span className="font-semibold">Política de Privacidad</span>
+                  {formData.textoPoliticaPrivacidad && (
+                    <Badge variant="secondary" className="text-xs">Configurado</Badge>
+                  )}
+                </div>
+              </AccordionTrigger>
+              <AccordionContent className="space-y-3 pt-2">
+                <div className="flex justify-end">
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    onClick={() => handleCargarPlantilla('privacidad')}
+                  >
+                    <FileText className="h-4 w-4 mr-2" />
+                    Cargar Plantilla
+                  </Button>
+                </div>
+                <Textarea
+                  value={formData.textoPoliticaPrivacidad || ''}
+                  onChange={(e) => setFormData({ ...formData, textoPoliticaPrivacidad: e.target.value })}
+                  placeholder="Introduce el texto de la Política de Privacidad..."
+                  className="min-h-[300px] font-mono text-sm"
+                />
+              </AccordionContent>
+            </AccordionItem>
+
+            {/* Política de Cookies */}
+            <AccordionItem value="politica-cookies" className="border rounded-lg px-4">
+              <AccordionTrigger className="hover:no-underline">
+                <div className="flex items-center gap-2">
+                  <span className="font-semibold">Política de Cookies</span>
+                  {formData.textoPoliticaCookies && (
+                    <Badge variant="secondary" className="text-xs">Configurado</Badge>
+                  )}
+                </div>
+              </AccordionTrigger>
+              <AccordionContent className="space-y-3 pt-2">
+                <div className="flex justify-end">
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    onClick={() => handleCargarPlantilla('cookies')}
+                  >
+                    <FileText className="h-4 w-4 mr-2" />
+                    Cargar Plantilla
+                  </Button>
+                </div>
+                <Textarea
+                  value={formData.textoPoliticaCookies || ''}
+                  onChange={(e) => setFormData({ ...formData, textoPoliticaCookies: e.target.value })}
+                  placeholder="Introduce el texto de la Política de Cookies..."
+                  className="min-h-[300px] font-mono text-sm"
+                />
+              </AccordionContent>
+            </AccordionItem>
+
+            {/* Consentimiento Informado */}
+            <AccordionItem value="consentimiento" className="border rounded-lg px-4">
+              <AccordionTrigger className="hover:no-underline">
+                <div className="flex items-center gap-2">
+                  <span className="font-semibold">Consentimiento Informado</span>
+                  {formData.textoConsentimiento && (
+                    <Badge variant="secondary" className="text-xs">Configurado</Badge>
+                  )}
+                </div>
+              </AccordionTrigger>
+              <AccordionContent className="space-y-3 pt-2">
+                <div className="flex justify-end">
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    onClick={() => handleCargarPlantilla('consentimiento')}
+                  >
+                    <FileText className="h-4 w-4 mr-2" />
+                    Cargar Plantilla
+                  </Button>
+                </div>
+                <Textarea
+                  value={formData.textoConsentimiento || ''}
+                  onChange={(e) => setFormData({ ...formData, textoConsentimiento: e.target.value })}
+                  placeholder="Introduce el texto del Consentimiento Informado..."
+                  className="min-h-[300px] font-mono text-sm"
+                />
+                <p className="text-xs text-muted-foreground">
+                  Este texto se mostrará en la página de solicitud de citas y puede imprimirse para firma física.
+                </p>
+              </AccordionContent>
+            </AccordionItem>
+          </Accordion>
+        </CardContent>
+      </Card>
+
+      {/* Botón Guardar */}
+      <div className="flex justify-end">
+        <Button
+          onClick={handleGuardar}
+          disabled={actualizarRgpd.isPending}
+          className="gap-2"
+        >
+          <Save className="h-4 w-4" />
+          {actualizarRgpd.isPending ? 'Guardando...' : 'Guardar Configuración RGPD'}
+        </Button>
+      </div>
     </div>
   );
 }

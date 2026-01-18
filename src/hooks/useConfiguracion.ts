@@ -1,6 +1,6 @@
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { api } from '@/lib/api';
-import type { Configuracion, ParametroReferencia, ParametroBioConfig } from '@/types';
+import type { Configuracion, ParametroReferencia, ParametroBioConfig, ConfiguracionRgpd } from '@/types';
 
 /**
  * Hook para obtener la configuración
@@ -117,6 +117,35 @@ export function useActualizarConfiguracionCalendario() {
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['configuracion', 'calendario'] });
+    },
+  });
+}
+
+/**
+ * Hook para obtener configuración RGPD
+ */
+export function useConfiguracionRgpd() {
+  return useQuery({
+    queryKey: ['configuracion', 'rgpd'],
+    queryFn: async () => {
+      return api.get<ConfiguracionRgpd>('/configuracion/rgpd');
+    },
+    staleTime: 5 * 60 * 1000, // 5 minutos
+  });
+}
+
+/**
+ * Hook para actualizar configuración RGPD
+ */
+export function useActualizarRgpd() {
+  const queryClient = useQueryClient();
+
+  return useMutation({
+    mutationFn: async (datos: ConfiguracionRgpd) => {
+      return api.put<ConfiguracionRgpd>('/configuracion/rgpd', datos);
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['configuracion', 'rgpd'] });
     },
   });
 }

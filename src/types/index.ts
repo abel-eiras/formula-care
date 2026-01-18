@@ -15,6 +15,26 @@ export interface Configuracion {
   updatedAt?: string;
 }
 
+// Configuración RGPD y Legal
+export interface ConfiguracionRgpd {
+  // Datos del responsable del tratamiento
+  rgpdRazonSocial?: string | null;
+  rgpdCif?: string | null;
+  rgpdDireccionFiscal?: string | null;
+  rgpdEmailContacto?: string | null;
+  rgpdResponsable?: string | null;
+  rgpdDpo?: string | null;
+  // Textos legales
+  textoAvisoLegal?: string | null;
+  textoPoliticaPrivacidad?: string | null;
+  textoPoliticaCookies?: string | null;
+  textoConsentimiento?: string | null;
+  // Configuración de consentimiento
+  consentimientoRequerido?: boolean;
+  consentimientoVersion?: string | null;
+  retencionDatosMeses?: number;
+}
+
 export interface ParametroReferencia {
   normalMin: number;
   normalMax: number;

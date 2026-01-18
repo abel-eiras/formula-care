@@ -9,6 +9,8 @@ import {
   actualizarConfiguracionCalendario,
   bloquearFechaHora,
   desbloquearFechaHora,
+  obtenerRgpd,
+  actualizarRgpd,
 } from '../controllers/configuracion.js';
 
 export const configuracionRouter = Router();
@@ -33,3 +35,7 @@ configuracionRouter.get('/calendario', obtenerConfiguracionCalendario);
 configuracionRouter.put('/calendario', actualizarConfiguracionCalendario);
 configuracionRouter.post('/calendario/bloquear', bloquearFechaHora);
 configuracionRouter.delete('/calendario/desbloquear', desbloquearFechaHora);
+
+// Configuración RGPD y Legal
+configuracionRouter.get('/rgpd', obtenerRgpd);
+configuracionRouter.put('/rgpd', actualizarRgpd);

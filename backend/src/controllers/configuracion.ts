@@ -14,6 +14,26 @@ const farmaciaSchema = z.object({
   farmaciaLogo: z.string().optional(),
 });
 
+// Esquema de validación para configuración RGPD
+const rgpdSchema = z.object({
+  // Datos del responsable
+  rgpdRazonSocial: z.string().optional().nullable(),
+  rgpdCif: z.string().optional().nullable(),
+  rgpdDireccionFiscal: z.string().optional().nullable(),
+  rgpdEmailContacto: z.string().email().optional().or(z.literal('')).nullable(),
+  rgpdResponsable: z.string().optional().nullable(),
+  rgpdDpo: z.string().optional().nullable(),
+  // Textos legales
+  textoAvisoLegal: z.string().optional().nullable(),
+  textoPoliticaPrivacidad: z.string().optional().nullable(),
+  textoPoliticaCookies: z.string().optional().nullable(),
+  textoConsentimiento: z.string().optional().nullable(),
+  // Configuración de consentimiento
+  consentimientoRequerido: z.boolean().optional(),
+  consentimientoVersion: z.string().optional().nullable(),
+  retencionDatosMeses: z.number().int().positive().optional(),
+});
+
 // Esquema de validación para rango de parámetro
 const rangoParametroSchema = z.object({
   normalMin: z.number(),
@@ -670,6 +690,118 @@ export async function desbloquearFechaHora(req: Request, res: Response) {
   } catch (error) {
     console.error('Error al desbloquear fecha/hora:', error);
     res.status(500).json({ error: 'Error al desbloquear fecha/hora' });
+  }
+}
+
+/**
+ * Obtener configuración RGPD
+ * GET /api/configuracion/rgpd
+ */
+export async function obtenerRgpd(req: Request, res: Response) {
+  try {
+    let config = await prisma.configuracion.findUnique({
+      where: { id: 'config' },
+      select: {
+        rgpdRazonSocial: true,
+        rgpdCif: true,
+        rgpdDireccionFiscal: true,
+        rgpdEmailContacto: true,
+        rgpdResponsable: true,
+        rgpdDpo: true,
+        textoAvisoLegal: true,
+        textoPoliticaPrivacidad: true,
+        textoPoliticaCookies: true,
+        textoConsentimiento: true,
+        consentimientoRequerido: true,
+        consentimientoVersion: true,
+        retencionDatosMeses: true,
+      },
+    });
+
+    if (!config) {
+      // Crear configuración por defecto
+      await prisma.configuracion.create({
+        data: { id: 'config' },
+      });
+      config = {
+        rgpdRazonSocial: null,
+        rgpdCif: null,
+        rgpdDireccionFiscal: null,
+        rgpdEmailContacto: null,
+        rgpdResponsable: null,
+        rgpdDpo: null,
+        textoAvisoLegal: null,
+        textoPoliticaPrivacidad: null,
+        textoPoliticaCookies: null,
+        textoConsentimiento: null,
+        consentimientoRequerido: true,
+        consentimientoVersion: 'v1.0',
+        retencionDatosMeses: 60,
+      };
+    }
+
+    res.json(config);
+  } catch (error) {
+    console.error('Error al obtener configuración RGPD:', error);
+    res.status(500).json({ error: 'Error al obtener configuración RGPD' });
+  }
+}
+
+/**
+ * Actualizar configuración RGPD
+ * PUT /api/configuracion/rgpd
+ */
+export async function actualizarRgpd(req: Request, res: Response) {
+  try {
+    const datos = rgpdSchema.parse(req.body);
+
+    // Verificar que existe la configuración
+    let config = await prisma.configuracion.findUnique({
+      where: { id: 'config' },
+    });
+
+    if (!config) {
+      // Crear si no existe
+      config = await prisma.configuracion.create({
+        data: {
+          id: 'config',
+          ...datos,
+        },
+      });
+    } else {
+      // Actualizar
+      config = await prisma.configuracion.update({
+        where: { id: 'config' },
+        data: datos,
+      });
+    }
+
+    // Devolver solo campos RGPD
+    res.json({
+      rgpdRazonSocial: config.rgpdRazonSocial,
+      rgpdCif: config.rgpdCif,
+      rgpdDireccionFiscal: config.rgpdDireccionFiscal,
+      rgpdEmailContacto: config.rgpdEmailContacto,
+      rgpdResponsable: config.rgpdResponsable,
+      rgpdDpo: config.rgpdDpo,
+      textoAvisoLegal: config.textoAvisoLegal,
+      textoPoliticaPrivacidad: config.textoPoliticaPrivacidad,
+      textoPoliticaCookies: config.textoPoliticaCookies,
+      textoConsentimiento: config.textoConsentimiento,
+      consentimientoRequerido: config.consentimientoRequerido,
+      consentimientoVersion: config.consentimientoVersion,
+      retencionDatosMeses: config.retencionDatosMeses,
+    });
+  } catch (error) {
+    if (error instanceof z.ZodError) {
+      return res.status(400).json({
+        error: 'Datos inválidos',
+        detalles: error.errors,
+      });
+    }
+
+    console.error('Error al actualizar configuración RGPD:', error);
+    res.status(500).json({ error: 'Error al actualizar configuración RGPD' });
   }
 }
 

@@ -190,6 +190,29 @@ model Configuracion {
   // Configuración de parámetros bioquímicos dinámicos
   // JSON: [{ id, label, unit, grupo, activo, orden }]
   parametrosBioConfig   String   @default("[]")
+
+  // ==========================================
+  // CONFIGURACIÓN RGPD Y LEGAL
+  // ==========================================
+  // Datos del responsable del tratamiento
+  rgpdRazonSocial           String?  // Razón social de la empresa
+  rgpdCif                   String?  // CIF/NIF de la empresa
+  rgpdDireccionFiscal       String?  // Dirección fiscal completa
+  rgpdEmailContacto         String?  // Email para solicitudes RGPD
+  rgpdResponsable           String?  // Nombre del responsable del tratamiento
+  rgpdDpo                   String?  // Delegado de Protección de Datos (opcional)
+  
+  // Textos legales configurables
+  textoAvisoLegal           String?  // Texto completo del aviso legal
+  textoPoliticaPrivacidad   String?  // Texto de la política de privacidad
+  textoPoliticaCookies      String?  // Texto de la política de cookies
+  textoConsentimiento       String?  // Texto del consentimiento informado
+  
+  // Configuración de consentimiento
+  consentimientoRequerido   Boolean  @default(true)  // Requerir consentimiento al crear paciente
+  consentimientoVersion     String?  @default("v1.0") // Versión actual del consentimiento
+  retencionDatosMeses       Int      @default(60)     // Periodo de retención (5 años por defecto)
+
   createdAt             DateTime @default(now())
   updatedAt             DateTime @updatedAt
 }
