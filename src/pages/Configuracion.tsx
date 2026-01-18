@@ -12,7 +12,7 @@ import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover
 import { Calendar } from "@/components/ui/calendar";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
-import { ArrowLeft, Save, Settings, Building2, FlaskConical, Calendar as CalendarIcon, Plus, Trash2, GripVertical, Eye, EyeOff } from "lucide-react";
+import { ArrowLeft, Save, Settings, Building2, FlaskConical, Calendar as CalendarIcon, Plus, Trash2, GripVertical, Eye, EyeOff, Pencil } from "lucide-react";
 import { Link } from "react-router-dom";
 import { toast } from "sonner";
 import { useConfiguracion, useActualizarFarmacia, useActualizarParametrosReferencia, useActualizarValoracionBio, useActualizarParametrosBioConfig, useConfiguracionCalendario, useActualizarConfiguracionCalendario } from "@/hooks/useConfiguracion";
@@ -392,6 +392,10 @@ function ParametrosBioquimicosTab({
     grupo: "basicos",
   });
   const [dialogAbierto, setDialogAbierto] = useState(false);
+  
+  // Estado para edición
+  const [parametroEditando, setParametroEditando] = useState<ParametroBioConfig | null>(null);
+  const [dialogEdicionAbierto, setDialogEdicionAbierto] = useState(false);
 
   // Agrupar parámetros por grupo
   const parametrosPorGrupo = parametrosBioConfig.reduce((acc, param) => {
@@ -442,14 +446,34 @@ function ParametrosBioquimicosTab({
   };
 
   const handleEliminarParametro = (id: string) => {
-    const param = parametrosBioConfig.find((p) => p.id === id);
-    if (param && !param.esPersonalizado) {
-      toast.error("Solo puedes eliminar parámetros personalizados");
+    if (!confirm("¿Estás seguro de que quieres eliminar este parámetro?")) {
       return;
     }
     const nuevaConfig = parametrosBioConfig.filter((p) => p.id !== id);
     onActualizarParametrosBioConfig(nuevaConfig);
     toast.success("Parámetro eliminado");
+  };
+
+  const handleAbrirEdicion = (param: ParametroBioConfig) => {
+    setParametroEditando({ ...param });
+    setDialogEdicionAbierto(true);
+  };
+
+  const handleGuardarEdicion = () => {
+    if (!parametroEditando) return;
+    
+    if (!parametroEditando.label || !parametroEditando.unit) {
+      toast.error("El nombre y la unidad son obligatorios");
+      return;
+    }
+
+    const nuevaConfig = parametrosBioConfig.map((p) =>
+      p.id === parametroEditando.id ? parametroEditando : p
+    );
+    onActualizarParametrosBioConfig(nuevaConfig);
+    setDialogEdicionAbierto(false);
+    setParametroEditando(null);
+    toast.success("Parámetro actualizado");
   };
 
   return (
@@ -548,6 +572,67 @@ function ParametrosBioquimicosTab({
                 </DialogFooter>
               </DialogContent>
             </Dialog>
+
+            {/* Diálogo de Edición */}
+            <Dialog open={dialogEdicionAbierto} onOpenChange={setDialogEdicionAbierto}>
+              <DialogContent>
+                <DialogHeader>
+                  <DialogTitle>Editar Parámetro</DialogTitle>
+                  <DialogDescription>
+                    Modifica los datos del parámetro bioquímico
+                  </DialogDescription>
+                </DialogHeader>
+                {parametroEditando && (
+                  <div className="space-y-4 py-4">
+                    <div className="space-y-2">
+                      <Label htmlFor="editar-label">Nombre del Parámetro *</Label>
+                      <Input
+                        id="editar-label"
+                        value={parametroEditando.label}
+                        onChange={(e) => setParametroEditando({ ...parametroEditando, label: e.target.value })}
+                        placeholder="Ej: Glucemia"
+                      />
+                    </div>
+                    <div className="space-y-2">
+                      <Label htmlFor="editar-unit">Unidad de Medida *</Label>
+                      <Input
+                        id="editar-unit"
+                        value={parametroEditando.unit}
+                        onChange={(e) => setParametroEditando({ ...parametroEditando, unit: e.target.value })}
+                        placeholder="Ej: mg/dL"
+                      />
+                    </div>
+                    <div className="space-y-2">
+                      <Label htmlFor="editar-grupo">Grupo *</Label>
+                      <Select
+                        value={parametroEditando.grupo}
+                        onValueChange={(value) => setParametroEditando({ ...parametroEditando, grupo: value as ParametroBioConfig["grupo"] })}
+                      >
+                        <SelectTrigger>
+                          <SelectValue />
+                        </SelectTrigger>
+                        <SelectContent>
+                          {Object.entries(GRUPOS_INFO).map(([key, info]) => (
+                            <SelectItem key={key} value={key}>
+                              {info.label}
+                            </SelectItem>
+                          ))}
+                        </SelectContent>
+                      </Select>
+                    </div>
+                  </div>
+                )}
+                <DialogFooter>
+                  <Button variant="outline" onClick={() => setDialogEdicionAbierto(false)}>
+                    Cancelar
+                  </Button>
+                  <Button onClick={handleGuardarEdicion} disabled={guardandoConfig}>
+                    <Save className="h-4 w-4 mr-2" />
+                    Guardar
+                  </Button>
+                </DialogFooter>
+              </DialogContent>
+            </Dialog>
           </div>
         </CardHeader>
         <CardContent>
@@ -597,7 +682,7 @@ function ParametrosBioquimicosTab({
                                 </div>
                               </div>
                             </div>
-                            <div className="flex items-center gap-2">
+                            <div className="flex items-center gap-1">
                               <Button
                                 variant="ghost"
                                 size="icon"
@@ -610,16 +695,23 @@ function ParametrosBioquimicosTab({
                                   <EyeOff className="h-4 w-4 text-muted-foreground" />
                                 )}
                               </Button>
-                              {param.esPersonalizado && (
-                                <Button
-                                  variant="ghost"
-                                  size="icon"
-                                  onClick={() => handleEliminarParametro(param.id)}
-                                  className="text-destructive hover:text-destructive"
-                                >
-                                  <Trash2 className="h-4 w-4" />
-                                </Button>
-                              )}
+                              <Button
+                                variant="ghost"
+                                size="icon"
+                                onClick={() => handleAbrirEdicion(param)}
+                                title="Editar"
+                              >
+                                <Pencil className="h-4 w-4 text-muted-foreground" />
+                              </Button>
+                              <Button
+                                variant="ghost"
+                                size="icon"
+                                onClick={() => handleEliminarParametro(param.id)}
+                                className="text-destructive hover:text-destructive"
+                                title="Eliminar"
+                              >
+                                <Trash2 className="h-4 w-4" />
+                              </Button>
                             </div>
                           </div>
                         ))
