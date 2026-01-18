@@ -13,7 +13,7 @@ Sistema de calendario integrado con página pública para que los clientes solic
 **Descripción:** Crear modelo para solicitudes de citas desde la página pública.
 
 **Criterios de Aceptación:**
-- [ ] Modelo `SolicitudCita` con campos:
+- [x] Modelo `SolicitudCita` con campos:
   - `id` (String, cuid)
   - `nombreCliente` (String, requerido)
   - `emailCliente` (String, requerido)
@@ -26,10 +26,10 @@ Sistema de calendario integrado con página pública para que los clientes solic
   - `pacienteId` (String, opcional - si el cliente ya existe en BD)
   - `citaId` (String, opcional - si se convierte en cita)
   - `createdAt`, `updatedAt`
-- [ ] Índices en `fecha`, `estado`, `tipo`
-- [ ] Relación opcional con `Paciente` (si existe)
-- [ ] Relación opcional con `Cita` (si se aprueba)
-- [ ] Migración creada y aplicada
+- [x] Índices en `fecha`, `estado`, `tipo`
+- [x] Relación opcional con `Paciente` (si existe)
+- [x] Relación opcional con `Cita` (si se aprueba)
+- [x] Migración creada y aplicada
 
 ---
 
@@ -37,13 +37,13 @@ Sistema de calendario integrado con página pública para que los clientes solic
 **Descripción:** Configuración de horarios, bloqueos y auto-aceptación.
 
 **Criterios de Aceptación:**
-- [ ] Modelo `ConfiguracionCalendario` (singleton, id="calendario") con campos:
+- [x] Modelo `ConfiguracionCalendario` (singleton, id="calendario") con campos:
   - `horariosPorTipo` (String, JSON): `{ "dermo": { "lunes": ["09:00-14:00"], ... }, "bio": {...} }`
   - `fechasBloqueadas` (String, JSON): `["2026-01-20", "2026-01-21"]`
   - `horasBloqueadas` (String, JSON): `{ "2026-01-20": ["10:00", "11:00"] }`
   - `autoAceptar` (Boolean, default: false)
   - `duracionPorTipo` (String, JSON): `{ "dermo": 30, "bio": 45, ... }` (minutos)
-- [ ] Migración creada y aplicada
+- [x] Migración creada y aplicada
 
 ---
 
@@ -53,7 +53,7 @@ Sistema de calendario integrado con página pública para que los clientes solic
 **Descripción:** Función que calcula disponibilidad considerando citas existentes, horarios configurados y bloqueos.
 
 **Criterios de Aceptación:**
-- [ ] Función `obtenerDisponibilidad(tipo: string, fecha: string)` que retorna:
+- [x] Función `obtenerDisponibilidad(tipo: string, fecha: string)` que retorna:
   - Array de horas disponibles para esa fecha y tipo
   - Considera:
     - Horarios configurados para ese tipo de servicio
@@ -61,8 +61,8 @@ Sistema de calendario integrado con página pública para que los clientes solic
     - Fechas bloqueadas
     - Horas bloqueadas para esa fecha específica
     - Duración del servicio (no permitir solapamientos)
-- [ ] Función `verificarDisponibilidad(tipo: string, fecha: string, hora: string)` que retorna boolean
-- [ ] Maneja correctamente diferentes tipos de servicios simultáneamente (puede haber dermo a las 10:00 y bio a las 10:00 si están permitidos)
+- [x] Función `verificarDisponibilidad(tipo: string, fecha: string, hora: string)` que retorna boolean
+- [x] Maneja correctamente diferentes tipos de servicios simultáneamente (puede haber dermo a las 10:00 y bio a las 10:00 si están permitidos)
 
 ---
 
@@ -70,12 +70,12 @@ Sistema de calendario integrado con página pública para que los clientes solic
 **Descripción:** Endpoint público (sin autenticación) para obtener disponibilidad.
 
 **Criterios de Aceptación:**
-- [ ] Ruta: `GET /api/public/disponibilidad?tipo=dermo&fecha=2026-01-20`
-- [ ] No requiere autenticación
-- [ ] Retorna: `{ disponible: boolean, horasDisponibles: string[] }`
-- [ ] Valida que el tipo sea válido
-- [ ] Valida formato de fecha
-- [ ] Retorna error 400 si parámetros inválidos
+- [x] Ruta: `GET /api/public/disponibilidad?tipo=dermo&fecha=2026-01-20`
+- [x] No requiere autenticación
+- [x] Retorna: `{ disponible: boolean, horasDisponibles: string[] }`
+- [x] Valida que el tipo sea válido
+- [x] Valida formato de fecha
+- [x] Retorna error 400 si parámetros inválidos
 
 ---
 
@@ -83,22 +83,22 @@ Sistema de calendario integrado con página pública para que los clientes solic
 **Descripción:** Endpoint público para crear solicitud de cita.
 
 **Criterios de Aceptación:**
-- [ ] Ruta: `POST /api/public/solicitar-cita`
-- [ ] No requiere autenticación
-- [ ] Body: `{ nombreCliente, emailCliente, telefonoCliente, tipo, fecha, hora, notas? }`
-- [ ] Valida disponibilidad antes de crear
-- [ ] Si `autoAceptar=true` y está en horario permitido:
+- [x] Ruta: `POST /api/public/solicitar-cita`
+- [x] No requiere autenticación
+- [x] Body: `{ nombreCliente, emailCliente, telefonoCliente, tipo, fecha, hora, notas? }`
+- [x] Valida disponibilidad antes de crear
+- [x] Si `autoAceptar=true` y está en horario permitido:
   - Crea la solicitud como "aprobada"
   - Crea el `Paciente` si no existe (buscando por email)
   - Crea la `Cita` automáticamente
   - Envía email de confirmación
   - Crea notificación de tipo "cita" con estado "aprobada"
-- [ ] Si `autoAceptar=false`:
+- [x] Si `autoAceptar=false`:
   - Crea solicitud como "pendiente"
   - Crea notificación de tipo "cita" con estado "pendiente"
   - No envía email aún
-- [ ] Retorna: `{ id, estado, mensaje }`
-- [ ] Retorna error 400 si fecha/hora no disponible
+- [x] Retorna: `{ id, estado, mensaje }`
+- [x] Retorna error 400 si fecha/hora no disponible
 
 ---
 
@@ -108,17 +108,17 @@ Sistema de calendario integrado con página pública para que los clientes solic
 **Descripción:** Aprobar una solicitud pendiente.
 
 **Criterios de Aceptación:**
-- [ ] Ruta: `POST /api/solicitudes/:id/aprobar`
-- [ ] Requiere autenticación (solo usuarios de la app)
-- [ ] Busca o crea `Paciente` basado en email/nombre de la solicitud
-- [ ] Crea `Cita` con los datos de la solicitud
-- [ ] Actualiza solicitud: `estado="aprobada"`, `citaId=idCita`, `pacienteId=idPaciente`
+- [x] Ruta: `POST /api/solicitudes/:id/aprobar`
+- [x] Requiere autenticación (solo usuarios de la app)
+- [x] Busca o crea `Paciente` basado en email/nombre de la solicitud
+- [x] Crea `Cita` con los datos de la solicitud
+- [x] Actualiza solicitud: `estado="aprobada"`, `citaId=idCita`, `pacienteId=idPaciente`
 - [ ] Envía email de confirmación al cliente con:
   - Fecha y hora de la cita
   - Tipo de servicio
   - Datos de contacto de la farmacia
-- [ ] Crea/actualiza notificación relacionada
-- [ ] Retorna la `Cita` creada
+- [x] Crea/actualiza notificación relacionada
+- [x] Retorna la `Cita` creada
 
 ---
 
@@ -126,12 +126,12 @@ Sistema de calendario integrado con página pública para que los clientes solic
 **Descripción:** Rechazar una solicitud pendiente.
 
 **Criterios de Aceptación:**
-- [ ] Ruta: `POST /api/solicitudes/:id/rechazar`
-- [ ] Requiere autenticación
-- [ ] Actualiza solicitud: `estado="rechazada"`
+- [x] Ruta: `POST /api/solicitudes/:id/rechazar`
+- [x] Requiere autenticación
+- [x] Actualiza solicitud: `estado="rechazada"`
 - [ ] Opcional: envía email al cliente informando del rechazo
-- [ ] Marca notificación como leída
-- [ ] Retorna confirmación
+- [x] Marca notificación como leída
+- [x] Retorna confirmación
 
 ---
 
@@ -139,11 +139,11 @@ Sistema de calendario integrado con página pública para que los clientes solic
 **Descripción:** Listar solicitudes (pendientes, aprobadas, rechazadas).
 
 **Criterios de Aceptación:**
-- [ ] Ruta: `GET /api/solicitudes?estado=pendiente`
-- [ ] Requiere autenticación
-- [ ] Filtro opcional por `estado`
-- [ ] Ordenado por `createdAt` descendente
-- [ ] Retorna array de solicitudes con datos del cliente
+- [x] Ruta: `GET /api/solicitudes?estado=pendiente`
+- [x] Requiere autenticación
+- [x] Filtro opcional por `estado`
+- [x] Ordenado por `createdAt` descendente
+- [x] Retorna array de solicitudes con datos del cliente
 
 ---
 
@@ -153,9 +153,9 @@ Sistema de calendario integrado con página pública para que los clientes solic
 **Descripción:** Obtener configuración del calendario.
 
 **Criterios de Aceptación:**
-- [ ] Ruta: `GET /api/configuracion/calendario`
-- [ ] Requiere autenticación
-- [ ] Retorna configuración completa (horarios, bloqueos, auto-aceptar)
+- [x] Ruta: `GET /api/configuracion/calendario`
+- [x] Requiere autenticación
+- [x] Retorna configuración completa (horarios, bloqueos, auto-aceptar)
 
 ---
 
@@ -163,13 +163,13 @@ Sistema de calendario integrado con página pública para que los clientes solic
 **Descripción:** Actualizar configuración del calendario.
 
 **Criterios de Aceptación:**
-- [ ] Ruta: `PUT /api/configuracion/calendario`
-- [ ] Requiere autenticación
-- [ ] Body: `{ horariosPorTipo?, fechasBloqueadas?, horasBloqueadas?, autoAceptar?, duracionPorTipo? }`
-- [ ] Valida formato JSON de horarios
-- [ ] Valida formato de fechas y horas
-- [ ] Actualiza o crea configuración
-- [ ] Retorna configuración actualizada
+- [x] Ruta: `PUT /api/configuracion/calendario`
+- [x] Requiere autenticación
+- [x] Body: `{ horariosPorTipo?, fechasBloqueadas?, horasBloqueadas?, autoAceptar?, duracionPorTipo? }`
+- [x] Valida formato JSON de horarios
+- [x] Valida formato de fechas y horas
+- [x] Actualiza o crea configuración
+- [x] Retorna configuración actualizada
 
 ---
 
@@ -224,23 +224,23 @@ Sistema de calendario integrado con página pública para que los clientes solic
 **Descripción:** Página responsive para que clientes soliciten citas.
 
 **Criterios de Aceptación:**
-- [ ] Ruta: `/solicitar-cita` (sin autenticación)
-- [ ] Diseño responsive (mobile-first)
-- [ ] Pasos del formulario:
+- [x] Ruta: `/solicitar-cita` (sin autenticación)
+- [x] Diseño responsive (mobile-first)
+- [x] Pasos del formulario:
   1. Seleccionar tipo de servicio (dermo, bio, consulta, seguimiento)
   2. Seleccionar fecha (calendario con días disponibles marcados)
   3. Seleccionar hora (solo horas disponibles para ese día y tipo)
   4. Formulario de datos: nombre, email, teléfono, notas (opcional)
   5. Confirmación y envío
-- [ ] Validación en tiempo real:
+- [x] Validación en tiempo real:
   - Al seleccionar tipo: carga disponibilidad y marca días disponibles
   - Al seleccionar fecha: muestra solo horas disponibles
   - Deshabilita días/horas ocupadas del mismo tipo
   - Deshabilita días/horas bloqueadas
   - Deshabilita días fuera de horarios configurados
-- [ ] Muestra mensaje de éxito después de enviar
-- [ ] Muestra mensaje si la solicitud fue auto-aprobada
-- [ ] Diseño atractivo y profesional (colores corporativos)
+- [x] Muestra mensaje de éxito después de enviar
+- [x] Muestra mensaje si la solicitud fue auto-aprobada
+- [x] Diseño atractivo y profesional (colores corporativos)
 
 ---
 
@@ -364,15 +364,15 @@ Sistema de calendario integrado con página pública para que los clientes solic
 **Descripción:** Reemplazar datos de ejemplo con datos reales.
 
 **Criterios de Aceptación:**
-- [ ] Usa `useCitas()` para cargar citas reales
-- [ ] Usa `useCrearCita()` para crear nuevas citas
-- [ ] Usa `useEliminarCita()` para eliminar citas
-- [ ] Selector de pacientes real (desde `usePacientes()`)
-- [ ] Muestra citas en el calendario con colores por tipo
-- [ ] Marca días con citas en el calendario
-- [ ] Lista de citas del día seleccionado con datos reales
-- [ ] Botón editar cita (abre modal con datos pre-rellenados)
-- [ ] Botón eliminar cita (con confirmación)
+- [x] Usa `useCitas()` para cargar citas reales
+- [x] Usa `useCrearCita()` para crear nuevas citas
+- [x] Usa `useEliminarCita()` para eliminar citas
+- [x] Selector de pacientes real (desde `usePacientes()`)
+- [x] Muestra citas en el calendario con colores por tipo
+- [x] Marca días con citas en el calendario
+- [x] Lista de citas del día seleccionado con datos reales
+- [x] Botón editar cita (abre modal con datos pre-rellenados)
+- [x] Botón eliminar cita (con confirmación)
 
 ---
 

@@ -98,7 +98,13 @@ farmaciapontevea_servicios/
 │   │   │
 │   │   ├── 📁 lib/                # Utilidades del backend
 │   │   │   ├── prisma.ts         # Cliente de Prisma
+│   │   │   ├── queryHelpers.ts   # Helpers para tipos de Express (req.query/params)
 │   │   │   └── utils.ts          # Funciones auxiliares
+│   │   │
+│   │   ├── 📁 services/          # Servicios de negocio
+│   │   │   ├── disponibilidadService.ts  # Cálculo de disponibilidad
+│   │   │   ├── emailService.ts           # Envío de emails
+│   │   │   └── notificacionesService.ts  # Gestión de notificaciones
 │   │   │
 │   │   ├── 📁 types/              # Tipos TypeScript
 │   │   │   └── index.ts

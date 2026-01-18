@@ -5,20 +5,35 @@ Sistema de gestión para servicios asistenciales de farmacia, incluyendo anális
 ## 📋 Estado del Proyecto
 
 ### ✅ Completado
-- Frontend React con TypeScript
-- UI moderna con shadcn/ui y Tailwind CSS
-- Estructura de páginas básica:
-  - Dashboard con estadísticas
-  - Gestión de pacientes (listado, detalle, nuevo)
-  - Calendario de citas
-  - Formularios de análisis dermocosmético
-  - Formularios de análisis bioquímico
+- **Frontend React con TypeScript**
+  - UI moderna con shadcn/ui y Tailwind CSS
+  - Dashboard con estadísticas en tiempo real
+  - Gestión de pacientes (CRUD completo)
+  - Calendario de citas integrado
+  - Formularios de análisis dermocosmético y bioquímico
+  - Generación de informes PDF
+  - Sistema de notificaciones
+  - Configuración dinámica de parámetros bioquímicos
+
+- **Backend API con Node.js + Express**
+  - API RESTful completa
+  - Base de datos con Prisma ORM (SQLite)
+  - Controladores para pacientes, citas, análisis, notificaciones
+  - Servicio de disponibilidad de calendario
+  - Sistema de eventos para citas públicas
+  - Configuración centralizada
+  - Tipos TypeScript estrictos (sin errores de compilación)
+
+- **Sistema de Calendario**
+  - Página pública de solicitud de citas
+  - Configuración de horarios por servicio
+  - Gestión de eventos con fechas y horarios
+  - Aprobación/rechazo de solicitudes
 
 ### 🚧 En Desarrollo
-- Backend API con Node.js + Express
-- Base de datos con Prisma
 - Autenticación y autorización
-- Integración frontend-backend
+- Sistema de envío de emails
+- Mejoras de rendimiento
 
 ### 📝 Planificado
 Ver [PROPUESTA_DESARROLLO.md](./PROPUESTA_DESARROLLO.md) para detalles completos.
@@ -61,11 +76,12 @@ La aplicación estará disponible en `http://localhost:5173`
 - **React Query** - Gestión de estado del servidor
 - **React Hook Form + Zod** - Formularios y validación
 
-### Backend (En desarrollo)
-- **Node.js + Express** - Servidor API
+### Backend
+- **Node.js + Express** - Servidor API REST
 - **Prisma** - ORM para base de datos
-- **SQLite/PostgreSQL** - Base de datos
-- **JWT** - Autenticación
+- **SQLite** - Base de datos (PostgreSQL en producción)
+- **Zod** - Validación de esquemas
+- **TypeScript estricto** - Sin errores de compilación
 
 ---
 
@@ -201,9 +217,9 @@ Ver [GUIA_CODIGO_LIMPIO.md](./docs/GUIA_CODIGO_LIMPIO.md) y [REACT_BEST_PRACTICE
 
 ## 🐛 Problemas Conocidos
 
-- Los datos actualmente son mockeados (no hay persistencia)
-- No hay autenticación implementada
-- El calendario no se sincroniza con servicios externos
+- No hay autenticación implementada (endpoints públicos)
+- El sistema de emails está preparado pero no configurado
+- Falta sistema de backup automático
 
 Estos puntos están planificados para las siguientes fases de desarrollo.
 
@@ -221,4 +237,4 @@ Para preguntas o sugerencias sobre el proyecto, consulta la [Propuesta de Desarr
 
 ---
 
-**Última actualización**: Enero 2024
+**Última actualización**: Enero 2026
