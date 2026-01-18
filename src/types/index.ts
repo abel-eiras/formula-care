@@ -15,6 +15,24 @@ export interface Configuracion {
   updatedAt?: string;
 }
 
+// Plantillas de Email
+export interface PlantillaEmail {
+  id: string;
+  tipo: 'confirmacion' | 'recordatorio' | 'cancelacion' | 'modificacion';
+  nombre: string;
+  asunto: string;
+  contenidoHtml: string;
+  contenidoTexto?: string;
+  activa: boolean;
+  createdAt?: string;
+  updatedAt?: string;
+}
+
+export interface VariablePlantilla {
+  nombre: string;
+  descripcion: string;
+}
+
 // Configuración RGPD y Legal
 export interface ConfiguracionRgpd {
   // Datos del responsable del tratamiento

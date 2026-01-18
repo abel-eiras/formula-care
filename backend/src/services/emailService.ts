@@ -1,64 +1,203 @@
-import nodemailer from 'nodemailer';
-import { prisma } from '../lib/prisma.js';
+/**
+ * Servicio de Email con soporte dual: Resend + SMTP (Nodemailer)
+ * Carga plantillas dinámicas desde la base de datos
+ */
 
-// Configuración del transportador de email
-let transporter: nodemailer.Transporter | null = null;
+import nodemailer from 'nodemailer';
+import { Resend } from 'resend';
+import { prisma } from '../lib/prisma.js';
+import { generarTokensAccionCita, construirUrlsAccion, type TipoAccionCita } from './tokenService.js';
+
+// ==========================================
+// TIPOS
+// ==========================================
+
+interface DatosEmail {
+  nombrePaciente: string;
+  fechaCita: string;
+  horaCita: string;
+  tipoServicio: string;
+  nombreFarmacia?: string;
+  direccionFarmacia?: string;
+  telefonoFarmacia?: string;
+  emailFarmacia?: string;
+  webFarmacia?: string;
+  urlConfirmar?: string;
+  urlModificar?: string;
+  urlCancelar?: string;
+  motivoRechazo?: string;
+  [key: string]: string | undefined; // Para variables adicionales
+}
+
+interface ConfigEmail {
+  provider: 'smtp' | 'resend';
+  resendApiKey?: string;
+  emailRemitente?: string;
+  nombreRemitente?: string;
+  // SMTP
+  smtpHost?: string;
+  smtpPort?: number;
+  smtpSecure?: boolean;
+  smtpUser?: string;
+  smtpPass?: string;
+}
+
+// ==========================================
+// VARIABLES GLOBALES
+// ==========================================
+
+let smtpTransporter: nodemailer.Transporter | null = null;
+let resendClient: Resend | null = null;
+
+// ==========================================
+// INICIALIZACIÓN
+// ==========================================
 
 /**
- * Inicializa el transportador de email con configuración SMTP
+ * Obtiene la configuración de email desde BD y variables de entorno
  */
-async function inicializarTransportador() {
-  if (transporter) {
-    return transporter;
-  }
+async function obtenerConfigEmail(): Promise<ConfigEmail> {
+  const config = await prisma.configuracion.findUnique({
+    where: { id: 'config' },
+  });
 
-  // Obtener configuración SMTP de variables de entorno
-  const SMTP_HOST = process.env.SMTP_HOST;
-  const SMTP_PORT = parseInt(process.env.SMTP_PORT || '587', 10);
-  const SMTP_SECURE = process.env.SMTP_SECURE === 'true'; // true para puerto 465, false para otros
-  const SMTP_USER = process.env.SMTP_USER;
-  const SMTP_PASS = process.env.SMTP_PASS;
-  const SMTP_FROM = process.env.SMTP_FROM || SMTP_USER;
+  return {
+    provider: (config?.emailProvider as 'smtp' | 'resend') || 'smtp',
+    resendApiKey: config?.resendApiKey ?? process.env.RESEND_API_KEY ?? undefined,
+    emailRemitente: config?.emailRemitente ?? process.env.SMTP_FROM ?? config?.farmaciaEmail ?? undefined,
+    nombreRemitente: config?.emailNombreRemitente ?? config?.farmaciaNombre ?? 'Farmacia Pontevea',
+    smtpHost: process.env.SMTP_HOST,
+    smtpPort: parseInt(process.env.SMTP_PORT || '587', 10),
+    smtpSecure: process.env.SMTP_SECURE === 'true',
+    smtpUser: process.env.SMTP_USER,
+    smtpPass: process.env.SMTP_PASS,
+  };
+}
 
-  // Si no hay configuración SMTP, crear un transportador de prueba (solo para desarrollo)
-  if (!SMTP_HOST || !SMTP_USER || !SMTP_PASS) {
-    console.warn('⚠️  Configuración SMTP no encontrada. Usando transportador de prueba (solo desarrollo).');
-    console.warn('   Configura SMTP_HOST, SMTP_PORT, SMTP_USER, SMTP_PASS en .env para producción.');
-    
-    // Transportador de prueba (no envía emails reales, solo los muestra en consola)
-    transporter = nodemailer.createTransport({
+/**
+ * Inicializa el transportador SMTP
+ */
+async function inicializarSMTP(config: ConfigEmail): Promise<nodemailer.Transporter | null> {
+  if (smtpTransporter) return smtpTransporter;
+
+  if (!config.smtpHost || !config.smtpUser || !config.smtpPass) {
+    console.warn('⚠️  Configuración SMTP incompleta. Usando modo de prueba.');
+    // Transportador de prueba (Ethereal)
+    smtpTransporter = nodemailer.createTransport({
       host: 'smtp.ethereal.email',
       port: 587,
       secure: false,
-      auth: {
-        user: 'test@ethereal.email',
-        pass: 'test',
-      },
+      auth: { user: 'test@ethereal.email', pass: 'test' },
     });
-  } else {
-    // Transportador real con configuración SMTP
-    transporter = nodemailer.createTransport({
-      host: SMTP_HOST,
-      port: SMTP_PORT,
-      secure: SMTP_SECURE,
-      auth: {
-        user: SMTP_USER,
-        pass: SMTP_PASS,
-      },
-    });
+    return smtpTransporter;
   }
 
-  // Verificar conexión
+  smtpTransporter = nodemailer.createTransport({
+    host: config.smtpHost,
+    port: config.smtpPort,
+    secure: config.smtpSecure,
+    auth: { user: config.smtpUser, pass: config.smtpPass },
+  });
+
   try {
-    await transporter.verify();
-    console.log('✅ Servidor de email configurado correctamente');
+    await smtpTransporter.verify();
+    console.log('✅ Servidor SMTP configurado correctamente');
   } catch (error) {
-    console.error('❌ Error al verificar configuración de email:', error);
-    console.warn('   Los emails no se enviarán hasta que se corrija la configuración.');
+    console.error('❌ Error al verificar SMTP:', error);
   }
 
-  return transporter;
+  return smtpTransporter;
 }
+
+/**
+ * Inicializa el cliente de Resend
+ */
+function inicializarResend(config: ConfigEmail): Resend | null {
+  if (resendClient) return resendClient;
+
+  if (!config.resendApiKey) {
+    console.warn('⚠️  API Key de Resend no configurada.');
+    return null;
+  }
+
+  resendClient = new Resend(config.resendApiKey);
+  console.log('✅ Cliente Resend inicializado');
+  return resendClient;
+}
+
+// ==========================================
+// PLANTILLAS
+// ==========================================
+
+/**
+ * Obtiene una plantilla de email por tipo
+ */
+async function obtenerPlantilla(tipo: string) {
+  const plantilla = await prisma.plantillaEmail.findUnique({
+    where: { tipo },
+  });
+
+  if (!plantilla || !plantilla.activa) {
+    return null;
+  }
+
+  return plantilla;
+}
+
+/**
+ * Reemplaza variables en el contenido de la plantilla
+ * Variables soportadas: {{nombrePaciente}}, {{fechaCita}}, etc.
+ */
+function reemplazarVariables(contenido: string, datos: DatosEmail): string {
+  let resultado = contenido;
+
+  // Lista de todas las variables disponibles
+  const variables: Record<string, string | undefined> = {
+    nombrePaciente: datos.nombrePaciente,
+    fechaCita: datos.fechaCita,
+    horaCita: datos.horaCita,
+    tipoServicio: datos.tipoServicio,
+    nombreFarmacia: datos.nombreFarmacia,
+    direccionFarmacia: datos.direccionFarmacia,
+    telefonoFarmacia: datos.telefonoFarmacia,
+    emailFarmacia: datos.emailFarmacia,
+    webFarmacia: datos.webFarmacia,
+    urlConfirmar: datos.urlConfirmar,
+    urlModificar: datos.urlModificar,
+    urlCancelar: datos.urlCancelar,
+    motivoRechazo: datos.motivoRechazo,
+    // Añadir año actual para footer
+    anioActual: new Date().getFullYear().toString(),
+  };
+
+  // Reemplazar cada variable
+  for (const [key, value] of Object.entries(variables)) {
+    const regex = new RegExp(`\\{\\{${key}\\}\\}`, 'g');
+    resultado = resultado.replace(regex, value || '');
+  }
+
+  return resultado;
+}
+
+/**
+ * Genera versión texto plano desde HTML
+ */
+function htmlATexto(html: string): string {
+  return html
+    .replace(/<style[^>]*>[\s\S]*?<\/style>/gi, '')
+    .replace(/<script[^>]*>[\s\S]*?<\/script>/gi, '')
+    .replace(/<[^>]+>/g, '')
+    .replace(/\s+/g, ' ')
+    .replace(/&nbsp;/g, ' ')
+    .replace(/&amp;/g, '&')
+    .replace(/&lt;/g, '<')
+    .replace(/&gt;/g, '>')
+    .trim();
+}
+
+// ==========================================
+// DATOS DE FARMACIA
+// ==========================================
 
 /**
  * Obtiene los datos de la farmacia desde la configuración
@@ -79,9 +218,9 @@ async function obtenerDatosFarmacia() {
 }
 
 /**
- * Formatea la fecha y hora para mostrar en el email
+ * Formatea la fecha para mostrar en el email
  */
-function formatearFechaHora(fecha: string, hora: string): string {
+function formatearFecha(fecha: string): string {
   const fechaObj = new Date(fecha);
   const opciones: Intl.DateTimeFormatOptions = {
     weekday: 'long',
@@ -89,8 +228,7 @@ function formatearFechaHora(fecha: string, hora: string): string {
     month: 'long',
     day: 'numeric',
   };
-  const fechaFormateada = fechaObj.toLocaleDateString('es-ES', opciones);
-  return `${fechaFormateada} a las ${hora}`;
+  return fechaObj.toLocaleDateString('es-ES', opciones);
 }
 
 /**
@@ -106,12 +244,102 @@ function obtenerNombreTipoServicio(tipo: string): string {
   return nombres[tipo] || tipo;
 }
 
+// ==========================================
+// ENVÍO DE EMAILS
+// ==========================================
+
 /**
- * Envía email de confirmación de cita
+ * Envía un email usando el proveedor configurado
+ */
+async function enviarEmail(
+  destinatario: string,
+  asunto: string,
+  html: string,
+  texto?: string
+): Promise<boolean> {
+  const config = await obtenerConfigEmail();
+
+  try {
+    if (config.provider === 'resend' && config.resendApiKey) {
+      // Usar Resend
+      const resend = inicializarResend(config);
+      if (!resend) {
+        console.warn('⚠️  Resend no disponible, intentando SMTP...');
+        return enviarConSMTP(config, destinatario, asunto, html, texto);
+      }
+
+      const { error } = await resend.emails.send({
+        from: `${config.nombreRemitente} <${config.emailRemitente || 'noreply@farmaciapontevea.com'}>`,
+        to: destinatario,
+        subject: asunto,
+        html: html,
+        text: texto || htmlATexto(html),
+      });
+
+      if (error) {
+        console.error('❌ Error Resend:', error);
+        // Fallback a SMTP
+        return enviarConSMTP(config, destinatario, asunto, html, texto);
+      }
+
+      console.log(`✅ Email enviado vía Resend a ${destinatario}`);
+      return true;
+    } else {
+      // Usar SMTP
+      return enviarConSMTP(config, destinatario, asunto, html, texto);
+    }
+  } catch (error) {
+    console.error('❌ Error al enviar email:', error);
+    return false;
+  }
+}
+
+/**
+ * Envía email usando SMTP/Nodemailer
+ */
+async function enviarConSMTP(
+  config: ConfigEmail,
+  destinatario: string,
+  asunto: string,
+  html: string,
+  texto?: string
+): Promise<boolean> {
+  try {
+    const transporter = await inicializarSMTP(config);
+    if (!transporter) {
+      console.error('❌ No se pudo inicializar el transportador SMTP');
+      return false;
+    }
+
+    const from = config.emailRemitente || config.smtpUser || 'noreply@farmaciapontevea.com';
+
+    await transporter.sendMail({
+      from: `"${config.nombreRemitente}" <${from}>`,
+      to: destinatario,
+      subject: asunto,
+      text: texto || htmlATexto(html),
+      html: html,
+    });
+
+    console.log(`✅ Email enviado vía SMTP a ${destinatario}`);
+    return true;
+  } catch (error) {
+    console.error('❌ Error SMTP:', error);
+    return false;
+  }
+}
+
+// ==========================================
+// FUNCIONES PÚBLICAS DE ENVÍO
+// ==========================================
+
+/**
+ * Envía email de confirmación de cita con botones de acción
  */
 export async function enviarConfirmacionCita(
   emailDestinatario: string,
   datosCita: {
+    citaId: string;
     tipo: string;
     fecha: string;
     hora: string;
@@ -119,97 +347,173 @@ export async function enviarConfirmacionCita(
   }
 ): Promise<boolean> {
   try {
-    const transportador = await inicializarTransportador();
     const datosFarmacia = await obtenerDatosFarmacia();
 
-    const nombreServicio = obtenerNombreTipoServicio(datosCita.tipo);
-    const fechaHoraFormateada = formatearFechaHora(datosCita.fecha, datosCita.hora);
+    // Generar tokens de acción
+    const tokens = await generarTokensAccionCita(datosCita.citaId);
+    const urls = construirUrlsAccion(tokens);
 
-    // Plantilla HTML del email
-    const html = `
-<!DOCTYPE html>
-<html>
-<head>
-  <meta charset="utf-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>Confirmación de Cita</title>
-</head>
-<body style="font-family: Arial, sans-serif; line-height: 1.6; color: #333; max-width: 600px; margin: 0 auto; padding: 20px;">
-  <div style="background-color: #79438f; color: white; padding: 20px; text-align: center; border-radius: 5px 5px 0 0;">
-    <h1 style="margin: 0;">Confirmación de Cita</h1>
-  </div>
-  
-  <div style="background-color: #f9f9f9; padding: 30px; border-radius: 0 0 5px 5px;">
-    <p>Estimado/a <strong>${datosCita.nombreCliente}</strong>,</p>
-    
-    <p>Le confirmamos que su solicitud de cita ha sido <strong>aprobada</strong>.</p>
-    
-    <div style="background-color: white; padding: 20px; margin: 20px 0; border-left: 4px solid #79438f; border-radius: 4px;">
-      <h2 style="margin-top: 0; color: #79438f;">Detalles de la Cita</h2>
-      <p><strong>Tipo de servicio:</strong> ${nombreServicio}</p>
-      <p><strong>Fecha y hora:</strong> ${fechaHoraFormateada}</p>
-    </div>
-    
-    <p>Por favor, llegue con unos minutos de antelación.</p>
-    
-    <div style="margin-top: 30px; padding-top: 20px; border-top: 1px solid #ddd;">
-      <p><strong>${datosFarmacia.nombre}</strong></p>
-      ${datosFarmacia.direccion ? `<p>${datosFarmacia.direccion}</p>` : ''}
-      ${datosFarmacia.ciudad ? `<p>${datosFarmacia.ciudad}</p>` : ''}
-      ${datosFarmacia.telefono ? `<p>Teléfono: ${datosFarmacia.telefono}</p>` : ''}
-      ${datosFarmacia.email ? `<p>Email: ${datosFarmacia.email}</p>` : ''}
-      ${datosFarmacia.web ? `<p>Web: ${datosFarmacia.web}</p>` : ''}
-    </div>
-    
-    <p style="margin-top: 30px; font-size: 12px; color: #666;">
-      Si necesita modificar o cancelar su cita, por favor contacte con nosotros.
-    </p>
-  </div>
-</body>
-</html>
-    `;
+    // Preparar datos para la plantilla
+    const datos: DatosEmail = {
+      nombrePaciente: datosCita.nombreCliente,
+      fechaCita: formatearFecha(datosCita.fecha),
+      horaCita: datosCita.hora,
+      tipoServicio: obtenerNombreTipoServicio(datosCita.tipo),
+      nombreFarmacia: datosFarmacia.nombre,
+      direccionFarmacia: `${datosFarmacia.direccion}, ${datosFarmacia.ciudad}`,
+      telefonoFarmacia: datosFarmacia.telefono,
+      emailFarmacia: datosFarmacia.email,
+      webFarmacia: datosFarmacia.web,
+      urlConfirmar: urls.confirmar,
+      urlModificar: urls.modificar,
+      urlCancelar: urls.cancelar,
+    };
 
-    // Versión texto plano
-    const texto = `
-Confirmación de Cita
+    // Obtener plantilla
+    const plantilla = await obtenerPlantilla('confirmacion');
 
-Estimado/a ${datosCita.nombreCliente},
+    let html: string;
+    let asunto: string;
 
-Le confirmamos que su solicitud de cita ha sido aprobada.
+    if (plantilla) {
+      html = reemplazarVariables(plantilla.contenidoHtml, datos);
+      asunto = reemplazarVariables(plantilla.asunto, datos);
+    } else {
+      // Plantilla por defecto si no existe en BD
+      html = generarPlantillaConfirmacionDefault(datos);
+      asunto = `Confirmación de cita - ${datos.tipoServicio}`;
+    }
 
-Detalles de la Cita:
-- Tipo de servicio: ${nombreServicio}
-- Fecha y hora: ${fechaHoraFormateada}
+    const enviado = await enviarEmail(emailDestinatario, asunto, html);
 
-Por favor, llegue con unos minutos de antelación.
+    if (enviado) {
+      // Marcar cita como email de confirmación enviado
+      await prisma.cita.update({
+        where: { id: datosCita.citaId },
+        data: { confirmacionEnviada: true },
+      });
+    }
 
-${datosFarmacia.nombre}
-${datosFarmacia.direccion ? datosFarmacia.direccion + '\n' : ''}${datosFarmacia.ciudad ? datosFarmacia.ciudad + '\n' : ''}${datosFarmacia.telefono ? 'Teléfono: ' + datosFarmacia.telefono + '\n' : ''}${datosFarmacia.email ? 'Email: ' + datosFarmacia.email + '\n' : ''}${datosFarmacia.web ? 'Web: ' + datosFarmacia.web + '\n' : ''}
-
-Si necesita modificar o cancelar su cita, por favor contacte con nosotros.
-    `;
-
-    const SMTP_FROM = process.env.SMTP_FROM || process.env.SMTP_USER || datosFarmacia.email || 'noreply@farmaciapontevea.com';
-
-    const info = await transportador.sendMail({
-      from: `"${datosFarmacia.nombre}" <${SMTP_FROM}>`,
-      to: emailDestinatario,
-      subject: `Confirmación de cita - ${nombreServicio}`,
-      text: texto,
-      html: html,
-    });
-
-    console.log(`✅ Email de confirmación enviado a ${emailDestinatario} (Message ID: ${info.messageId})`);
-    return true;
+    return enviado;
   } catch (error) {
     console.error('❌ Error al enviar email de confirmación:', error);
-    // No lanzamos el error para que no falle la aplicación si el email no se puede enviar
     return false;
   }
 }
 
 /**
- * Envía email de rechazo de solicitud (opcional)
+ * Envía email de recordatorio de cita
+ */
+export async function enviarRecordatorioCita(
+  emailDestinatario: string,
+  datosCita: {
+    citaId: string;
+    tipo: string;
+    fecha: string;
+    hora: string;
+    nombreCliente: string;
+  }
+): Promise<boolean> {
+  try {
+    const datosFarmacia = await obtenerDatosFarmacia();
+    const tokens = await generarTokensAccionCita(datosCita.citaId);
+    const urls = construirUrlsAccion(tokens);
+
+    const datos: DatosEmail = {
+      nombrePaciente: datosCita.nombreCliente,
+      fechaCita: formatearFecha(datosCita.fecha),
+      horaCita: datosCita.hora,
+      tipoServicio: obtenerNombreTipoServicio(datosCita.tipo),
+      nombreFarmacia: datosFarmacia.nombre,
+      direccionFarmacia: `${datosFarmacia.direccion}, ${datosFarmacia.ciudad}`,
+      telefonoFarmacia: datosFarmacia.telefono,
+      emailFarmacia: datosFarmacia.email,
+      webFarmacia: datosFarmacia.web,
+      urlConfirmar: urls.confirmar,
+      urlModificar: urls.modificar,
+      urlCancelar: urls.cancelar,
+    };
+
+    const plantilla = await obtenerPlantilla('recordatorio');
+
+    let html: string;
+    let asunto: string;
+
+    if (plantilla) {
+      html = reemplazarVariables(plantilla.contenidoHtml, datos);
+      asunto = reemplazarVariables(plantilla.asunto, datos);
+    } else {
+      html = generarPlantillaRecordatorioDefault(datos);
+      asunto = `Recordatorio: Tu cita es mañana - ${datos.tipoServicio}`;
+    }
+
+    const enviado = await enviarEmail(emailDestinatario, asunto, html);
+
+    if (enviado) {
+      await prisma.cita.update({
+        where: { id: datosCita.citaId },
+        data: { recordatorioEnviado: true },
+      });
+    }
+
+    return enviado;
+  } catch (error) {
+    console.error('❌ Error al enviar recordatorio:', error);
+    return false;
+  }
+}
+
+/**
+ * Envía email de cancelación de cita
+ */
+export async function enviarCancelacionCita(
+  emailDestinatario: string,
+  datosCita: {
+    tipo: string;
+    fecha: string;
+    hora: string;
+    nombreCliente: string;
+    motivoRechazo?: string;
+  }
+): Promise<boolean> {
+  try {
+    const datosFarmacia = await obtenerDatosFarmacia();
+
+    const datos: DatosEmail = {
+      nombrePaciente: datosCita.nombreCliente,
+      fechaCita: formatearFecha(datosCita.fecha),
+      horaCita: datosCita.hora,
+      tipoServicio: obtenerNombreTipoServicio(datosCita.tipo),
+      nombreFarmacia: datosFarmacia.nombre,
+      direccionFarmacia: `${datosFarmacia.direccion}, ${datosFarmacia.ciudad}`,
+      telefonoFarmacia: datosFarmacia.telefono,
+      emailFarmacia: datosFarmacia.email,
+      webFarmacia: datosFarmacia.web,
+      motivoRechazo: datosCita.motivoRechazo,
+    };
+
+    const plantilla = await obtenerPlantilla('cancelacion');
+
+    let html: string;
+    let asunto: string;
+
+    if (plantilla) {
+      html = reemplazarVariables(plantilla.contenidoHtml, datos);
+      asunto = reemplazarVariables(plantilla.asunto, datos);
+    } else {
+      html = generarPlantillaCancelacionDefault(datos);
+      asunto = `Cita cancelada - ${datos.tipoServicio}`;
+    }
+
+    return await enviarEmail(emailDestinatario, asunto, html);
+  } catch (error) {
+    console.error('❌ Error al enviar cancelación:', error);
+    return false;
+  }
+}
+
+/**
+ * Envía email de rechazo de solicitud (mantener compatibilidad)
  */
 export async function enviarRechazoSolicitud(
   emailDestinatario: string,
@@ -221,76 +525,171 @@ export async function enviarRechazoSolicitud(
     motivo?: string;
   }
 ): Promise<boolean> {
-  try {
-    const transportador = await inicializarTransportador();
-    const datosFarmacia = await obtenerDatosFarmacia();
+  return enviarCancelacionCita(emailDestinatario, {
+    ...datosSolicitud,
+    motivoRechazo: datosSolicitud.motivo,
+  });
+}
 
-    const nombreServicio = obtenerNombreTipoServicio(datosSolicitud.tipo);
-    const fechaHoraFormateada = formatearFechaHora(datosSolicitud.fecha, datosSolicitud.hora);
+// ==========================================
+// PLANTILLAS POR DEFECTO
+// ==========================================
 
-    const html = `
+/**
+ * Genera plantilla HTML de confirmación por defecto
+ */
+function generarPlantillaConfirmacionDefault(datos: DatosEmail): string {
+  return `
 <!DOCTYPE html>
-<html>
+<html lang="es">
 <head>
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>Solicitud de Cita</title>
+  <title>Confirmación de Cita</title>
 </head>
-<body style="font-family: Arial, sans-serif; line-height: 1.6; color: #333; max-width: 600px; margin: 0 auto; padding: 20px;">
-  <div style="background-color: #dc3545; color: white; padding: 20px; text-align: center; border-radius: 5px 5px 0 0;">
-    <h1 style="margin: 0;">Solicitud de Cita</h1>
+<body style="font-family: 'Segoe UI', Arial, sans-serif; line-height: 1.6; color: #333; max-width: 600px; margin: 0 auto; padding: 20px; background-color: #f5f5f5;">
+  <div style="background-color: #79438f; color: white; padding: 30px 20px; text-align: center; border-radius: 10px 10px 0 0;">
+    <h1 style="margin: 0; font-size: 24px;">✅ Cita Confirmada</h1>
   </div>
   
-  <div style="background-color: #f9f9f9; padding: 30px; border-radius: 0 0 5px 5px;">
-    <p>Estimado/a <strong>${datosSolicitud.nombreCliente}</strong>,</p>
+  <div style="background-color: white; padding: 30px; border-radius: 0 0 10px 10px; box-shadow: 0 2px 10px rgba(0,0,0,0.1);">
+    <p style="font-size: 16px;">Hola <strong>${datos.nombrePaciente}</strong>,</p>
     
-    <p>Lamentamos informarle que su solicitud de cita para el <strong>${fechaHoraFormateada}</strong> (${nombreServicio}) no ha podido ser confirmada en este momento.</p>
+    <p>Tu cita ha sido confirmada correctamente. Aquí tienes los detalles:</p>
     
-    ${datosSolicitud.motivo ? `<p><strong>Motivo:</strong> ${datosSolicitud.motivo}</p>` : ''}
+    <div style="background-color: #f8f4fa; padding: 20px; margin: 20px 0; border-left: 4px solid #79438f; border-radius: 0 8px 8px 0;">
+      <p style="margin: 5px 0;"><strong>📅 Fecha:</strong> ${datos.fechaCita}</p>
+      <p style="margin: 5px 0;"><strong>🕐 Hora:</strong> ${datos.horaCita}</p>
+      <p style="margin: 5px 0;"><strong>💊 Servicio:</strong> ${datos.tipoServicio}</p>
+    </div>
     
-    <p>Le invitamos a contactar con nosotros para encontrar una alternativa que se ajuste a sus necesidades.</p>
+    <p>Por favor, llegue con unos minutos de antelación.</p>
     
-    <div style="margin-top: 30px; padding-top: 20px; border-top: 1px solid #ddd;">
-      <p><strong>${datosFarmacia.nombre}</strong></p>
-      ${datosFarmacia.direccion ? `<p>${datosFarmacia.direccion}</p>` : ''}
-      ${datosFarmacia.ciudad ? `<p>${datosFarmacia.ciudad}</p>` : ''}
-      ${datosFarmacia.telefono ? `<p>Teléfono: ${datosFarmacia.telefono}</p>` : ''}
-      ${datosFarmacia.email ? `<p>Email: ${datosFarmacia.email}</p>` : ''}
+    <!-- Botones de acción -->
+    <div style="text-align: center; margin: 30px 0;">
+      <a href="${datos.urlConfirmar}" style="display: inline-block; background-color: #22c55e; color: white; padding: 12px 24px; text-decoration: none; border-radius: 6px; margin: 5px; font-weight: bold;">✓ Confirmar asistencia</a>
+      <a href="${datos.urlModificar}" style="display: inline-block; background-color: #3b82f6; color: white; padding: 12px 24px; text-decoration: none; border-radius: 6px; margin: 5px; font-weight: bold;">✎ Modificar cita</a>
+      <a href="${datos.urlCancelar}" style="display: inline-block; background-color: #ef4444; color: white; padding: 12px 24px; text-decoration: none; border-radius: 6px; margin: 5px; font-weight: bold;">✕ Cancelar cita</a>
+    </div>
+    
+    <hr style="border: none; border-top: 1px solid #eee; margin: 30px 0;">
+    
+    <div style="color: #666; font-size: 14px;">
+      <p><strong>${datos.nombreFarmacia}</strong></p>
+      <p style="margin: 3px 0;">${datos.direccionFarmacia}</p>
+      <p style="margin: 3px 0;">📞 ${datos.telefonoFarmacia}</p>
+      <p style="margin: 3px 0;">✉️ ${datos.emailFarmacia}</p>
     </div>
   </div>
+  
+  <p style="text-align: center; color: #999; font-size: 12px; margin-top: 20px;">
+    © ${new Date().getFullYear()} ${datos.nombreFarmacia}. Todos los derechos reservados.
+  </p>
 </body>
-</html>
-    `;
+</html>`;
+}
 
-    const texto = `
-Solicitud de Cita
+/**
+ * Genera plantilla HTML de recordatorio por defecto
+ */
+function generarPlantillaRecordatorioDefault(datos: DatosEmail): string {
+  return `
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Recordatorio de Cita</title>
+</head>
+<body style="font-family: 'Segoe UI', Arial, sans-serif; line-height: 1.6; color: #333; max-width: 600px; margin: 0 auto; padding: 20px; background-color: #f5f5f5;">
+  <div style="background-color: #f59e0b; color: white; padding: 30px 20px; text-align: center; border-radius: 10px 10px 0 0;">
+    <h1 style="margin: 0; font-size: 24px;">⏰ Recordatorio de Cita</h1>
+  </div>
+  
+  <div style="background-color: white; padding: 30px; border-radius: 0 0 10px 10px; box-shadow: 0 2px 10px rgba(0,0,0,0.1);">
+    <p style="font-size: 16px;">Hola <strong>${datos.nombrePaciente}</strong>,</p>
+    
+    <p>Te recordamos que tienes una cita programada para <strong>mañana</strong>:</p>
+    
+    <div style="background-color: #fef3c7; padding: 20px; margin: 20px 0; border-left: 4px solid #f59e0b; border-radius: 0 8px 8px 0;">
+      <p style="margin: 5px 0;"><strong>📅 Fecha:</strong> ${datos.fechaCita}</p>
+      <p style="margin: 5px 0;"><strong>🕐 Hora:</strong> ${datos.horaCita}</p>
+      <p style="margin: 5px 0;"><strong>💊 Servicio:</strong> ${datos.tipoServicio}</p>
+    </div>
+    
+    <p>Por favor, llegue con unos minutos de antelación. Si no puedes asistir, te agradecemos que nos lo comuniques.</p>
+    
+    <!-- Botones de acción -->
+    <div style="text-align: center; margin: 30px 0;">
+      <a href="${datos.urlConfirmar}" style="display: inline-block; background-color: #22c55e; color: white; padding: 12px 24px; text-decoration: none; border-radius: 6px; margin: 5px; font-weight: bold;">✓ Confirmar asistencia</a>
+      <a href="${datos.urlModificar}" style="display: inline-block; background-color: #3b82f6; color: white; padding: 12px 24px; text-decoration: none; border-radius: 6px; margin: 5px; font-weight: bold;">✎ Modificar cita</a>
+      <a href="${datos.urlCancelar}" style="display: inline-block; background-color: #ef4444; color: white; padding: 12px 24px; text-decoration: none; border-radius: 6px; margin: 5px; font-weight: bold;">✕ Cancelar cita</a>
+    </div>
+    
+    <hr style="border: none; border-top: 1px solid #eee; margin: 30px 0;">
+    
+    <div style="color: #666; font-size: 14px;">
+      <p><strong>${datos.nombreFarmacia}</strong></p>
+      <p style="margin: 3px 0;">${datos.direccionFarmacia}</p>
+      <p style="margin: 3px 0;">📞 ${datos.telefonoFarmacia}</p>
+    </div>
+  </div>
+  
+  <p style="text-align: center; color: #999; font-size: 12px; margin-top: 20px;">
+    © ${new Date().getFullYear()} ${datos.nombreFarmacia}
+  </p>
+</body>
+</html>`;
+}
 
-Estimado/a ${datosSolicitud.nombreCliente},
-
-Lamentamos informarle que su solicitud de cita para el ${fechaHoraFormateada} (${nombreServicio}) no ha podido ser confirmada en este momento.
-
-${datosSolicitud.motivo ? `Motivo: ${datosSolicitud.motivo}\n` : ''}
-
-Le invitamos a contactar con nosotros para encontrar una alternativa que se ajuste a sus necesidades.
-
-${datosFarmacia.nombre}
-${datosFarmacia.direccion ? datosFarmacia.direccion + '\n' : ''}${datosFarmacia.ciudad ? datosFarmacia.ciudad + '\n' : ''}${datosFarmacia.telefono ? 'Teléfono: ' + datosFarmacia.telefono + '\n' : ''}${datosFarmacia.email ? 'Email: ' + datosFarmacia.email + '\n' : ''}
-    `;
-
-    const SMTP_FROM = process.env.SMTP_FROM || process.env.SMTP_USER || datosFarmacia.email || 'noreply@farmaciapontevea.com';
-
-    const info = await transportador.sendMail({
-      from: `"${datosFarmacia.nombre}" <${SMTP_FROM}>`,
-      to: emailDestinatario,
-      subject: `Solicitud de cita - ${nombreServicio}`,
-      text: texto,
-      html: html,
-    });
-
-    console.log(`✅ Email de rechazo enviado a ${emailDestinatario} (Message ID: ${info.messageId})`);
-    return true;
-  } catch (error) {
-    console.error('❌ Error al enviar email de rechazo:', error);
-    return false;
-  }
+/**
+ * Genera plantilla HTML de cancelación por defecto
+ */
+function generarPlantillaCancelacionDefault(datos: DatosEmail): string {
+  return `
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Cita Cancelada</title>
+</head>
+<body style="font-family: 'Segoe UI', Arial, sans-serif; line-height: 1.6; color: #333; max-width: 600px; margin: 0 auto; padding: 20px; background-color: #f5f5f5;">
+  <div style="background-color: #ef4444; color: white; padding: 30px 20px; text-align: center; border-radius: 10px 10px 0 0;">
+    <h1 style="margin: 0; font-size: 24px;">❌ Cita Cancelada</h1>
+  </div>
+  
+  <div style="background-color: white; padding: 30px; border-radius: 0 0 10px 10px; box-shadow: 0 2px 10px rgba(0,0,0,0.1);">
+    <p style="font-size: 16px;">Hola <strong>${datos.nombrePaciente}</strong>,</p>
+    
+    <p>Lamentamos informarte que tu cita ha sido cancelada:</p>
+    
+    <div style="background-color: #fef2f2; padding: 20px; margin: 20px 0; border-left: 4px solid #ef4444; border-radius: 0 8px 8px 0;">
+      <p style="margin: 5px 0;"><strong>📅 Fecha:</strong> ${datos.fechaCita}</p>
+      <p style="margin: 5px 0;"><strong>🕐 Hora:</strong> ${datos.horaCita}</p>
+      <p style="margin: 5px 0;"><strong>💊 Servicio:</strong> ${datos.tipoServicio}</p>
+      ${datos.motivoRechazo ? `<p style="margin: 10px 0 0 0;"><strong>Motivo:</strong> ${datos.motivoRechazo}</p>` : ''}
+    </div>
+    
+    <p>Si deseas reagendar tu cita, puedes contactarnos o visitar nuestra página de solicitud de citas.</p>
+    
+    <div style="text-align: center; margin: 30px 0;">
+      <a href="${datos.webFarmacia || '#'}" style="display: inline-block; background-color: #79438f; color: white; padding: 12px 24px; text-decoration: none; border-radius: 6px; font-weight: bold;">Solicitar nueva cita</a>
+    </div>
+    
+    <hr style="border: none; border-top: 1px solid #eee; margin: 30px 0;">
+    
+    <div style="color: #666; font-size: 14px;">
+      <p><strong>${datos.nombreFarmacia}</strong></p>
+      <p style="margin: 3px 0;">${datos.direccionFarmacia}</p>
+      <p style="margin: 3px 0;">📞 ${datos.telefonoFarmacia}</p>
+      <p style="margin: 3px 0;">✉️ ${datos.emailFarmacia}</p>
+    </div>
+  </div>
+  
+  <p style="text-align: center; color: #999; font-size: 12px; margin-top: 20px;">
+    © ${new Date().getFullYear()} ${datos.nombreFarmacia}
+  </p>
+</body>
+</html>`;
 }

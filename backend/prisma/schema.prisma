@@ -149,8 +149,10 @@ model Cita {
   fecha      String   // Fecha en formato ISO
   hora       String   // Formato "HH:mm"
   tipo       String   // "dermo", "bio", "consulta", "seguimiento"
+  estado     String   @default("pendiente") // "pendiente", "confirmada", "cancelada", "completada"
   notas      String?
   recordatorioEnviado Boolean @default(false) // Si se ha enviado recordatorio
+  confirmacionEnviada Boolean @default(false) // Si se ha enviado email de confirmación
   createdAt  DateTime @default(now())
   updatedAt  DateTime @updatedAt
 
@@ -158,9 +160,11 @@ model Cita {
   paciente Paciente @relation(fields: [pacienteId], references: [id], onDelete: Cascade)
   notificaciones Notificacion[]
   solicitudesCita SolicitudCita[]
+  tokensAccion TokenAccionCita[]
 
   @@index([pacienteId])
   @@index([fecha])
+  @@index([estado])
 }
 
 // Modelo de Notificación
@@ -231,6 +235,14 @@ model Configuracion {
   consentimientoVersion     String?  @default("v1.0") // Versión actual del consentimiento
   retencionDatosMeses       Int      @default(60)     // Periodo de retención (5 años por defecto)
 
+  // ==========================================
+  // CONFIGURACIÓN DE EMAIL
+  // ==========================================
+  emailProvider         String?  @default("smtp") // "smtp" o "resend"
+  resendApiKey          String?  // API Key de Resend (encriptada en producción)
+  emailRemitente        String?  // Email del remitente
+  emailNombreRemitente  String?  // Nombre del remitente
+
   createdAt             DateTime @default(now())
   updatedAt             DateTime @updatedAt
 }
@@ -288,4 +300,43 @@ model Evento {
 
   @@index([activo])
   @@index([nombre])
+}
+
+// ==========================================
+// SISTEMA DE EMAILS
+// ==========================================
+
+// Modelo de Plantilla de Email
+model PlantillaEmail {
+  id             String   @id @default(cuid())
+  tipo           String   @unique // "confirmacion", "recordatorio", "cancelacion", "modificacion"
+  nombre         String   // Nombre descriptivo de la plantilla
+  asunto         String   // Asunto del email (soporta variables como {{nombrePaciente}})
+  contenidoHtml  String   // HTML completo de la plantilla
+  contenidoTexto String?  // Versión texto plano (opcional, fallback)
+  activa         Boolean  @default(true)
+  createdAt      DateTime @default(now())
+  updatedAt      DateTime @updatedAt
+
+  @@index([tipo])
+  @@index([activa])
+}
+
+// Modelo de Token para Acciones de Cita (confirmar, modificar, cancelar)
+model TokenAccionCita {
+  id        String    @id @default(cuid())
+  citaId    String
+  token     String    @unique // Token único generado (UUID o similar)
+  tipo      String    // "confirmar", "modificar", "cancelar"
+  expiraEn  DateTime  // Fecha de expiración del token
+  usado     Boolean   @default(false)
+  usadoEn   DateTime? // Fecha en que se usó el token
+  createdAt DateTime  @default(now())
+
+  // Relación con Cita
+  cita Cita @relation(fields: [citaId], references: [id], onDelete: Cascade)
+
+  @@index([token])
+  @@index([citaId])
+  @@index([expiraEn])
 }

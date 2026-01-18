@@ -174,6 +174,7 @@ export async function solicitarCita(req: Request, res: Response) {
       // Enviar email de confirmación
       const { enviarConfirmacionCita } = await import('../services/emailService.js');
       await enviarConfirmacionCita(datos.emailCliente, {
+        citaId: cita.id,
         tipo: datos.tipo,
         fecha: datos.fecha,
         hora: datos.hora,
