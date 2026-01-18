@@ -104,11 +104,11 @@ const App = () => (
                 </Suspense>
               }
             />
-            {/* Rutas de impresión (protegidas) */}
+            {/* Rutas de impresión (protegidas, solo usuarios de farmacia) */}
             <Route
               path="/servicios/dermo/print"
               element={
-                <ProtectedRoute>
+                <ProtectedRoute excludeRoles={["superadmin"]}>
                   <Suspense fallback={<LoadingSpinner />}>
                     <ServicioDermoPrint />
                   </Suspense>
@@ -118,7 +118,7 @@ const App = () => (
             <Route
               path="/servicios/bio/print"
               element={
-                <ProtectedRoute>
+                <ProtectedRoute excludeRoles={["superadmin"]}>
                   <Suspense fallback={<LoadingSpinner />}>
                     <ServicioBioPrint />
                   </Suspense>
@@ -143,11 +143,11 @@ const App = () => (
               <Route path="farmacias/nueva" element={<NuevaFarmacia />} />
               <Route path="farmacias/:id" element={<FarmaciaDetalle />} />
             </Route>
-            {/* Rutas protegidas con layout */}
+            {/* Rutas protegidas con layout - Solo para usuarios de farmacia (no superadmin) */}
             <Route
               path="/"
               element={
-                <ProtectedRoute>
+                <ProtectedRoute excludeRoles={["superadmin"]}>
                   <MainLayout>
                     <Suspense fallback={<LoadingSpinner />}>
                       <Outlet />

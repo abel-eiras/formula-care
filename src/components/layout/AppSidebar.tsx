@@ -16,7 +16,6 @@ import { cn } from "@/lib/utils";
 import { Button } from "@/components/ui/button";
 import { useMemo, useState } from "react";
 import { useAuthContext } from "@/contexts/AuthContext";
-import { Separator } from "@/components/ui/separator";
 
 // Navegación principal para usuarios de farmacia
 const navigationItems = [
@@ -86,8 +85,17 @@ export function AppSidebar() {
       <div className="flex items-center justify-between p-4 border-b border-sidebar-border">
         {!collapsed && (
           <div className="flex flex-col animate-fade-in">
-            <span className="text-lg font-bold text-sidebar-foreground">Farmacia</span>
-            <span className="text-sm font-medium text-sidebar-muted">Pontevea</span>
+            {isSuperadmin ? (
+              <>
+                <span className="text-lg font-bold text-sidebar-foreground">Admin</span>
+                <span className="text-sm font-medium text-sidebar-muted">Plataforma</span>
+              </>
+            ) : (
+              <>
+                <span className="text-lg font-bold text-sidebar-foreground">Farmacia</span>
+                <span className="text-sm font-medium text-sidebar-muted">Pontevea</span>
+              </>
+            )}
           </div>
         )}
         <Button
@@ -102,8 +110,8 @@ export function AppSidebar() {
 
       {/* Navigation */}
       <nav className="flex-1 px-3 py-6 space-y-2 overflow-y-auto">
-        {/* Menú de superadmin */}
-        {isSuperadmin && (
+        {/* Menú de superadmin - Solo muestra opciones de administración */}
+        {isSuperadmin ? (
           <>
             {adminNavigationItems.map((item) => {
               const isActive = location.pathname === item.url || 
@@ -129,35 +137,34 @@ export function AppSidebar() {
                 </NavLink>
               );
             })}
-            <Separator className="my-4 bg-sidebar-border" />
           </>
+        ) : (
+          /* Menú normal para usuarios de farmacia */
+          navigationItems.map((item) => {
+            const isActive = location.pathname === item.url || 
+              (item.url !== "/" && location.pathname.startsWith(item.url) && !location.pathname.startsWith("/admin"));
+            
+            return (
+              <NavLink
+                key={item.title}
+                to={item.url}
+                className={cn(
+                  "flex items-center gap-3 px-4 py-3 rounded-lg transition-all duration-200",
+                  "hover:bg-sidebar-accent hover:text-sidebar-accent-foreground",
+                  isActive 
+                    ? "bg-sidebar-primary text-sidebar-primary-foreground font-semibold shadow-md" 
+                    : "text-sidebar-foreground",
+                  collapsed && "justify-center px-3"
+                )}
+              >
+                <item.icon className={cn("h-5 w-5 flex-shrink-0", isActive && "animate-slide-in")} />
+                {!collapsed && (
+                  <span className="animate-fade-in truncate">{item.title}</span>
+                )}
+              </NavLink>
+            );
+          })
         )}
-        
-        {/* Menú normal */}
-        {navigationItems.map((item) => {
-          const isActive = location.pathname === item.url || 
-            (item.url !== "/" && location.pathname.startsWith(item.url) && !location.pathname.startsWith("/admin"));
-          
-          return (
-            <NavLink
-              key={item.title}
-              to={item.url}
-              className={cn(
-                "flex items-center gap-3 px-4 py-3 rounded-lg transition-all duration-200",
-                "hover:bg-sidebar-accent hover:text-sidebar-accent-foreground",
-                isActive 
-                  ? "bg-sidebar-primary text-sidebar-primary-foreground font-semibold shadow-md" 
-                  : "text-sidebar-foreground",
-                collapsed && "justify-center px-3"
-              )}
-            >
-              <item.icon className={cn("h-5 w-5 flex-shrink-0", isActive && "animate-slide-in")} />
-              {!collapsed && (
-                <span className="animate-fade-in truncate">{item.title}</span>
-              )}
-            </NavLink>
-          );
-        })}
       </nav>
 
       {/* Footer */}
@@ -174,17 +181,20 @@ export function AppSidebar() {
             </div>
           </div>
         )}
-        <NavLink
-          to="/configuracion"
-          className={cn(
-            "flex items-center gap-3 px-4 py-3 rounded-lg transition-all duration-200",
-            "text-sidebar-foreground hover:bg-sidebar-accent hover:text-sidebar-accent-foreground",
-            collapsed && "justify-center px-3"
-          )}
-        >
-          <Settings className="h-5 w-5" />
-          {!collapsed && <span>Configuración</span>}
-        </NavLink>
+        {/* Configuración solo para usuarios de farmacia, no superadmin */}
+        {!isSuperadmin && (
+          <NavLink
+            to="/configuracion"
+            className={cn(
+              "flex items-center gap-3 px-4 py-3 rounded-lg transition-all duration-200",
+              "text-sidebar-foreground hover:bg-sidebar-accent hover:text-sidebar-accent-foreground",
+              collapsed && "justify-center px-3"
+            )}
+          >
+            <Settings className="h-5 w-5" />
+            {!collapsed && <span>Configuración</span>}
+          </NavLink>
+        )}
         <button
           onClick={handleLogout}
           className={cn(
