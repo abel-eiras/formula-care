@@ -15,8 +15,10 @@ import {
 import { NavLink, useLocation, useNavigate } from "react-router-dom";
 import { cn } from "@/lib/utils";
 import { Button } from "@/components/ui/button";
+import { Badge } from "@/components/ui/badge";
 import { useMemo, useState } from "react";
 import { useAuthContext } from "@/contexts/AuthContext";
+import { useSolicitudesPendientesCount } from "@/hooks/useSolicitudes";
 
 // Navegación principal para usuarios de farmacia
 const navigationItems = [
@@ -74,6 +76,9 @@ export function AppSidebar() {
 
   // Verificar si es superadmin
   const isSuperadmin = useMemo(() => usuario?.rol === 'superadmin', [usuario]);
+
+  // Obtener contador de solicitudes pendientes (solo para usuarios de farmacia)
+  const solicitudesPendientes = useSolicitudesPendientesCount();
 
   const handleLogout = () => {
     logout();
@@ -149,13 +154,14 @@ export function AppSidebar() {
           navigationItems.map((item) => {
             const isActive = location.pathname === item.url || 
               (item.url !== "/" && location.pathname.startsWith(item.url) && !location.pathname.startsWith("/admin"));
+            const showBadge = item.url === '/solicitudes' && solicitudesPendientes > 0;
             
             return (
               <NavLink
                 key={item.title}
                 to={item.url}
                 className={cn(
-                  "flex items-center gap-3 px-4 py-3 rounded-lg transition-all duration-200",
+                  "flex items-center gap-3 px-4 py-3 rounded-lg transition-all duration-200 relative",
                   "hover:bg-sidebar-accent hover:text-sidebar-accent-foreground",
                   isActive 
                     ? "bg-sidebar-primary text-sidebar-primary-foreground font-semibold shadow-md" 
@@ -163,9 +169,19 @@ export function AppSidebar() {
                   collapsed && "justify-center px-3"
                 )}
               >
-                <item.icon className={cn("h-5 w-5 flex-shrink-0", isActive && "animate-slide-in")} />
+                <div className="relative">
+                  <item.icon className={cn("h-5 w-5 flex-shrink-0", isActive && "animate-slide-in")} />
+                  {showBadge && collapsed && (
+                    <span className="absolute -top-1 -right-1 h-2 w-2 bg-red-500 rounded-full" />
+                  )}
+                </div>
                 {!collapsed && (
-                  <span className="animate-fade-in truncate">{item.title}</span>
+                  <span className="animate-fade-in truncate flex-1">{item.title}</span>
+                )}
+                {showBadge && !collapsed && (
+                  <Badge variant="destructive" className="ml-auto text-xs px-1.5 py-0 h-5 min-w-[20px] flex items-center justify-center">
+                    {solicitudesPendientes > 99 ? '99+' : solicitudesPendientes}
+                  </Badge>
                 )}
               </NavLink>
             );

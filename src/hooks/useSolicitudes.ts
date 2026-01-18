@@ -126,6 +126,14 @@ export function useSolicitudes(estado?: string) {
 }
 
 /**
+ * Hook para obtener contador de solicitudes pendientes
+ */
+export function useSolicitudesPendientesCount() {
+  const { data: solicitudes } = useSolicitudes('pendiente');
+  return solicitudes?.length || 0;
+}
+
+/**
  * Hook para obtener una solicitud específica
  */
 export function useSolicitud(id: string | null) {
