@@ -1862,6 +1862,7 @@ function RgpdTab() {
 // Componente para el tab de Plantillas de Email
 // ==========================================
 function PlantillasEmailTab() {
+  const { data: config } = useConfiguracion(); // Para el preview del editor
   const { data: plantillas, isLoading } = usePlantillasEmail();
   const { data: variables = [] } = useVariablesPlantilla();
   const actualizarPlantilla = useActualizarPlantilla();
@@ -1941,6 +1942,7 @@ function PlantillasEmailTab() {
               onSave={handleSave}
               onRestore={handleRestore}
               isLoading={actualizarPlantilla.isPending || restaurarPlantilla.isPending}
+              config={config}
             />
           )}
         </CardContent>

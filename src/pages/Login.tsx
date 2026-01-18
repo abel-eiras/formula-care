@@ -12,10 +12,15 @@ import { Label } from '@/components/ui/label';
 import { Alert, AlertDescription } from '@/components/ui/alert';
 import { Loader2, Lock, Mail, Building2 } from 'lucide-react';
 import { useAuthContext } from '@/contexts/AuthContext';
+import { useConfiguracion } from '@/hooks/useConfiguracion';
 
 export default function Login() {
   const navigate = useNavigate();
   const { login, isAuthenticated, isLoading: authLoading, error: authError } = useAuthContext();
+  const { data: config } = useConfiguracion();
+
+  // Nombre de la farmacia (configurable)
+  const nombreFarmacia = config?.farmaciaNombre || 'Sistema de Gestión';
 
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
@@ -69,7 +74,7 @@ export default function Login() {
           <div className="inline-flex items-center justify-center w-16 h-16 rounded-full bg-primary/10 mb-4">
             <Building2 className="h-8 w-8 text-primary" />
           </div>
-          <h1 className="text-2xl font-bold text-foreground">Farmacia Pontevea</h1>
+          <h1 className="text-2xl font-bold text-foreground">{nombreFarmacia}</h1>
           <p className="text-muted-foreground mt-1">Sistema de Gestión de Servicios</p>
         </div>
 
@@ -166,12 +171,12 @@ export default function Login() {
                   <code 
                     className="text-amber-800 cursor-pointer hover:bg-amber-100 px-1 rounded"
                     onClick={() => {
-                      navigator.clipboard.writeText('admin@farmaciapontevea.com');
-                      setEmail('admin@farmaciapontevea.com');
+                      navigator.clipboard.writeText('admin@tufarmacia.local');
+                      setEmail('admin@tufarmacia.local');
                     }}
                     title="Click para copiar y rellenar"
                   >
-                    admin@farmaciapontevea.com
+                    admin@tufarmacia.local
                   </code>
                 </p>
                 <p className="flex justify-between">
@@ -197,7 +202,7 @@ export default function Login() {
 
         {/* Footer */}
         <p className="text-center text-sm text-muted-foreground mt-6">
-          © {new Date().getFullYear()} Farmacia Pontevea. Todos los derechos reservados.
+          © {new Date().getFullYear()} {nombreFarmacia}. Todos los derechos reservados.
         </p>
       </div>
     </div>

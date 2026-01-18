@@ -10,6 +10,7 @@ import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/com
 import { Alert, AlertDescription } from '@/components/ui/alert';
 import { Loader2, CheckCircle2, XCircle, Calendar, Clock, Building2 } from 'lucide-react';
 import { api } from '@/lib/api';
+import { useConfiguracion } from '@/hooks/useConfiguracion';
 
 interface DatosCita {
   valido: boolean;
@@ -30,6 +31,9 @@ interface DatosCita {
 
 export default function ConfirmarCita() {
   const { token } = useParams<{ token: string }>();
+  const { data: config } = useConfiguracion();
+  const nombreFarmacia = config?.farmaciaNombre || 'Sistema de Gestión';
+  
   const [estado, setEstado] = useState<'loading' | 'confirmando' | 'success' | 'error'>('loading');
   const [datos, setDatos] = useState<DatosCita | null>(null);
   const [mensaje, setMensaje] = useState('');
@@ -99,7 +103,7 @@ export default function ConfirmarCita() {
           <div className="inline-flex items-center justify-center w-12 h-12 rounded-full bg-primary/10 mb-2">
             <Building2 className="h-6 w-6 text-primary" />
           </div>
-          <p className="text-sm text-muted-foreground">Farmacia Pontevea</p>
+          <p className="text-sm text-muted-foreground">{nombreFarmacia}</p>
         </div>
 
         <Card className="shadow-lg">
@@ -186,7 +190,7 @@ export default function ConfirmarCita() {
 
         {/* Footer */}
         <p className="text-center text-sm text-muted-foreground mt-6">
-          © {new Date().getFullYear()} Farmacia Pontevea
+          © {new Date().getFullYear()} {nombreFarmacia}
         </p>
       </div>
     </div>

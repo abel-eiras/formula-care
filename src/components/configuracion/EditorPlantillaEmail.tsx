@@ -24,7 +24,7 @@ import {
   Info
 } from 'lucide-react';
 import { toast } from 'sonner';
-import type { PlantillaEmail, VariablePlantilla } from '@/types';
+import type { PlantillaEmail, VariablePlantilla, Configuracion } from '@/types';
 
 interface EditorPlantillaEmailProps {
   plantilla: PlantillaEmail;
@@ -32,25 +32,26 @@ interface EditorPlantillaEmailProps {
   onSave: (datos: Partial<PlantillaEmail>) => Promise<void>;
   onRestore: () => Promise<void>;
   isLoading?: boolean;
+  config?: Configuracion; // Configuración de la farmacia para el preview
 }
 
-// Datos de ejemplo para el preview
-const DATOS_PREVIEW: Record<string, string> = {
+// Genera datos de ejemplo para el preview usando la configuración real
+const generarDatosPreview = (config?: Configuracion): Record<string, string> => ({
   nombrePaciente: 'María García López',
   fechaCita: 'viernes, 24 de enero de 2026',
   horaCita: '10:30',
   tipoServicio: 'Dermocosmética',
-  nombreFarmacia: 'Farmacia Pontevea',
-  direccionFarmacia: 'Avda. Ignacio Varela 16, Pontevea',
-  telefonoFarmacia: '981 815 708',
-  emailFarmacia: 'farmacia@farmaciapontevea.com',
-  webFarmacia: 'www.farmaciapontevea.com',
+  nombreFarmacia: config?.farmaciaNombre || 'Tu Farmacia',
+  direccionFarmacia: config?.farmaciaDireccion ? `${config.farmaciaDireccion}, ${config.farmaciaCiudad || ''}` : 'Dirección configurada',
+  telefonoFarmacia: config?.farmaciaTelefono || 'Teléfono configurado',
+  emailFarmacia: config?.farmaciaEmail || 'email@tufarmacia.com',
+  webFarmacia: config?.farmaciaWeb || 'www.tufarmacia.com',
   urlConfirmar: '#',
   urlModificar: '#',
   urlCancelar: '#',
   anioActual: new Date().getFullYear().toString(),
   motivoRechazo: 'Horario no disponible',
-};
+});
 
 export function EditorPlantillaEmail({
   plantilla,
@@ -58,7 +59,10 @@ export function EditorPlantillaEmail({
   onSave,
   onRestore,
   isLoading = false,
+  config,
 }: EditorPlantillaEmailProps) {
+  // Datos de preview usando configuración real
+  const DATOS_PREVIEW = useMemo(() => generarDatosPreview(config), [config]);
   const [asunto, setAsunto] = useState(plantilla.asunto);
   const [contenidoHtml, setContenidoHtml] = useState(plantilla.contenidoHtml);
   const [isSaving, setIsSaving] = useState(false);

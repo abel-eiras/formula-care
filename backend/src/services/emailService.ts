@@ -65,7 +65,7 @@ async function obtenerConfigEmail(): Promise<ConfigEmail> {
     provider: (config?.emailProvider as 'smtp' | 'resend') || 'smtp',
     resendApiKey: config?.resendApiKey ?? process.env.RESEND_API_KEY ?? undefined,
     emailRemitente: config?.emailRemitente ?? process.env.SMTP_FROM ?? config?.farmaciaEmail ?? undefined,
-    nombreRemitente: config?.emailNombreRemitente ?? config?.farmaciaNombre ?? 'Farmacia Pontevea',
+    nombreRemitente: config?.emailNombreRemitente ?? config?.farmaciaNombre ?? 'Sistema de Gestión',
     smtpHost: process.env.SMTP_HOST,
     smtpPort: parseInt(process.env.SMTP_PORT || '587', 10),
     smtpSecure: process.env.SMTP_SECURE === 'true',
@@ -208,7 +208,7 @@ async function obtenerDatosFarmacia() {
   });
 
   return {
-    nombre: config?.farmaciaNombre || 'Farmacia Pontevea',
+    nombre: config?.farmaciaNombre || 'Tu Farmacia',
     direccion: config?.farmaciaDireccion || '',
     ciudad: config?.farmaciaCiudad || '',
     telefono: config?.farmaciaTelefono || '',
@@ -269,7 +269,7 @@ async function enviarEmail(
       }
 
       const { error } = await resend.emails.send({
-        from: `${config.nombreRemitente} <${config.emailRemitente || 'noreply@farmaciapontevea.com'}>`,
+        from: `${config.nombreRemitente} <${config.emailRemitente || 'noreply@sistema.local'}>`,
         to: destinatario,
         subject: asunto,
         html: html,
@@ -311,7 +311,7 @@ async function enviarConSMTP(
       return false;
     }
 
-    const from = config.emailRemitente || config.smtpUser || 'noreply@farmaciapontevea.com';
+    const from = config.emailRemitente || config.smtpUser || 'noreply@sistema.local';
 
     await transporter.sendMail({
       from: `"${config.nombreRemitente}" <${from}>`,

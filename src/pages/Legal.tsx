@@ -8,7 +8,7 @@ import { useParams, Link } from 'react-router-dom';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { ArrowLeft, Building2, FileText, Shield, Cookie, Loader2 } from 'lucide-react';
-import { useConfiguracionRgpd } from '@/hooks/useConfiguracion';
+import { useConfiguracion, useConfiguracionRgpd } from '@/hooks/useConfiguracion';
 
 // Mapeo de tipos de página legal
 const LEGAL_PAGES = {
@@ -33,7 +33,10 @@ type LegalPageType = keyof typeof LEGAL_PAGES;
 
 export default function Legal() {
   const { tipo } = useParams<{ tipo: string }>();
+  const { data: config } = useConfiguracion();
   const { data: rgpdConfig, isLoading } = useConfiguracionRgpd();
+  
+  const nombreFarmacia = config?.farmaciaNombre || 'Sistema de Gestión';
 
   // Scroll al inicio cuando cambia la página
   useEffect(() => {
@@ -94,7 +97,7 @@ export default function Legal() {
           <div className="inline-flex items-center justify-center w-12 h-12 rounded-full bg-primary/10 mb-2">
             <Building2 className="h-6 w-6 text-primary" />
           </div>
-          <p className="text-sm text-muted-foreground">Farmacia Pontevea</p>
+          <p className="text-sm text-muted-foreground">{nombreFarmacia}</p>
         </div>
 
         {/* Contenido */}
@@ -150,7 +153,7 @@ export default function Legal() {
         {/* Footer */}
         <div className="text-center mt-6">
           <p className="text-sm text-muted-foreground">
-            © {new Date().getFullYear()} Farmacia Pontevea. Todos los derechos reservados.
+            © {new Date().getFullYear()} {nombreFarmacia}. Todos los derechos reservados.
           </p>
           <div className="flex justify-center gap-4 mt-2 text-xs">
             <Link to="/legal/aviso-legal" className="text-primary hover:underline">
