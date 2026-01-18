@@ -11,6 +11,7 @@ import { Link, useNavigate, useSearchParams } from "react-router-dom";
 import { toast } from "sonner";
 import { usePacientes } from "@/hooks/usePacientes";
 import { useCrearAnalisisDermo, useAnalisisDermo, useActualizarAnalisisDermo } from "@/hooks/useAnalisisDermo";
+import { DialogoNuevoPaciente } from "@/components/pacientes/DialogoNuevoPaciente";
 import type { AnalisisDermo, RutinaDia, RutinaNoche, CuidadosSemanales } from "@/types";
 // Importación dinámica para reducir el bundle inicial
 const loadPDFGenerator = () => import("@/lib/pdfGenerator");
@@ -395,7 +396,13 @@ export default function ServicioDermo() {
       <Card className="shadow-sm border-border/50">
         <CardContent className="pt-6">
           <div className="space-y-2">
-            <Label htmlFor="paciente">Paciente *</Label>
+            <div className="flex items-center justify-between">
+              <Label htmlFor="paciente">Paciente *</Label>
+              <DialogoNuevoPaciente
+                onPacienteCreado={setPacienteId}
+                disabled={!!analisisId}
+              />
+            </div>
             <Select value={pacienteId} onValueChange={setPacienteId} disabled={!!analisisId}>
               <SelectTrigger id="paciente">
                 <SelectValue placeholder="Seleccionar paciente" />

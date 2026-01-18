@@ -11,6 +11,7 @@ import { Link, useNavigate, useSearchParams } from "react-router-dom";
 import { toast } from "sonner";
 import { usePacientes } from "@/hooks/usePacientes";
 import { useCrearAnalisisBio, useAnalisisBio, useActualizarAnalisisBio } from "@/hooks/useAnalisisBio";
+import { DialogoNuevoPaciente } from "@/components/pacientes/DialogoNuevoPaciente";
 import { useConfiguracion } from "@/hooks/useConfiguracion";
 import { evaluarValor, getMensajeValoracion } from "@/lib/valoracionBio";
 import { cn } from "@/lib/utils";
@@ -420,7 +421,13 @@ export default function ServicioBio() {
       <Card className="shadow-sm border-border/50">
         <CardContent className="pt-6">
           <div className="space-y-2">
-            <Label htmlFor="paciente">Paciente *</Label>
+            <div className="flex items-center justify-between">
+              <Label htmlFor="paciente">Paciente *</Label>
+              <DialogoNuevoPaciente
+                onPacienteCreado={setPacienteId}
+                disabled={!!analisisId}
+              />
+            </div>
             <Select value={pacienteId} onValueChange={setPacienteId} disabled={!!analisisId}>
               <SelectTrigger id="paciente">
                 <SelectValue placeholder="Seleccionar paciente" />
