@@ -17,18 +17,21 @@ async function main() {
   });
 
   if (!existeAdmin) {
+    const adminEmail = process.env.ADMIN_EMAIL || 'admin@tufarmacia.local';
+    const adminPassword = process.env.ADMIN_PASSWORD || 'admin123';
+    
     const salt = await bcrypt.genSalt(10);
-    const passwordHash = await bcrypt.hash('admin123', salt);
+    const passwordHash = await bcrypt.hash(adminPassword, salt);
 
     await prisma.usuario.create({
       data: {
-        email: 'admin@farmaciapontevea.com',
+        email: adminEmail,
         password: passwordHash,
         nombre: 'Administrador',
         rol: 'admin',
       },
     });
-    console.log('✅ Usuario admin creado: admin@farmaciapontevea.com / admin123');
+    console.log(`✅ Usuario admin creado: ${adminEmail} / ${adminPassword}`);
   } else {
     console.log('ℹ️ Ya existe un usuario admin');
   }

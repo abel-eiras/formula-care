@@ -6,10 +6,13 @@ import { NotificacionesWidget } from "@/components/dashboard/NotificacionesWidge
 import { ProximasRevisiones } from "@/components/dashboard/ProximasRevisiones";
 import { Users, Sparkles, FlaskConical, TrendingUp } from "lucide-react";
 import { useEstadisticas } from "@/hooks/useEstadisticas";
+import { useConfiguracion } from "@/hooks/useConfiguracion";
 import { LoadingSpinner } from "@/components/ui/LoadingSpinner";
 
 export default function Dashboard() {
   const { data: estadisticas, isLoading } = useEstadisticas();
+  const { data: config } = useConfiguracion();
+  const nombreFarmacia = config?.farmaciaNombre || 'tu farmacia';
 
   if (isLoading) {
     return (
@@ -24,7 +27,7 @@ export default function Dashboard() {
       {/* Header */}
       <div className="flex flex-col gap-2">
         <h1 className="text-3xl font-bold text-foreground">
-          Bienvenido a Farmacia Pontevea
+          Bienvenido a {nombreFarmacia}
         </h1>
         <p className="text-muted-foreground">
           Panel de gestión de servicios asistenciales

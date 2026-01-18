@@ -2,6 +2,7 @@ import { useEffect } from "react";
 import { useSearchParams } from "react-router-dom";
 import { useAnalisisDermo } from "@/hooks/useAnalisisDermo";
 import { usePacientes } from "@/hooks/usePacientes";
+import { useConfiguracion } from "@/hooks/useConfiguracion";
 
 // Opciones de valoración de la piel
 const VALORACION_PIEL_LABELS: Record<string, string> = {
@@ -47,6 +48,12 @@ export default function ServicioDermoPrint() {
   const analisisId = searchParams.get("id");
   const { data: analisis } = useAnalisisDermo(analisisId || undefined);
   const { data: pacientes = [] } = usePacientes();
+  const { data: config } = useConfiguracion();
+
+  const nombreFarmacia = config?.farmaciaNombre || 'Farmacia';
+  const direccionFarmacia = config?.farmaciaDireccion || '';
+  const ciudadFarmacia = config?.farmaciaCiudad || '';
+  const telefonoFarmacia = config?.farmaciaTelefono || '';
 
   const paciente = analisis?.pacienteId
     ? pacientes.find((p) => p.id === analisis.pacienteId)
@@ -279,7 +286,7 @@ export default function ServicioDermoPrint() {
           <div className="logo-container">
             <img
               src="/logo.png"
-              alt="Farmacia Pontevea Logo"
+              alt={`${nombreFarmacia} Logo`}
               className="logo-img"
               onError={(e) => {
                 (e.target as HTMLImageElement).style.display = "none";
@@ -479,18 +486,16 @@ export default function ServicioDermoPrint() {
         {/* Información de Contacto */}
         <div className="footer-line">
           <div>
-            <strong style={{ color: "#79438f" }}>Farmacia Pontevea</strong>
+            <strong style={{ color: "#79438f" }}>{nombreFarmacia}</strong>
             <br />
-            Avda. Ignacio Varela 16, Pontevea
+            {direccionFarmacia}
             <br />
-            15883 Teo, A Coruña
+            {ciudadFarmacia}
           </div>
           <div className="text-right">
-            Tlf. 981 815 708
-            <br />
-            farmacia@farmaciapontevea.com
-            <br />
-            www.farmaciapontevea.com
+            {telefonoFarmacia && <>Tlf. {telefonoFarmacia}<br /></>}
+            {config?.farmaciaEmail && <>{config.farmaciaEmail}<br /></>}
+            {config?.farmaciaWeb && <>{config.farmaciaWeb}</>}
           </div>
         </div>
       </div>

@@ -17,6 +17,7 @@ import { format } from 'date-fns';
 import { es } from 'date-fns/locale';
 import { api } from '@/lib/api';
 import { cn } from '@/lib/utils';
+import { useConfiguracion } from '@/hooks/useConfiguracion';
 
 interface DatosModificacion {
   valido: boolean;
@@ -42,6 +43,9 @@ const HORAS_DISPONIBLES = [
 
 export default function ModificarCita() {
   const { token } = useParams<{ token: string }>();
+  const { data: config } = useConfiguracion();
+  const nombreFarmacia = config?.farmaciaNombre || 'Sistema de Gestión';
+  
   const [estado, setEstado] = useState<'loading' | 'modificando' | 'success' | 'error'>('loading');
   const [datos, setDatos] = useState<DatosModificacion | null>(null);
   const [mensaje, setMensaje] = useState('');
@@ -129,7 +133,7 @@ export default function ModificarCita() {
           <div className="inline-flex items-center justify-center w-12 h-12 rounded-full bg-primary/10 mb-2">
             <Building2 className="h-6 w-6 text-primary" />
           </div>
-          <p className="text-sm text-muted-foreground">Farmacia Pontevea</p>
+          <p className="text-sm text-muted-foreground">{nombreFarmacia}</p>
         </div>
 
         <Card className="shadow-lg">
@@ -282,7 +286,7 @@ export default function ModificarCita() {
 
         {/* Footer */}
         <p className="text-center text-sm text-muted-foreground mt-6">
-          © {new Date().getFullYear()} Farmacia Pontevea
+          © {new Date().getFullYear()} {nombreFarmacia}
         </p>
       </div>
     </div>

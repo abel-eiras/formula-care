@@ -26,9 +26,13 @@ async function crearAdmin() {
   const salt = await bcrypt.genSalt(10);
   const passwordHash = await bcrypt.hash('admin123', salt);
 
+  // Usar variables de entorno o valores por defecto
+  const adminEmail = process.env.ADMIN_EMAIL || 'admin@tufarmacia.local';
+  const adminPassword = process.env.ADMIN_PASSWORD || 'admin123';
+  
   const admin = await prisma.usuario.create({
     data: {
-      email: 'admin@farmaciapontevea.com',
+      email: adminEmail,
       password: passwordHash,
       nombre: 'Administrador',
       rol: 'admin',
@@ -36,8 +40,8 @@ async function crearAdmin() {
   });
 
   console.log('✅ Usuario administrador creado correctamente:');
-  console.log('   Email: admin@farmaciapontevea.com');
-  console.log('   Contraseña: admin123');
+  console.log(`   Email: ${adminEmail}`);
+  console.log(`   Contraseña: ${adminPassword}`);
   console.log('   ⚠️ IMPORTANTE: Cambia la contraseña después del primer login');
 }
 
