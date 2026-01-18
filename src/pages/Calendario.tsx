@@ -518,6 +518,7 @@ export default function Calendario() {
                   selected={date}
                   onSelect={setDate}
                   locale={es}
+                  weekStartsOn={1}
                   className="rounded-md border w-full pointer-events-auto"
                   modifiers={{
                     hasEvent: diasConCitas,
