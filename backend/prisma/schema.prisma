@@ -1,0 +1,291 @@
+// Esquema de base de datos para Farmacia Pontevea
+// Usa SQLite para desarrollo (simple, sin servidor)
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "sqlite"
+  url      = env("DATABASE_URL")
+}
+
+// ==========================================
+// MODELO DE USUARIO (Autenticación)
+// ==========================================
+model Usuario {
+  id            String   @id @default(cuid())
+  email         String   @unique
+  password      String   // Hash bcrypt
+  nombre        String
+  rol           String   @default("usuario") // "admin", "farmaceutico", "usuario"
+  activo        Boolean  @default(true)
+  ultimoAcceso  DateTime?
+  createdAt     DateTime @default(now())
+  updatedAt     DateTime @updatedAt
+
+  @@index([email])
+  @@index([rol])
+}
+
+// Modelo de Paciente
+model Paciente {
+  id          String   @id @default(cuid())
+  name        String
+  age         Int
+  sex         String   // "M", "F", "O"
+  phone       String
+  email       String?
+  birthDate   String?  // Fecha en formato ISO
+  address     String?
+  notes       String?
+  lastVisit   String?  // Fecha en formato ISO
+  origen      String   @default("manual") // "manual" = registrado por farmacia, "autoregistro" = formulario público
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  // Relaciones
+  analisisDermo AnalisisDermo[]
+  analisisBio   AnalisisBio[]
+  citas         Cita[]
+  notificaciones Notificacion[]
+  solicitudesCita SolicitudCita[]
+
+  @@index([name])
+  @@index([phone])
+  @@index([origen])
+}
+
+// Modelo de Análisis Dermocosmético
+model AnalisisDermo {
+  id                String   @id @default(cuid())
+  pacienteId        String
+  fecha             String   // Fecha en formato ISO
+  // Datos básicos
+  motivoConsulta    String?  // Motivo/Objetivo de la consulta
+  // Valoración de la piel (JSON array)
+  valoracionPiel    String   @default("[]") // JSON array: ["piel_grasa", "flacidez", etc.]
+  // Hábitos y Salud (JSON array)
+  habitos           String   @default("[]") // JSON array: ["sueño_irregular", "estrés", etc.]
+  medicacionHabitual String?
+  patologias        String?
+  etapaHormonal     String?  // Solo para mujeres
+  // Rutina Día (JSON object)
+  rutinaDia         String?  // JSON: { higiene, contornoOjos, productoIntensivo, hidratacion, proteccionSolar }
+  // Rutina Noche (JSON object)
+  rutinaNoche       String?  // JSON: { limpieza, contornoOjos, productoIntensivo, hidratacion }
+  // Cuidados Semanales (JSON object)
+  cuidadosSemanales String?  // JSON: { exfoliante, mascarilla }
+  // Suplementación
+  suplementacionOral String?
+  // Firma y seguimiento
+  proximaRevision   String?  // Fecha en formato ISO
+  farmaceutico      String?
+  // Campos legacy (mantener para compatibilidad)
+  skinType          String?
+  phototype         String?
+  concerns          String   @default("[]") // JSON array como string
+  hydration         Float?
+  sebum             Float?
+  elasticity        Float?
+  spots             Float?
+  ph                Float?
+  treatment         String?
+  cleaning          String?
+  sunProtection     String?
+  supplements       String?
+  createdAt         DateTime @default(now())
+  updatedAt         DateTime @updatedAt
+
+  // Relación
+  paciente Paciente @relation(fields: [pacienteId], references: [id], onDelete: Cascade)
+
+  @@index([pacienteId])
+  @@index([fecha])
+}
+
+// Modelo de Análisis Bioquímico
+model AnalisisBio {
+  id                    String   @id @default(cuid())
+  pacienteId            String
+  fecha                 String   // Fecha en formato ISO
+  // Parámetros básicos
+  glucemia              Float?   // Antes "glucose"
+  cholesterol           Float?   // Colesterol total
+  cholesterolHDL        Float?   // Colesterol HDL
+  cholesterolLDL        Float?   // Colesterol LDL
+  triglycerides         Float?
+  // Parámetros avanzados
+  hemoglobinaGlucosilada Float?  // HbA1c
+  proteinaCReactiva     Float?   // PCR
+  vitaminaD             Float?
+  ferritina             Float?
+  // Tensión arterial y pulsaciones
+  systolic              Int?
+  diastolic             Int?
+  pulsaciones           Int?
+  // Medidas corporales
+  weight                Float?
+  height                Float?
+  imc                   Float?   // Calculado automáticamente
+  // Observaciones y recomendaciones
+  observaciones         String?
+  recomendaciones       String?
+  createdAt             DateTime @default(now())
+  updatedAt             DateTime @updatedAt
+
+  // Relación
+  paciente Paciente @relation(fields: [pacienteId], references: [id], onDelete: Cascade)
+
+  @@index([pacienteId])
+  @@index([fecha])
+}
+
+// Modelo de Cita
+model Cita {
+  id         String   @id @default(cuid())
+  titulo     String
+  pacienteId String
+  fecha      String   // Fecha en formato ISO
+  hora       String   // Formato "HH:mm"
+  tipo       String   // "dermo", "bio", "consulta", "seguimiento"
+  notas      String?
+  recordatorioEnviado Boolean @default(false) // Si se ha enviado recordatorio
+  createdAt  DateTime @default(now())
+  updatedAt  DateTime @updatedAt
+
+  // Relaciones
+  paciente Paciente @relation(fields: [pacienteId], references: [id], onDelete: Cascade)
+  notificaciones Notificacion[]
+  solicitudesCita SolicitudCita[]
+
+  @@index([pacienteId])
+  @@index([fecha])
+}
+
+// Modelo de Notificación
+model Notificacion {
+  id          String   @id @default(cuid())
+  tipo        String   // "cita", "revision", "recordatorio"
+  pacienteId  String?
+  citaId      String?
+  analisisId  String?  // ID del análisis (dermo o bio)
+  titulo      String
+  mensaje     String
+  canal       String   // "email", "sms", "whatsapp", "interno"
+  enviada     Boolean  @default(false)
+  fechaEnvio  DateTime?
+  leida       Boolean  @default(false)
+  fechaLectura DateTime?
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  // Relaciones opcionales
+  paciente Paciente? @relation(fields: [pacienteId], references: [id], onDelete: Cascade)
+  cita     Cita?     @relation(fields: [citaId], references: [id], onDelete: Cascade)
+
+  @@index([pacienteId])
+  @@index([citaId])
+  @@index([enviada])
+  @@index([leida])
+}
+
+// Modelo de Configuración (Singleton - solo un registro)
+model Configuracion {
+  id                    String   @id @default("config") // ID fijo para singleton
+  // Datos de la farmacia
+  farmaciaNombre        String?  @default("Farmacia Pontevea")
+  farmaciaDireccion     String?  @default("Avda. Ignacio Varela 16, Pontevea")
+  farmaciaCiudad        String?  @default("15883 Teo, A Coruña")
+  farmaciaTelefono      String?  @default("981 815 708")
+  farmaciaEmail         String?  @default("farmacia@farmaciapontevea.com")
+  farmaciaWeb           String?  @default("www.farmaciapontevea.com")
+  farmaciaWhatsapp      String?
+  farmaciaLogo          String?  // Ruta al logo
+  // Configuración de valoración bioquímica
+  valoracionBioActiva   Boolean  @default(true) // Activar/desactivar valoración global
+  parametrosReferencia  String   @default("{}") // JSON con valores de referencia por parámetro
+  // Configuración de parámetros bioquímicos dinámicos
+  // JSON: [{ id, label, unit, grupo, activo, orden }]
+  parametrosBioConfig   String   @default("[]")
+
+  // ==========================================
+  // CONFIGURACIÓN RGPD Y LEGAL
+  // ==========================================
+  // Datos del responsable del tratamiento
+  rgpdRazonSocial           String?  // Razón social de la empresa
+  rgpdCif                   String?  // CIF/NIF de la empresa
+  rgpdDireccionFiscal       String?  // Dirección fiscal completa
+  rgpdEmailContacto         String?  // Email para solicitudes RGPD
+  rgpdResponsable           String?  // Nombre del responsable del tratamiento
+  rgpdDpo                   String?  // Delegado de Protección de Datos (opcional)
+  
+  // Textos legales configurables
+  textoAvisoLegal           String?  // Texto completo del aviso legal
+  textoPoliticaPrivacidad   String?  // Texto de la política de privacidad
+  textoPoliticaCookies      String?  // Texto de la política de cookies
+  textoConsentimiento       String?  // Texto del consentimiento informado
+  
+  // Configuración de consentimiento
+  consentimientoRequerido   Boolean  @default(true)  // Requerir consentimiento al crear paciente
+  consentimientoVersion     String?  @default("v1.0") // Versión actual del consentimiento
+  retencionDatosMeses       Int      @default(60)     // Periodo de retención (5 años por defecto)
+
+  createdAt             DateTime @default(now())
+  updatedAt             DateTime @updatedAt
+}
+
+// Modelo de Solicitud de Cita (desde página pública)
+model SolicitudCita {
+  id            String   @id @default(cuid())
+  nombreCliente String
+  emailCliente  String
+  telefonoCliente String
+  tipo          String   // "dermo", "bio", "consulta", "seguimiento"
+  fecha         String   // Fecha en formato ISO
+  hora          String   // Formato "HH:mm"
+  estado        String   @default("pendiente") // "pendiente", "aprobada", "rechazada"
+  notas         String?  // Mensaje opcional del cliente
+  pacienteId    String?  // Si el cliente ya existe en BD
+  citaId        String?  // Si se convierte en cita aprobada
+  createdAt     DateTime @default(now())
+  updatedAt     DateTime @updatedAt
+
+  // Relaciones opcionales
+  paciente Paciente? @relation(fields: [pacienteId], references: [id], onDelete: SetNull)
+  cita     Cita?     @relation(fields: [citaId], references: [id], onDelete: SetNull)
+
+  @@index([fecha])
+  @@index([estado])
+  @@index([tipo])
+  @@index([emailCliente])
+}
+
+// Modelo de Configuración de Calendario (Singleton - solo un registro)
+model ConfiguracionCalendario {
+  id                String   @id @default("calendario") // ID fijo para singleton
+  horariosPorTipo   String   @default("{}") // JSON: { "dermo": { "lunes": ["09:00-14:00"], ... }, "bio": {...} }
+  fechasBloqueadas  String   @default("[]") // JSON: ["2026-01-20", "2026-01-21"]
+  horasBloqueadas   String   @default("{}") // JSON: { "2026-01-20": ["10:00", "11:00"] }
+  autoAceptar       Boolean  @default(false) // Auto-aceptar solicitudes en horarios habilitados
+  duracionPorTipo   String   @default("{}") // JSON: { "dermo": 45, "bio": 20, "evento": 60 } (minutos)
+  createdAt         DateTime @default(now())
+  updatedAt         DateTime @updatedAt
+}
+
+// Modelo de Evento Personalizado
+model Evento {
+  id                String   @id @default(cuid())
+  nombre            String   // Ej: "Taller de automaquillaje"
+  activo            Boolean  @default(true) // Si está activo y visible para solicitudes
+  fechas            String   @default("[]") // JSON: ["2026-01-20", "2026-01-21", "2026-01-22"] - fechas específicas disponibles
+  horas             String   @default("[]") // JSON: ["09:00-14:00", "16:00-19:00"] - rangos horarios
+  duracion          Int      @default(60) // Duración en minutos
+  maxAsistentes     Int      @default(1) // Número máximo de asistentes simultáneos
+  descripcion       String?  // Descripción opcional del evento
+  createdAt         DateTime @default(now())
+  updatedAt         DateTime @updatedAt
+
+  @@index([activo])
+  @@index([nombre])
+}

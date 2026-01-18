@@ -1,0 +1,428 @@
+import { useEffect } from "react";
+import { useSearchParams } from "react-router-dom";
+import { useAnalisisBio } from "@/hooks/useAnalisisBio";
+import { usePacientes } from "@/hooks/usePacientes";
+
+/**
+ * Formatea una fecha ISO a formato dd/mm/aaaa
+ */
+const formatearFechaPrint = (fecha: string): string => {
+  if (!fecha) return "";
+  try {
+    const date = new Date(fecha);
+    const dia = String(date.getDate()).padStart(2, "0");
+    const mes = String(date.getMonth() + 1).padStart(2, "0");
+    const año = date.getFullYear();
+    return `${dia} / ${mes} / ${año}`;
+  } catch {
+    return fecha;
+  }
+};
+
+export default function ServicioBioPrint() {
+  const [searchParams] = useSearchParams();
+  const analisisId = searchParams.get("id");
+  const { data: analisis } = useAnalisisBio(analisisId || undefined);
+  const { data: pacientes = [] } = usePacientes();
+
+  const paciente = analisis?.pacienteId
+    ? pacientes.find((p) => p.id === analisis.pacienteId)
+    : null;
+
+  // Auto-imprimir cuando se carga la página (solo si viene de la opción de imprimir)
+  useEffect(() => {
+    if (analisis) {
+      // Solo auto-imprimir si no viene de una descarga de PDF
+      const isPDFDownload = sessionStorage.getItem('pdfDownload');
+      if (!isPDFDownload) {
+        // Pequeño delay para asegurar que todo se renderice
+        setTimeout(() => {
+          window.print();
+        }, 500);
+      } else {
+        // Limpiar la bandera
+        sessionStorage.removeItem('pdfDownload');
+      }
+    }
+  }, [analisis]);
+
+  if (!analisis) {
+    return (
+      <div className="flex items-center justify-center min-h-screen">
+        <p>Cargando análisis...</p>
+      </div>
+    );
+  }
+
+  return (
+    <div className="print-page">
+      <style>{`
+        @import url('https://fonts.googleapis.com/css2?family=Montserrat:wght@300;400;600&display=swap');
+        
+        .print-page {
+          font-family: 'Montserrat', sans-serif;
+          background-color: #f3f4f6;
+          color: #333333;
+          padding: 20px;
+          min-height: 100vh;
+        }
+
+        .page-container {
+          max-width: 850px;
+          margin: 0 auto;
+          background: white;
+          padding: 40px 50px;
+          box-shadow: 0 10px 25px rgba(0,0,0,0.05);
+        }
+
+        .logo-img {
+          max-height: 70px;
+          width: auto;
+          display: block;
+        }
+
+        .header-title {
+          text-align: right;
+          color: #79438f;
+        }
+
+        .header-title h1 {
+          font-size: 2.2rem;
+          font-weight: 300;
+          line-height: 1;
+        }
+
+        .section-header {
+          color: white;
+          background-color: #6495a8;
+          font-weight: 600;
+          font-size: 0.9rem;
+          padding: 6px 15px;
+          margin-top: 25px;
+          margin-bottom: 15px;
+          text-transform: uppercase;
+          letter-spacing: 0.05em;
+          border-radius: 2px;
+        }
+
+        .block-title {
+          font-size: 0.85rem;
+          font-weight: 600;
+          color: #79438f;
+          text-transform: uppercase;
+          margin-bottom: 12px;
+          padding-bottom: 6px;
+          border-bottom: 2px solid #79438f;
+        }
+
+        .param-row {
+          display: flex;
+          justify-content: space-between;
+          align-items: baseline;
+          padding: 8px 0;
+          border-bottom: 1px solid #e2e8f0;
+        }
+
+        .param-label {
+          font-size: 0.85rem;
+          font-weight: 500;
+          color: #333;
+        }
+
+        .param-value {
+          font-size: 0.9rem;
+          color: #555;
+          min-width: 100px;
+          text-align: right;
+        }
+
+        .param-unit {
+          font-size: 0.75rem;
+          color: #999;
+          margin-left: 4px;
+        }
+
+        .grid-2cols {
+          display: grid;
+          grid-template-columns: 1fr 1fr;
+          gap: 30px;
+        }
+
+        .footer-line {
+          border-top: 1px solid #79438f;
+          margin-top: 40px;
+          padding-top: 15px;
+          display: flex;
+          justify-content: space-between;
+          font-size: 0.75rem;
+          color: #555;
+        }
+
+        @media print {
+          body { 
+            background: white; 
+            padding: 0; 
+          }
+          .print-page {
+            background: white;
+            padding: 0;
+          }
+          .page-container { 
+            box-shadow: none; 
+            width: 100%; 
+            max-width: none; 
+            padding: 30px; 
+          }
+          .section-header { 
+            -webkit-print-color-adjust: exact;
+            print-color-adjust: exact;
+          }
+        }
+      `}</style>
+
+      <div className="page-container">
+        {/* Encabezado con Logo */}
+        <div className="flex justify-between items-center mb-8">
+          <div className="logo-container">
+            <img
+              src="/logo.png"
+              alt="Farmacia Pontevea Logo"
+              className="logo-img"
+              onError={(e) => {
+                (e.target as HTMLImageElement).style.display = "none";
+                const fallback = (e.target as HTMLImageElement).nextElementSibling as HTMLElement;
+                if (fallback) fallback.style.display = "block";
+              }}
+            />
+            <div style={{ display: "none" }} className="brand-text">
+              <div
+                style={{
+                  color: "#79438f",
+                  fontWeight: 800,
+                  fontSize: "1.5rem",
+                  textTransform: "uppercase",
+                }}
+              >
+                pontevea
+              </div>
+            </div>
+          </div>
+          <div className="header-title">
+            <h1>
+              Análisis<br />
+              <strong>Bioquímico</strong>
+            </h1>
+          </div>
+        </div>
+
+        {/* Datos de Usuario */}
+        <div className="grid grid-cols-2 gap-x-12 gap-y-4 mb-6">
+          <div className="flex flex-col">
+            <label className="text-[10px] font-bold uppercase text-gray-400">Nombre</label>
+            <div className="text-sm">{paciente?.name || ""}</div>
+          </div>
+          <div className="flex flex-col">
+            <label className="text-[10px] font-bold uppercase text-gray-400">Teléfono</label>
+            <div className="text-sm">{paciente?.phone || ""}</div>
+          </div>
+          <div className="flex flex-col">
+            <label className="text-[10px] font-bold uppercase text-gray-400">Email</label>
+            <div className="text-sm">{paciente?.email || ""}</div>
+          </div>
+          <div className="flex flex-col">
+            <label className="text-[10px] font-bold uppercase text-gray-400">Fecha</label>
+            <div className="text-sm">{formatearFechaPrint(analisis.fecha)}</div>
+          </div>
+        </div>
+
+        {/* Parámetros Básicos - Siempre visible */}
+        <div className="section-header">Parámetros Básicos</div>
+        <div className="space-y-2 mb-6">
+          <div className="param-row">
+            <span className="param-label">Glucemia</span>
+            <span className="param-value">
+              {analisis.glucemia || analisis.glucose || ""}
+              {analisis.glucemia !== undefined || analisis.glucose !== undefined ? (
+                <span className="param-unit">mg/dL</span>
+              ) : null}
+            </span>
+          </div>
+          <div className="param-row">
+            <span className="param-label">Colesterol Total</span>
+            <span className="param-value">
+              {analisis.cholesterol || ""}
+              {analisis.cholesterol !== undefined ? <span className="param-unit">mg/dL</span> : null}
+            </span>
+          </div>
+          <div className="param-row">
+            <span className="param-label">Colesterol HDL</span>
+            <span className="param-value">
+              {analisis.cholesterolHDL || ""}
+              {analisis.cholesterolHDL !== undefined ? <span className="param-unit">mg/dL</span> : null}
+            </span>
+          </div>
+          <div className="param-row">
+            <span className="param-label">Colesterol LDL</span>
+            <span className="param-value">
+              {analisis.cholesterolLDL || ""}
+              {analisis.cholesterolLDL !== undefined ? <span className="param-unit">mg/dL</span> : null}
+            </span>
+          </div>
+          <div className="param-row">
+            <span className="param-label">Triglicéridos</span>
+            <span className="param-value">
+              {analisis.triglycerides || ""}
+              {analisis.triglycerides !== undefined ? <span className="param-unit">mg/dL</span> : null}
+            </span>
+          </div>
+        </div>
+
+        {/* Parámetros Avanzados - Siempre visible */}
+        <div className="section-header">Parámetros Avanzados</div>
+        <div className="space-y-2 mb-6">
+          <div className="param-row">
+            <span className="param-label">Hemoglobina Glucosilada (HbA1c)</span>
+            <span className="param-value">
+              {analisis.hemoglobinaGlucosilada || ""}
+              {analisis.hemoglobinaGlucosilada !== undefined ? <span className="param-unit">%</span> : null}
+            </span>
+          </div>
+          <div className="param-row">
+            <span className="param-label">Proteína C Reactiva (PCR)</span>
+            <span className="param-value">
+              {analisis.proteinaCReactiva || ""}
+              {analisis.proteinaCReactiva !== undefined ? <span className="param-unit">mg/L</span> : null}
+            </span>
+          </div>
+          <div className="param-row">
+            <span className="param-label">Vitamina D</span>
+            <span className="param-value">
+              {analisis.vitaminaD || ""}
+              {analisis.vitaminaD !== undefined ? <span className="param-unit">ng/mL</span> : null}
+            </span>
+          </div>
+          <div className="param-row">
+            <span className="param-label">Ferritina</span>
+            <span className="param-value">
+              {analisis.ferritina || ""}
+              {analisis.ferritina !== undefined ? <span className="param-unit">ng/mL</span> : null}
+            </span>
+          </div>
+        </div>
+
+        {/* Tensión Arterial y Pulsaciones - Siempre visible */}
+        <div className="section-header">Tensión Arterial y Pulsaciones</div>
+        <div className="grid-2cols mb-6">
+          <div className="space-y-2">
+            <div className="param-row">
+              <span className="param-label">Sistólica</span>
+              <span className="param-value">
+                {analisis.systolic || ""}
+                {analisis.systolic !== undefined ? <span className="param-unit">mmHg</span> : null}
+              </span>
+            </div>
+            <div className="param-row">
+              <span className="param-label">Diastólica</span>
+              <span className="param-value">
+                {analisis.diastolic || ""}
+                {analisis.diastolic !== undefined ? <span className="param-unit">mmHg</span> : null}
+              </span>
+            </div>
+          </div>
+          <div className="space-y-2">
+            <div className="param-row">
+              <span className="param-label">Pulsaciones</span>
+              <span className="param-value">
+                {analisis.pulsaciones || ""}
+                {analisis.pulsaciones !== undefined ? <span className="param-unit">lpm</span> : null}
+              </span>
+            </div>
+          </div>
+        </div>
+
+        {/* Medidas Corporales - Siempre visible */}
+        <div className="section-header">Medidas Corporales</div>
+        <div className="grid-2cols mb-6">
+          <div className="space-y-2">
+            <div className="param-row">
+              <span className="param-label">Peso</span>
+              <span className="param-value">
+                {analisis.weight || ""}
+                {analisis.weight !== undefined ? <span className="param-unit">kg</span> : null}
+              </span>
+            </div>
+            <div className="param-row">
+              <span className="param-label">Altura</span>
+              <span className="param-value">
+                {analisis.height || ""}
+                {analisis.height !== undefined ? <span className="param-unit">cm</span> : null}
+              </span>
+            </div>
+          </div>
+          <div className="space-y-2">
+            <div className="param-row">
+              <span className="param-label">Índice de Masa Corporal (IMC)</span>
+              <span className="param-value">
+                {analisis.imc || ""}
+                {analisis.imc !== undefined ? <span className="param-unit">kg/m²</span> : null}
+              </span>
+            </div>
+            {analisis.imc && (
+              <div className="param-row">
+                <span className="param-label">Clasificación IMC</span>
+                <span className="param-value">
+                  {analisis.imc < 18.5
+                    ? "Bajo peso"
+                    : analisis.imc < 25
+                    ? "Normal"
+                    : analisis.imc < 30
+                    ? "Sobrepeso"
+                    : "Obesidad"}
+                </span>
+              </div>
+            )}
+          </div>
+        </div>
+
+        {/* Observaciones y Recomendaciones - Siempre visible */}
+        <div className="section-header">Observaciones y Recomendaciones</div>
+        <div className="grid-2cols mb-6">
+          <div className="space-y-2">
+            <div className="param-row">
+              <span className="param-label">Observaciones</span>
+            </div>
+            <div className="text-sm whitespace-pre-wrap" style={{ padding: "8px 0", minHeight: "60px", borderBottom: "1px solid #e2e8f0" }}>
+              {analisis.observaciones || ""}
+            </div>
+          </div>
+          <div className="space-y-2">
+            <div className="param-row">
+              <span className="param-label">Recomendaciones</span>
+            </div>
+            <div className="text-sm whitespace-pre-wrap" style={{ padding: "8px 0", minHeight: "60px", borderBottom: "1px solid #e2e8f0" }}>
+              {analisis.recomendaciones || ""}
+            </div>
+          </div>
+        </div>
+
+        {/* Información de Contacto */}
+        <div className="footer-line">
+          <div>
+            <strong style={{ color: "#79438f" }}>Farmacia Pontevea</strong>
+            <br />
+            Avda. Ignacio Varela 16, Pontevea
+            <br />
+            15883 Teo, A Coruña
+          </div>
+          <div className="text-right">
+            Tlf. 981 815 708
+            <br />
+            farmacia@farmaciapontevea.com
+            <br />
+            www.farmaciapontevea.com
+          </div>
+        </div>
+      </div>
+    </div>
+  );
+}
