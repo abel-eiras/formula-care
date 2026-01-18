@@ -52,9 +52,9 @@ async function main() {
   }
 
   // =============================================
-  // 2. CREAR FARMACIA DE EJEMPLO
+  // 2. CREAR FARMACIA PONTEVEA
   // =============================================
-  const nombreFarmacia = 'Farmacia Demo';
+  const nombreFarmacia = 'Farmacia Pontevea';
   const slugFarmacia = generarSlug(nombreFarmacia);
 
   let farmacia = await prisma.farmacia.findUnique({
@@ -66,11 +66,11 @@ async function main() {
       data: {
         nombre: nombreFarmacia,
         slug: slugFarmacia,
-        direccion: 'Calle Ejemplo 123',
-        ciudad: 'Madrid',
-        telefono: '900 123 456',
-        email: 'demo@farmaciademo.com',
-        web: 'www.farmaciademo.com',
+        direccion: 'Lugar de A Igrexa, 7',
+        ciudad: 'Pontevea, A Estrada (Pontevedra)',
+        telefono: '986 580 157',
+        email: 'info@farmaciapontevea.com',
+        web: 'www.farmaciapontevea.com',
         activa: true,
         plan: 'profesional',
         maxUsuarios: 5,
@@ -85,7 +85,7 @@ async function main() {
   // =============================================
   // 3. CREAR ADMIN DE LA FARMACIA
   // =============================================
-  const adminEmail = process.env.ADMIN_EMAIL || 'admin@farmaciademo.com';
+  const adminEmail = process.env.ADMIN_EMAIL || 'admin@farmaciapontevea.com';
   const adminPassword = process.env.ADMIN_PASSWORD || 'admin123';
 
   const adminExiste = await prisma.usuario.findUnique({
@@ -100,7 +100,7 @@ async function main() {
       data: {
         email: adminEmail,
         password: passwordHash,
-        nombre: 'Administrador Farmacia',
+        nombre: 'Farmacia Pontevea',
         rol: 'admin',
         farmaciaId: farmacia.id,
       },
