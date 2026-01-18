@@ -184,8 +184,8 @@ export interface Evento {
   id: string;
   nombre: string;
   activo: boolean;
-  fechas: string; // JSON array de fechas
-  horas: string; // JSON array de rangos horarios
+  fechas: string[]; // Array de fechas en formato YYYY-MM-DD
+  horas: string[]; // Array de rangos horarios (ej: "10:00-14:00")
   duracion: number; // En minutos
   maxAsistentes: number;
   descripcion?: string;

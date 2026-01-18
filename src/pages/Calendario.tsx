@@ -437,8 +437,9 @@ export default function Calendario() {
                   </TableHeader>
                   <TableBody>
                     {eventos.filter(e => e.activo).map((evento) => {
-                      const fechas = JSON.parse(evento.fechas || '[]') as string[];
-                      const horas = JSON.parse(evento.horas || '[]') as string[];
+                      // fechas y horas ya vienen como arrays desde la API
+                      const fechas = evento.fechas || [];
+                      const horas = evento.horas || [];
                       
                       return (
                         <TableRow key={evento.id}>
