@@ -9,6 +9,7 @@ import { prisma } from '../lib/prisma.js';
 
 // Extender el tipo Request para incluir usuario
 declare global {
+  // eslint-disable-next-line @typescript-eslint/no-namespace
   namespace Express {
     interface Request {
       usuario?: {
