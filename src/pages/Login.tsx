@@ -206,12 +206,12 @@ export default function Login() {
                     <code 
                       className="text-amber-800 cursor-pointer hover:bg-amber-100 px-1 rounded"
                       onClick={() => {
-                        navigator.clipboard.writeText('admin@farmaciademo.com');
-                        setEmail('admin@farmaciademo.com');
+                        navigator.clipboard.writeText('admin@farmaciapontevea.com');
+                        setEmail('admin@farmaciapontevea.com');
                       }}
                       title="Click para copiar y rellenar"
                     >
-                      admin@farmaciademo.com
+                      admin@farmaciapontevea.com
                     </code>
                   </p>
                   <p className="flex justify-between">
