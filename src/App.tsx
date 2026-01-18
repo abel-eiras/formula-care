@@ -23,6 +23,7 @@ const ServicioBioPrint = lazy(() => import("./pages/ServicioBioPrint"));
 const Configuracion = lazy(() => import("./pages/Configuracion"));
 const Calendario = lazy(() => import("./pages/Calendario"));
 const SolicitarCita = lazy(() => import("./pages/SolicitarCita"));
+const Legal = lazy(() => import("./pages/Legal"));
 const NotFound = lazy(() => import("./pages/NotFound"));
 
 const queryClient = new QueryClient({
@@ -57,6 +58,15 @@ const App = () => (
               element={
                 <Suspense fallback={<LoadingSpinner />}>
                   <SolicitarCita />
+                </Suspense>
+              }
+            />
+            {/* Rutas legales públicas */}
+            <Route
+              path="/legal/:tipo"
+              element={
+                <Suspense fallback={<LoadingSpinner />}>
+                  <Legal />
                 </Suspense>
               }
             />
