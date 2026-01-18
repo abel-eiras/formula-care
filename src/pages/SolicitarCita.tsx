@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react';
-import { useParams, Navigate } from 'react-router-dom';
+import { useParams, Navigate, Link } from 'react-router-dom';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent } from '@/components/ui/card';
 import { Input } from '@/components/ui/input';
@@ -8,6 +8,7 @@ import { Textarea } from '@/components/ui/textarea';
 import { Calendar } from '@/components/ui/calendar';
 import { Badge } from '@/components/ui/badge';
 import { Alert, AlertDescription } from '@/components/ui/alert';
+import { Checkbox } from '@/components/ui/checkbox';
 import { CheckCircle2, Clock, User, Mail, Phone, MessageSquare, Loader2, AlertTriangle } from 'lucide-react';
 import { format } from 'date-fns';
 import { es } from 'date-fns/locale';
@@ -42,6 +43,7 @@ export default function SolicitarCita() {
     telefono: '',
     notas: '',
   });
+  const [aceptaPrivacidad, setAceptaPrivacidad] = useState(false);
   const [solicitudEnviada, setSolicitudEnviada] = useState(false);
   const [resultadoSolicitud, setResultadoSolicitud] = useState<{
     estado: 'pendiente' | 'aprobada';
@@ -102,7 +104,8 @@ export default function SolicitarCita() {
   const puedeAvanzarPaso4 =
     datosCliente.nombre.trim() !== '' &&
     datosCliente.email.trim() !== '' &&
-    datosCliente.telefono.trim() !== '';
+    datosCliente.telefono.trim() !== '' &&
+    aceptaPrivacidad;
 
   // Obtener días disponibles (próximos 60 días)
   const hoy = new Date();
@@ -162,6 +165,7 @@ export default function SolicitarCita() {
     setFechaSeleccionada(undefined);
     setHoraSeleccionada('');
     setDatosCliente({ nombre: '', email: '', telefono: '', notas: '' });
+    setAceptaPrivacidad(false);
     setSolicitudEnviada(false);
     setResultadoSolicitud(null);
   };
@@ -595,6 +599,27 @@ export default function SolicitarCita() {
                             placeholder="Información adicional que quieras compartir..."
                             rows={4}
                           />
+                        </div>
+
+                        {/* Checkbox RGPD */}
+                        <div className="flex items-start gap-3 p-4 bg-gray-50 rounded-lg border">
+                          <Checkbox
+                            id="privacidad"
+                            checked={aceptaPrivacidad}
+                            onCheckedChange={(checked) => setAceptaPrivacidad(checked === true)}
+                            className="mt-0.5"
+                          />
+                          <Label htmlFor="privacidad" className="text-sm text-gray-600 leading-relaxed cursor-pointer">
+                            He leído y acepto la{' '}
+                            <Link
+                              to="/legal/privacidad"
+                              target="_blank"
+                              className="text-[#79438f] hover:underline font-medium"
+                            >
+                              Política de Privacidad
+                            </Link>{' '}
+                            y consiento el tratamiento de mis datos personales para la gestión de esta solicitud de cita. *
+                          </Label>
                         </div>
                       </div>
                     </div>

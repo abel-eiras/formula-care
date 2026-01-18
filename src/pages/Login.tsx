@@ -146,13 +146,26 @@ export default function Login() {
               </Button>
 
               {/* Enlaces legales */}
-              <div className="text-center text-sm text-muted-foreground">
+              <div className="text-center text-xs text-muted-foreground space-y-2">
                 <p>
                   Al acceder, aceptas nuestra{' '}
                   <Link to="/legal/privacidad" className="text-primary hover:underline">
                     Política de Privacidad
                   </Link>
                 </p>
+                <div className="flex justify-center gap-3">
+                  <Link to="/legal/aviso-legal" className="text-primary hover:underline">
+                    Aviso Legal
+                  </Link>
+                  <span>·</span>
+                  <Link to="/legal/privacidad" className="text-primary hover:underline">
+                    Privacidad
+                  </Link>
+                  <span>·</span>
+                  <Link to="/legal/cookies" className="text-primary hover:underline">
+                    Cookies
+                  </Link>
+                </div>
               </div>
             </CardFooter>
           </form>
