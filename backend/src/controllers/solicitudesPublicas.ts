@@ -3,6 +3,76 @@ import { prisma } from '../lib/prisma.js';
 import { z } from 'zod';
 import { obtenerDisponibilidad, verificarDisponibilidad } from '../services/disponibilidadService.js';
 
+/**
+ * Obtener textos legales públicos de una farmacia por su slug
+ * GET /api/public/farmacia/:slug/legal/:tipo
+ * tipo: 'aviso-legal' | 'privacidad' | 'cookies'
+ */
+export async function obtenerTextoLegalPublico(req: Request, res: Response) {
+  try {
+    const slug = req.params.slug as string;
+    const tipo = req.params.tipo as string;
+
+    if (!slug || !tipo) {
+      return res.status(400).json({ error: 'Slug y tipo de documento requeridos' });
+    }
+
+    // Mapeo de tipo URL a campo de BD
+    const camposLegales: Record<string, string> = {
+      'aviso-legal': 'textoAvisoLegal',
+      'privacidad': 'textoPoliticaPrivacidad',
+      'cookies': 'textoPoliticaCookies',
+    };
+
+    const campo = camposLegales[tipo];
+    if (!campo) {
+      return res.status(404).json({ error: 'Tipo de documento no válido' });
+    }
+
+    // Obtener farmacia por slug
+    const farmacia = await prisma.farmacia.findUnique({
+      where: { slug },
+      select: { id: true, nombre: true, activa: true },
+    });
+
+    if (!farmacia) {
+      return res.status(404).json({ error: 'Farmacia no encontrada' });
+    }
+
+    if (!farmacia.activa) {
+      return res.status(403).json({ error: 'Esta farmacia no está disponible' });
+    }
+
+    // Obtener configuración RGPD
+    const config = await prisma.configuracion.findUnique({
+      where: { farmaciaId: farmacia.id },
+      select: {
+        farmaciaNombre: true,
+        textoAvisoLegal: true,
+        textoPoliticaPrivacidad: true,
+        textoPoliticaCookies: true,
+      },
+    });
+
+    const contenido = config ? (config as Record<string, string | null>)[campo] : null;
+
+    res.json({
+      farmacia: {
+        slug,
+        nombre: config?.farmaciaNombre || farmacia.nombre,
+      },
+      tipo,
+      titulo: tipo === 'aviso-legal' ? 'Aviso Legal' 
+            : tipo === 'privacidad' ? 'Política de Privacidad' 
+            : 'Política de Cookies',
+      contenido: contenido || null,
+    });
+  } catch (error) {
+    console.error('Error al obtener texto legal:', error);
+    res.status(500).json({ error: 'Error al obtener texto legal' });
+  }
+}
+
 // Esquema de validación para solicitar cita
 const solicitarCitaSchema = z.object({
   farmaciaSlug: z.string().min(1, 'El identificador de farmacia es requerido'),
