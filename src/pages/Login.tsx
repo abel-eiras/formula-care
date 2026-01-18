@@ -155,6 +155,46 @@ export default function Login() {
           </form>
         </Card>
 
+        {/* Credenciales de desarrollo */}
+        {import.meta.env.DEV && (
+          <Card className="mt-4 border-dashed border-amber-300 bg-amber-50/50">
+            <CardContent className="pt-4">
+              <p className="text-xs font-semibold text-amber-700 mb-2">Credenciales de desarrollo:</p>
+              <div className="font-mono text-xs bg-white p-2 rounded border space-y-1">
+                <p className="flex justify-between">
+                  <span className="text-muted-foreground">Email:</span>
+                  <code 
+                    className="text-amber-800 cursor-pointer hover:bg-amber-100 px-1 rounded"
+                    onClick={() => {
+                      navigator.clipboard.writeText('admin@farmaciapontevea.com');
+                      setEmail('admin@farmaciapontevea.com');
+                    }}
+                    title="Click para copiar y rellenar"
+                  >
+                    admin@farmaciapontevea.com
+                  </code>
+                </p>
+                <p className="flex justify-between">
+                  <span className="text-muted-foreground">Password:</span>
+                  <code 
+                    className="text-amber-800 cursor-pointer hover:bg-amber-100 px-1 rounded"
+                    onClick={() => {
+                      navigator.clipboard.writeText('admin123');
+                      setPassword('admin123');
+                    }}
+                    title="Click para copiar y rellenar"
+                  >
+                    admin123
+                  </code>
+                </p>
+              </div>
+              <p className="text-[10px] text-amber-600 mt-2">
+                Click en los valores para copiar y rellenar automáticamente
+              </p>
+            </CardContent>
+          </Card>
+        )}
+
         {/* Footer */}
         <p className="text-center text-sm text-muted-foreground mt-6">
           © {new Date().getFullYear()} Farmacia Pontevea. Todos los derechos reservados.

@@ -5,10 +5,12 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-import { ArrowLeft, Save, UserPlus } from "lucide-react";
+import { Checkbox } from "@/components/ui/checkbox";
+import { ArrowLeft, Save, UserPlus, FileCheck } from "lucide-react";
 import { Link, useNavigate } from "react-router-dom";
 import { toast } from "sonner";
 import { useCrearPaciente } from "@/hooks/usePacientes";
+import { useConfiguracionRgpd } from "@/hooks/useConfiguracion";
 import type { Paciente } from "@/types";
 
 /**
@@ -29,6 +31,8 @@ const calcularEdad = (birthDate: string): number | null => {
 export default function NuevoPaciente() {
   const navigate = useNavigate();
   const crearPaciente = useCrearPaciente();
+  const { data: rgpdConfig } = useConfiguracionRgpd();
+  
   const [formData, setFormData] = useState({
     name: "",
     birthDate: "",
@@ -38,6 +42,9 @@ export default function NuevoPaciente() {
     address: "",
     notes: "",
   });
+  
+  // Estado para el consentimiento
+  const [consentimientoAceptado, setConsentimientoAceptado] = useState(false);
 
   // Calcular edad automáticamente cuando cambia la fecha de nacimiento
   const edad = useMemo(() => {
@@ -63,6 +70,12 @@ export default function NuevoPaciente() {
 
     if (!formData.sex) {
       toast.error("Debe seleccionar el sexo");
+      return;
+    }
+
+    // Verificar consentimiento si está requerido
+    if (rgpdConfig?.consentimientoRequerido && !consentimientoAceptado) {
+      toast.error("Debe confirmar que el paciente ha dado su consentimiento");
       return;
     }
 
@@ -198,6 +211,38 @@ export default function NuevoPaciente() {
                 />
               </div>
             </div>
+
+            {/* Checkbox de consentimiento */}
+            {rgpdConfig?.consentimientoRequerido && (
+              <div className="bg-muted/50 rounded-lg p-4 border">
+                <div className="flex items-start gap-3">
+                  <Checkbox
+                    id="consentimiento"
+                    checked={consentimientoAceptado}
+                    onCheckedChange={(checked) => setConsentimientoAceptado(checked === true)}
+                    className="mt-1"
+                  />
+                  <div className="space-y-1">
+                    <Label 
+                      htmlFor="consentimiento" 
+                      className="text-sm font-medium cursor-pointer flex items-center gap-2"
+                    >
+                      <FileCheck className="h-4 w-4 text-primary" />
+                      Consentimiento del paciente
+                    </Label>
+                    <p className="text-xs text-muted-foreground">
+                      Confirmo que el paciente ha sido informado y ha dado su consentimiento 
+                      para el tratamiento de sus datos de salud según la política de privacidad.
+                      {rgpdConfig.consentimientoVersion && (
+                        <span className="ml-1 text-primary">
+                          (Versión: {rgpdConfig.consentimientoVersion})
+                        </span>
+                      )}
+                    </p>
+                  </div>
+                </div>
+              </div>
+            )}
 
             <div className="flex justify-end gap-3 pt-4 border-t">
               <Button type="button" variant="outline" asChild disabled={crearPaciente.isPending}>
