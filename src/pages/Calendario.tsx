@@ -26,6 +26,7 @@ import type { Cita } from "@/types";
 interface NuevaCitaForm {
   titulo: string;
   pacienteId: string;
+  fecha: string; // Formato YYYY-MM-DD
   hora: string;
   tipo: Cita["tipo"];
   notas: string;
@@ -43,6 +44,7 @@ const tiposCita: Record<Cita["tipo"], { label: string; color: string }> = {
 const formInicial: NuevaCitaForm = {
   titulo: "",
   pacienteId: "",
+  fecha: format(new Date(), "yyyy-MM-dd"),
   hora: "",
   tipo: "consulta",
   notas: ""
@@ -133,7 +135,7 @@ export default function Calendario() {
 
   // Crear nueva cita
   const handleCrearCita = async () => {
-    if (!date || !nuevaCita.titulo || !nuevaCita.pacienteId || !nuevaCita.hora) {
+    if (!nuevaCita.fecha || !nuevaCita.titulo || !nuevaCita.pacienteId || !nuevaCita.hora) {
       toast({
         title: "Error",
         description: "Por favor, complete todos los campos requeridos",
@@ -146,18 +148,19 @@ export default function Calendario() {
       await crearCitaMutation.mutateAsync({
         titulo: nuevaCita.titulo,
         pacienteId: nuevaCita.pacienteId,
-        fecha: format(date, "yyyy-MM-dd"),
+        fecha: nuevaCita.fecha,
         hora: nuevaCita.hora,
         tipo: nuevaCita.tipo,
         notas: nuevaCita.notas || undefined,
       });
 
-      setNuevaCita(formInicial);
+      const fechaCita = parseISO(nuevaCita.fecha);
+      setNuevaCita({ ...formInicial, fecha: format(new Date(), "yyyy-MM-dd") });
       setDialogOpen(false);
       
       toast({
         title: "Cita creada",
-        description: `Cita programada para el ${format(date, "d 'de' MMMM", { locale: es })} a las ${nuevaCita.hora}`
+        description: `Cita programada para el ${format(fechaCita, "d 'de' MMMM", { locale: es })} a las ${nuevaCita.hora}`
       });
     } catch (error) {
       toast({
@@ -225,7 +228,7 @@ export default function Calendario() {
               <DialogHeader>
                 <DialogTitle>Nueva Cita</DialogTitle>
                 <DialogDescription>
-                  Programa una nueva cita para {date ? format(date, "d 'de' MMMM 'de' yyyy", { locale: es }) : "selecciona una fecha"}
+                  Programa una nueva cita para un paciente
                 </DialogDescription>
               </DialogHeader>
               <div className="grid gap-4 py-4">
@@ -262,6 +265,16 @@ export default function Calendario() {
                 </div>
                 <div className="grid grid-cols-2 gap-4">
                   <div className="grid gap-2">
+                    <Label htmlFor="fecha">Fecha *</Label>
+                    <Input
+                      id="fecha"
+                      type="date"
+                      value={nuevaCita.fecha}
+                      onChange={(e) => setNuevaCita({ ...nuevaCita, fecha: e.target.value })}
+                      min={format(new Date(), "yyyy-MM-dd")}
+                    />
+                  </div>
+                  <div className="grid gap-2">
                     <Label htmlFor="hora">Hora *</Label>
                     <Input
                       id="hora"
@@ -270,23 +283,23 @@ export default function Calendario() {
                       onChange={(e) => setNuevaCita({ ...nuevaCita, hora: e.target.value })}
                     />
                   </div>
-                  <div className="grid gap-2">
-                    <Label htmlFor="tipo">Tipo</Label>
-                    <Select 
-                      value={nuevaCita.tipo} 
-                      onValueChange={(value: Cita["tipo"]) => setNuevaCita({ ...nuevaCita, tipo: value })}
-                    >
-                      <SelectTrigger>
-                        <SelectValue />
-                      </SelectTrigger>
-                      <SelectContent>
-                        <SelectItem value="dermo">Dermocosmética</SelectItem>
-                        <SelectItem value="bio">Bioquímica</SelectItem>
-                        <SelectItem value="consulta">Consulta General</SelectItem>
-                        <SelectItem value="seguimiento">Seguimiento</SelectItem>
-                      </SelectContent>
-                    </Select>
-                  </div>
+                </div>
+                <div className="grid gap-2">
+                  <Label htmlFor="tipo">Tipo de servicio</Label>
+                  <Select 
+                    value={nuevaCita.tipo} 
+                    onValueChange={(value: Cita["tipo"]) => setNuevaCita({ ...nuevaCita, tipo: value })}
+                  >
+                    <SelectTrigger>
+                      <SelectValue />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="dermo">Dermocosmética</SelectItem>
+                      <SelectItem value="bio">Bioquímica</SelectItem>
+                      <SelectItem value="consulta">Consulta General</SelectItem>
+                      <SelectItem value="seguimiento">Seguimiento</SelectItem>
+                    </SelectContent>
+                  </Select>
                 </div>
                 <div className="grid gap-2">
                   <Label htmlFor="notas">Notas</Label>

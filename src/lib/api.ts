@@ -169,6 +169,11 @@ class ApiClient {
       await this.handleResponseError(response);
     }
 
+    // DELETE puede devolver 204 No Content sin cuerpo
+    if (response.status === 204) {
+      return undefined as T;
+    }
+
     return response.json();
   }
 }

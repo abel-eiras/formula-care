@@ -105,6 +105,10 @@ async function inicializarSMTP(config: ConfigEmail): Promise<nodemailer.Transpor
         port: 587,
         secure: false,
         auth: etherealCredentials,
+        tls: {
+          // Ignorar errores de certificado en desarrollo (Ethereal)
+          rejectUnauthorized: false,
+        },
       });
       
       console.log('✅ Transportador Ethereal configurado (modo pruebas)');
