@@ -3,6 +3,7 @@ import { prisma } from '../lib/prisma.js';
 import { z } from 'zod';
 import { getQueryString, getParamString } from '../lib/queryHelpers.js';
 import { obtenerFarmaciaIdRequerido, obtenerFarmaciaIdOpcional } from '../middleware/tenant.js';
+import { enviarConfirmacionCita } from '../services/emailService.js';
 
 // Esquema de validación para crear cita
 const crearCitaSchema = z.object({
@@ -110,11 +111,30 @@ export async function crearCita(req: Request, res: Response) {
             id: true,
             name: true,
             phone: true,
+            email: true,
           },
         },
       },
     });
 
+    // Enviar email de confirmación si el paciente tiene email
+    if (cita.paciente?.email) {
+      try {
+        await enviarConfirmacionCita(cita.paciente.email, {
+          citaId: cita.id,
+          tipo: cita.tipo,
+          fecha: cita.fecha,
+          hora: cita.hora,
+          nombreCliente: cita.paciente.name,
+        });
+        console.log(`✅ Email de confirmación enviado a ${cita.paciente.email}`);
+      } catch (emailError) {
+        // No fallar la creación de cita por error de email
+        console.error('⚠️  Error al enviar email de confirmación:', emailError);
+      }
+    } else {
+      console.log('ℹ️  Cita creada sin email (paciente sin email registrado)');
+    }
 
     res.status(201).json(cita);
   } catch (error) {
