@@ -74,6 +74,9 @@ async function obtenerConfigEmail(): Promise<ConfigEmail> {
   };
 }
 
+// Credenciales de Ethereal para pruebas (se generan una vez)
+let etherealCredentials: { user: string; pass: string } | null = null;
+
 /**
  * Inicializa el transportador SMTP
  */
@@ -81,14 +84,35 @@ async function inicializarSMTP(config: ConfigEmail): Promise<nodemailer.Transpor
   if (smtpTransporter) return smtpTransporter;
 
   if (!config.smtpHost || !config.smtpUser || !config.smtpPass) {
-    console.warn('⚠️  Configuración SMTP incompleta. Usando modo de prueba.');
-    // Transportador de prueba (Ethereal)
-    smtpTransporter = nodemailer.createTransport({
-      host: 'smtp.ethereal.email',
-      port: 587,
-      secure: false,
-      auth: { user: 'test@ethereal.email', pass: 'test' },
-    });
+    // En desarrollo, crear cuenta de prueba en Ethereal
+    console.warn('⚠️  Configuración SMTP incompleta. Usando Ethereal Email para pruebas...');
+    
+    try {
+      // Generar cuenta de prueba de Ethereal solo una vez
+      if (!etherealCredentials) {
+        const testAccount = await nodemailer.createTestAccount();
+        etherealCredentials = {
+          user: testAccount.user,
+          pass: testAccount.pass,
+        };
+        console.log('📧 Cuenta de prueba Ethereal creada:');
+        console.log(`   Usuario: ${etherealCredentials.user}`);
+        console.log(`   Los emails se pueden ver en: https://ethereal.email/login`);
+      }
+      
+      smtpTransporter = nodemailer.createTransport({
+        host: 'smtp.ethereal.email',
+        port: 587,
+        secure: false,
+        auth: etherealCredentials,
+      });
+      
+      console.log('✅ Transportador Ethereal configurado (modo pruebas)');
+    } catch (error) {
+      console.error('❌ Error al crear cuenta Ethereal:', error);
+      return null;
+    }
+    
     return smtpTransporter;
   }
 
@@ -315,7 +339,7 @@ async function enviarConSMTP(
 
     const from = config.emailRemitente || config.smtpUser || 'noreply@sistema.local';
 
-    await transporter.sendMail({
+    const info = await transporter.sendMail({
       from: `"${config.nombreRemitente}" <${from}>`,
       to: destinatario,
       subject: asunto,
@@ -324,6 +348,14 @@ async function enviarConSMTP(
     });
 
     console.log(`✅ Email enviado vía SMTP a ${destinatario}`);
+    
+    // Si es Ethereal, mostrar enlace de preview
+    const previewUrl = nodemailer.getTestMessageUrl(info);
+    if (previewUrl) {
+      console.log('📬 Preview del email (Ethereal):');
+      console.log(`   ${previewUrl}`);
+    }
+    
     return true;
   } catch (error) {
     console.error('❌ Error SMTP:', error);
