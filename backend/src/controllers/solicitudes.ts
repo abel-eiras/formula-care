@@ -2,6 +2,7 @@ import { Request, Response } from 'express';
 import { prisma } from '../lib/prisma.js';
 import { verificarDisponibilidad } from '../services/disponibilidadService.js';
 import { getQueryString, getParamString } from '../lib/queryHelpers.js';
+import { obtenerFarmaciaIdRequerido, obtenerFarmaciaIdOpcional } from '../middleware/tenant.js';
 
 /**
  * Obtener todas las solicitudes con filtro opcional por estado
@@ -9,11 +10,12 @@ import { getQueryString, getParamString } from '../lib/queryHelpers.js';
  */
 export async function obtenerSolicitudes(req: Request, res: Response) {
   try {
+    const farmaciaId = obtenerFarmaciaIdOpcional(req);
     const estado = getQueryString(req.query.estado);
 
-    const where = estado
-      ? { estado }
-      : {};
+    const where: Record<string, unknown> = {};
+    if (farmaciaId) where.farmaciaId = farmaciaId;
+    if (estado) where.estado = estado;
 
     const solicitudes = await prisma.solicitudCita.findMany({
       where,
@@ -80,6 +82,7 @@ export async function obtenerSolicitud(req: Request, res: Response) {
  */
 export async function aprobarSolicitud(req: Request, res: Response) {
   try {
+    const farmaciaId = obtenerFarmaciaIdRequerido(req);
     const id = getParamString(req.params.id);
 
     // Obtener la solicitud con el paciente incluido
@@ -92,6 +95,11 @@ export async function aprobarSolicitud(req: Request, res: Response) {
 
     if (!solicitudConPaciente) {
       return res.status(404).json({ error: 'Solicitud no encontrada' });
+    }
+
+    // Verificar que la solicitud pertenece a esta farmacia
+    if (solicitudConPaciente.farmaciaId !== farmaciaId) {
+      return res.status(403).json({ error: 'No tienes acceso a esta solicitud' });
     }
 
     if (solicitudConPaciente.estado !== 'pendiente') {
@@ -120,6 +128,7 @@ export async function aprobarSolicitud(req: Request, res: Response) {
       // Si no tiene paciente asociado, buscarlo por email o crearlo
       paciente = await prisma.paciente.findFirst({
         where: {
+          farmaciaId,
           email: solicitudConPaciente.emailCliente,
         },
       });
@@ -128,6 +137,7 @@ export async function aprobarSolicitud(req: Request, res: Response) {
         // Crear paciente con datos de la solicitud
         paciente = await prisma.paciente.create({
           data: {
+            farmaciaId,
             name: solicitudConPaciente.nombreCliente,
             email: solicitudConPaciente.emailCliente,
             phone: solicitudConPaciente.telefonoCliente,
@@ -141,6 +151,7 @@ export async function aprobarSolicitud(req: Request, res: Response) {
     // Crear la cita
     const cita = await prisma.cita.create({
       data: {
+        farmaciaId,
         titulo: `Cita ${solicitudConPaciente.tipo} - ${solicitudConPaciente.nombreCliente}`,
         pacienteId: paciente.id,
         fecha: solicitudConPaciente.fecha,
@@ -208,6 +219,7 @@ export async function aprobarSolicitud(req: Request, res: Response) {
       // Crear nueva notificación
       await prisma.notificacion.create({
         data: {
+          farmaciaId,
           tipo: 'cita',
           pacienteId: paciente.id,
           citaId: cita.id,

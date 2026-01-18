@@ -2,6 +2,7 @@ import { Request, Response } from 'express';
 import { prisma } from '../lib/prisma.js';
 import { z } from 'zod';
 import { getQueryString, getParamString } from '../lib/queryHelpers.js';
+import { obtenerFarmaciaIdRequerido, obtenerFarmaciaIdOpcional } from '../middleware/tenant.js';
 
 // Esquema de validación para crear cita
 const crearCitaSchema = z.object({
@@ -21,11 +22,12 @@ const actualizarCitaSchema = crearCitaSchema.partial();
  */
 export async function obtenerCitas(req: Request, res: Response) {
   try {
+    const farmaciaId = obtenerFarmaciaIdOpcional(req);
     const fecha = getQueryString(req.query.fecha);
 
-    const where = fecha
-      ? { fecha }
-      : {};
+    const where: Record<string, unknown> = {};
+    if (farmaciaId) where.farmaciaId = farmaciaId;
+    if (fecha) where.fecha = fecha;
 
     const citas = await prisma.cita.findMany({
       where,
@@ -81,9 +83,10 @@ export async function obtenerCita(req: Request, res: Response) {
  */
 export async function crearCita(req: Request, res: Response) {
   try {
+    const farmaciaId = obtenerFarmaciaIdRequerido(req);
     const datos = crearCitaSchema.parse(req.body);
 
-    // Verificar que el paciente existe
+    // Verificar que el paciente existe y pertenece a la misma farmacia
     const paciente = await prisma.paciente.findUnique({
       where: { id: datos.pacienteId },
     });
@@ -92,8 +95,15 @@ export async function crearCita(req: Request, res: Response) {
       return res.status(404).json({ error: 'Paciente no encontrado' });
     }
 
+    if (paciente.farmaciaId !== farmaciaId) {
+      return res.status(403).json({ error: 'El paciente no pertenece a esta farmacia' });
+    }
+
     const cita = await prisma.cita.create({
-      data: datos,
+      data: {
+        ...datos,
+        farmaciaId,
+      },
       include: {
         paciente: {
           select: {
@@ -113,6 +123,10 @@ export async function crearCita(req: Request, res: Response) {
         error: 'Datos inválidos',
         detalles: error.errors,
       });
+    }
+
+    if (error instanceof Error && error.message.includes('farmacia')) {
+      return res.status(403).json({ error: error.message });
     }
 
     console.error('Error al crear cita:', error);

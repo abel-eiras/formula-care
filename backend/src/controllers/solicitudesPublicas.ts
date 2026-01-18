@@ -5,6 +5,7 @@ import { obtenerDisponibilidad, verificarDisponibilidad } from '../services/disp
 
 // Esquema de validación para solicitar cita
 const solicitarCitaSchema = z.object({
+  farmaciaSlug: z.string().min(1, 'El identificador de farmacia es requerido'),
   nombreCliente: z.string().min(1, 'El nombre es requerido'),
   emailCliente: z.string().email('Email inválido'),
   telefonoCliente: z.string().min(1, 'El teléfono es requerido'),
@@ -14,6 +15,17 @@ const solicitarCitaSchema = z.object({
   hora: z.string().regex(/^([0-1]?[0-9]|2[0-3]):[0-5][0-9]$/, 'Formato de hora inválido (HH:mm)'),
   notas: z.string().optional(),
 });
+
+/**
+ * Obtener farmacia por slug (helper)
+ */
+async function obtenerFarmaciaPorSlug(slug: string) {
+  const farmacia = await prisma.farmacia.findUnique({
+    where: { slug },
+    select: { id: true, nombre: true, activa: true },
+  });
+  return farmacia;
+}
 
 /**
  * Obtener disponibilidad para un tipo de servicio en una fecha
@@ -65,6 +77,16 @@ export async function solicitarCita(req: Request, res: Response) {
   try {
     const datos = solicitarCitaSchema.parse(req.body);
 
+    // Obtener farmacia por slug
+    const farmacia = await obtenerFarmaciaPorSlug(datos.farmaciaSlug);
+    if (!farmacia) {
+      return res.status(404).json({ error: 'Farmacia no encontrada' });
+    }
+    if (!farmacia.activa) {
+      return res.status(403).json({ error: 'Esta farmacia no está disponible' });
+    }
+    const farmaciaId = farmacia.id;
+
     // Verificar disponibilidad
     const disponible = await verificarDisponibilidad(datos.tipo, datos.fecha, datos.hora);
     if (!disponible) {
@@ -75,14 +97,14 @@ export async function solicitarCita(req: Request, res: Response) {
 
     // Obtener configuración del calendario
     let configCalendario = await prisma.configuracionCalendario.findUnique({
-      where: { id: 'calendario' },
+      where: { farmaciaId },
     });
 
     // Si no existe, crear con valores por defecto
     if (!configCalendario) {
       configCalendario = await prisma.configuracionCalendario.create({
         data: {
-          id: 'calendario',
+          farmaciaId,
           horariosPorTipo: '{}',
           fechasBloqueadas: '[]',
           horasBloqueadas: '{}',
@@ -99,9 +121,10 @@ export async function solicitarCita(req: Request, res: Response) {
 
     const autoAceptar = configCalendario.autoAceptar;
 
-    // Buscar si el paciente ya existe por email
+    // Buscar si el paciente ya existe por email en esta farmacia
     let paciente = await prisma.paciente.findFirst({
       where: {
+        farmaciaId,
         email: datos.emailCliente,
       },
     });
@@ -111,11 +134,13 @@ export async function solicitarCita(req: Request, res: Response) {
       // Extraer edad aproximada del nombre si es posible, sino usar 0
       paciente = await prisma.paciente.create({
         data: {
+          farmaciaId,
           name: datos.nombreCliente,
           email: datos.emailCliente,
           phone: datos.telefonoCliente,
           age: 0, // Se puede actualizar después
           sex: 'O', // Por defecto "Otro"
+          origen: 'autoregistro',
         },
       });
     }
@@ -127,6 +152,7 @@ export async function solicitarCita(req: Request, res: Response) {
       // Auto-aceptar: crear solicitud como aprobada y crear la cita
       solicitud = await prisma.solicitudCita.create({
         data: {
+          farmaciaId,
           nombreCliente: datos.nombreCliente,
           emailCliente: datos.emailCliente,
           telefonoCliente: datos.telefonoCliente,
@@ -142,6 +168,7 @@ export async function solicitarCita(req: Request, res: Response) {
       // Crear la cita
       cita = await prisma.cita.create({
         data: {
+          farmaciaId,
           titulo: `Cita ${datos.tipo} - ${datos.nombreCliente}`,
           pacienteId: paciente.id,
           fecha: datos.fecha,
@@ -160,6 +187,7 @@ export async function solicitarCita(req: Request, res: Response) {
       // Crear notificación
       await prisma.notificacion.create({
         data: {
+          farmaciaId,
           tipo: 'cita',
           pacienteId: paciente.id,
           citaId: cita.id,
@@ -184,6 +212,7 @@ export async function solicitarCita(req: Request, res: Response) {
       // Crear solicitud como pendiente
       solicitud = await prisma.solicitudCita.create({
         data: {
+          farmaciaId,
           nombreCliente: datos.nombreCliente,
           emailCliente: datos.emailCliente,
           telefonoCliente: datos.telefonoCliente,
@@ -199,6 +228,7 @@ export async function solicitarCita(req: Request, res: Response) {
       // Crear notificación para que el equipo la revise
       await prisma.notificacion.create({
         data: {
+          farmaciaId,
           tipo: 'cita',
           pacienteId: paciente.id,
           titulo: `Nueva solicitud de cita ${datos.tipo}`,

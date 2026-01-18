@@ -130,11 +130,13 @@ function inicializarResend(config: ConfigEmail): Resend | null {
 // ==========================================
 
 /**
- * Obtiene una plantilla de email por tipo
+ * Obtiene una plantilla de email por tipo y farmacia
  */
-async function obtenerPlantilla(tipo: string) {
+async function obtenerPlantilla(tipo: string, farmaciaId: string) {
   const plantilla = await prisma.plantillaEmail.findUnique({
-    where: { tipo },
+    where: { 
+      farmaciaId_tipo: { farmaciaId, tipo }
+    },
   });
 
   if (!plantilla || !plantilla.activa) {
@@ -347,6 +349,13 @@ export async function enviarConfirmacionCita(
   }
 ): Promise<boolean> {
   try {
+    // Obtener farmaciaId de la cita
+    const cita = await prisma.cita.findUnique({
+      where: { id: datosCita.citaId },
+      select: { farmaciaId: true },
+    });
+    const farmaciaId = cita?.farmaciaId;
+
     const datosFarmacia = await obtenerDatosFarmacia();
 
     // Generar tokens de acción
@@ -369,8 +378,8 @@ export async function enviarConfirmacionCita(
       urlCancelar: urls.cancelar,
     };
 
-    // Obtener plantilla
-    const plantilla = await obtenerPlantilla('confirmacion');
+    // Obtener plantilla (si hay farmaciaId)
+    const plantilla = farmaciaId ? await obtenerPlantilla('confirmacion', farmaciaId) : null;
 
     let html: string;
     let asunto: string;
@@ -415,6 +424,13 @@ export async function enviarRecordatorioCita(
   }
 ): Promise<boolean> {
   try {
+    // Obtener farmaciaId de la cita
+    const cita = await prisma.cita.findUnique({
+      where: { id: datosCita.citaId },
+      select: { farmaciaId: true },
+    });
+    const farmaciaId = cita?.farmaciaId;
+
     const datosFarmacia = await obtenerDatosFarmacia();
     const tokens = await generarTokensAccionCita(datosCita.citaId);
     const urls = construirUrlsAccion(tokens);
@@ -434,7 +450,7 @@ export async function enviarRecordatorioCita(
       urlCancelar: urls.cancelar,
     };
 
-    const plantilla = await obtenerPlantilla('recordatorio');
+    const plantilla = farmaciaId ? await obtenerPlantilla('recordatorio', farmaciaId) : null;
 
     let html: string;
     let asunto: string;
@@ -474,9 +490,20 @@ export async function enviarCancelacionCita(
     hora: string;
     nombreCliente: string;
     motivoRechazo?: string;
+    citaId?: string;
   }
 ): Promise<boolean> {
   try {
+    // Obtener farmaciaId de la cita si hay citaId
+    let farmaciaId: string | undefined;
+    if (datosCita.citaId) {
+      const cita = await prisma.cita.findUnique({
+        where: { id: datosCita.citaId },
+        select: { farmaciaId: true },
+      });
+      farmaciaId = cita?.farmaciaId;
+    }
+
     const datosFarmacia = await obtenerDatosFarmacia();
 
     const datos: DatosEmail = {
@@ -492,7 +519,7 @@ export async function enviarCancelacionCita(
       motivoRechazo: datosCita.motivoRechazo,
     };
 
-    const plantilla = await obtenerPlantilla('cancelacion');
+    const plantilla = farmaciaId ? await obtenerPlantilla('cancelacion', farmaciaId) : null;
 
     let html: string;
     let asunto: string;

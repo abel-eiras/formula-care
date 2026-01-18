@@ -16,6 +16,15 @@ declare global {
         email: string;
         nombre: string;
         rol: string;
+        farmaciaId: string | null;
+      };
+      // Alias para compatibilidad
+      user?: {
+        id: string;
+        email: string;
+        nombre: string;
+        rol: string;
+        farmaciaId: string | null;
       };
     }
   }
@@ -30,13 +39,14 @@ const JWT_EXPIRES_IN = '24h';
 /**
  * Genera un token JWT para un usuario
  */
-export function generarToken(usuario: { id: string; email: string; nombre: string; rol: string }): string {
+export function generarToken(usuario: { id: string; email: string; nombre: string; rol: string; farmaciaId: string | null }): string {
   return jwt.sign(
     {
       id: usuario.id,
       email: usuario.email,
       nombre: usuario.nombre,
       rol: usuario.rol,
+      farmaciaId: usuario.farmaciaId,
     },
     JWT_SECRET,
     { expiresIn: JWT_EXPIRES_IN }
@@ -67,12 +77,13 @@ export async function verificarToken(req: Request, res: Response, next: NextFunc
       email: string;
       nombre: string;
       rol: string;
+      farmaciaId: string | null;
     };
 
     // Verificar que el usuario existe y está activo
     const usuario = await prisma.usuario.findUnique({
       where: { id: decoded.id },
-      select: { id: true, email: true, nombre: true, rol: true, activo: true }
+      select: { id: true, email: true, nombre: true, rol: true, activo: true, farmaciaId: true }
     });
 
     if (!usuario) {
@@ -89,13 +100,16 @@ export async function verificarToken(req: Request, res: Response, next: NextFunc
       });
     }
 
-    // Añadir usuario a la request
-    req.usuario = {
+    // Añadir usuario a la request (ambos alias para compatibilidad)
+    const userData = {
       id: usuario.id,
       email: usuario.email,
       nombre: usuario.nombre,
       rol: usuario.rol,
+      farmaciaId: usuario.farmaciaId,
     };
+    req.usuario = userData;
+    req.user = userData;
 
     next();
   } catch (error) {
@@ -160,20 +174,24 @@ export async function tokenOpcional(req: Request, res: Response, next: NextFunct
       email: string;
       nombre: string;
       rol: string;
+      farmaciaId: string | null;
     };
 
     const usuario = await prisma.usuario.findUnique({
       where: { id: decoded.id },
-      select: { id: true, email: true, nombre: true, rol: true, activo: true }
+      select: { id: true, email: true, nombre: true, rol: true, activo: true, farmaciaId: true }
     });
 
     if (usuario && usuario.activo) {
-      req.usuario = {
+      const userData = {
         id: usuario.id,
         email: usuario.email,
         nombre: usuario.nombre,
         rol: usuario.rol,
+        farmaciaId: usuario.farmaciaId,
       };
+      req.usuario = userData;
+      req.user = userData;
     }
 
     next();

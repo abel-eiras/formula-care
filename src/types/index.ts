@@ -230,3 +230,156 @@ export interface Evento {
   createdAt?: string;
   updatedAt?: string;
 }
+
+// ==========================================
+// TIPOS MULTI-TENANT Y SUPERADMIN
+// ==========================================
+
+export type PlanFarmacia = 'basico' | 'profesional' | 'enterprise';
+
+export interface Farmacia {
+  id: string;
+  nombre: string;
+  slug: string;
+  direccion?: string;
+  ciudad?: string;
+  telefono?: string;
+  email?: string;
+  web?: string;
+  logo?: string;
+  activa: boolean;
+  plan: PlanFarmacia;
+  fechaAlta: string;
+  fechaExpiracion?: string;
+  maxUsuarios: number;
+  maxPacientes: number;
+  // Contadores (calculados en el servidor)
+  totalUsuarios?: number;
+  totalPacientes?: number;
+  createdAt?: string;
+  updatedAt?: string;
+}
+
+export interface FarmaciaDetalle extends Farmacia {
+  usuarios: Usuario[];
+  estadisticas: {
+    totalUsuarios: number;
+    totalPacientes: number;
+    totalCitas: number;
+    totalEventos: number;
+  };
+  configuracion?: {
+    id: string;
+    valoracionBioActiva: boolean;
+    emailProvider?: string;
+  };
+}
+
+export interface Usuario {
+  id: string;
+  email: string;
+  nombre: string;
+  rol: 'superadmin' | 'admin' | 'farmaceutico' | 'usuario';
+  activo: boolean;
+  farmaciaId?: string;
+  farmacia?: {
+    id: string;
+    nombre: string;
+    slug: string;
+  };
+  ultimoAcceso?: string;
+  createdAt?: string;
+}
+
+export interface CrearFarmaciaData {
+  nombre: string;
+  slug?: string;
+  direccion?: string;
+  ciudad?: string;
+  telefono?: string;
+  email?: string;
+  web?: string;
+  plan: PlanFarmacia;
+  maxUsuarios?: number;
+  maxPacientes?: number;
+  fechaExpiracion?: string;
+  // Datos del admin inicial
+  adminEmail: string;
+  adminPassword: string;
+  adminNombre: string;
+}
+
+export interface ActualizarFarmaciaData {
+  nombre?: string;
+  direccion?: string;
+  ciudad?: string;
+  telefono?: string;
+  email?: string;
+  web?: string;
+  activa?: boolean;
+  plan?: PlanFarmacia;
+  maxUsuarios?: number;
+  maxPacientes?: number;
+  fechaExpiracion?: string | null;
+}
+
+export interface EstadisticasPlataforma {
+  // Contadores principales
+  totalFarmacias: number;
+  farmaciasActivas: number;
+  farmaciasInactivas: number;
+  totalUsuarios: number;
+  totalPacientes: number;
+  // Citas
+  citasHoy: number;
+  citasSemana: number;
+  citasMes: number;
+  // Distribución por plan
+  farmaciasPorPlan: {
+    basico: number;
+    profesional: number;
+    enterprise: number;
+  };
+  // Alertas
+  farmaciasProximasExpirar: {
+    id: string;
+    nombre: string;
+    slug: string;
+    plan: PlanFarmacia;
+    fechaExpiracion: string;
+  }[];
+  // Actividad
+  ultimasFarmacias: {
+    id: string;
+    nombre: string;
+    slug: string;
+    plan: PlanFarmacia;
+    activa: boolean;
+    fechaAlta: string;
+    totalUsuarios: number;
+    totalPacientes: number;
+  }[];
+  crecimientoMensual: {
+    mes: string;
+    farmacias: number;
+  }[];
+  actividadReciente: {
+    id: string;
+    nombre: string;
+    email: string;
+    rol: string;
+    ultimoAcceso: string;
+    farmacia?: {
+      nombre: string;
+      slug: string;
+    };
+  }[];
+  topFarmacias: {
+    id: string;
+    nombre: string;
+    slug: string;
+    plan: PlanFarmacia;
+    totalCitas: number;
+    totalPacientes: number;
+  }[];
+}

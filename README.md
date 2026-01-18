@@ -17,12 +17,24 @@ Sistema de gestión para servicios asistenciales de farmacia, incluyendo anális
 
 - **Backend API con Node.js + Express**
   - API RESTful completa
-  - Base de datos con Prisma ORM (SQLite)
+  - Base de datos con Prisma ORM (SQLite/PostgreSQL)
   - Controladores para pacientes, citas, análisis, notificaciones
   - Servicio de disponibilidad de calendario
   - Sistema de eventos para citas públicas
-  - Configuración centralizada
+  - Configuración centralizada por farmacia
   - Tipos TypeScript estrictos (sin errores de compilación)
+
+- **Sistema de Autenticación**
+  - Login con JWT
+  - Roles: superadmin, admin, farmaceutico, usuario
+  - Protección de rutas por rol
+  - Sesiones persistentes con localStorage
+
+- **Sistema Multi-Tenant**
+  - Modelo `Farmacia` para múltiples farmacias
+  - Aislamiento de datos por farmacia
+  - Panel de administración para superadmin
+  - Gestión de farmacias, usuarios y planes
 
 - **Sistema de Calendario**
   - Página pública de solicitud de citas
@@ -30,10 +42,20 @@ Sistema de gestión para servicios asistenciales de farmacia, incluyendo anális
   - Gestión de eventos con fechas y horarios
   - Aprobación/rechazo de solicitudes
 
+- **Sistema de Correos**
+  - Plantillas editables (HTML)
+  - Soporte para Nodemailer y Resend
+  - Enlaces de confirmación/cancelación de citas
+  - Tokens únicos con expiración
+
+- **RGPD y Legal**
+  - Configuración de textos legales
+  - Política de privacidad, cookies, términos
+  - Solo en páginas públicas (no en panel admin)
+
 ### 🚧 En Desarrollo
-- Autenticación y autorización
-- Sistema de envío de emails
 - Mejoras de rendimiento
+- Tests automatizados
 
 ### 📝 Planificado
 Ver [PROPUESTA_DESARROLLO.md](./PROPUESTA_DESARROLLO.md) para detalles completos.
@@ -53,14 +75,35 @@ Ver [PROPUESTA_DESARROLLO.md](./PROPUESTA_DESARROLLO.md) para detalles completos
 git clone https://github.com/abel-eiras/farmaciapontevea_servicios.git
 cd farmaciapontevea_servicios
 
-# 2. Instalar dependencias
+# 2. Instalar dependencias del frontend
 npm install
 
-# 3. Iniciar servidor de desarrollo
+# 3. Instalar dependencias del backend
+cd backend && npm install && cd ..
+
+# 4. Configurar base de datos
+cd backend
+npx prisma db push
+npx tsx src/prisma/seed.ts
+cd ..
+
+# 5. Iniciar servidores de desarrollo (en dos terminales)
+# Terminal 1 - Backend:
+cd backend && npm run dev
+
+# Terminal 2 - Frontend:
 npm run dev
 ```
 
-La aplicación estará disponible en `http://localhost:5173`
+- Frontend: `http://localhost:5173`
+- Backend API: `http://localhost:3000`
+
+### Credenciales de Desarrollo
+
+| Rol | Email | Contraseña |
+|-----|-------|------------|
+| Superadmin | `superadmin@sistema.local` | `superadmin123` |
+| Admin Farmacia | `admin@farmaciademo.com` | `admin123` |
 
 ---
 
@@ -89,17 +132,28 @@ La aplicación estará disponible en `http://localhost:5173`
 
 ```
 farmaciapontevea_servicios/
-├── src/                    # Código fuente del frontend
-│   ├── pages/             # Páginas de la aplicación
-│   ├── components/        # Componentes reutilizables
-│   ├── hooks/             # Custom hooks
-│   ├── lib/               # Utilidades
-│   └── types/             # Tipos TypeScript
-├── docs/                  # Documentación
-│   ├── PROPUESTA_DESARROLLO.md
-│   ├── GUIA_CODIGO_LIMPIO.md
-│   └── ESTRUCTURA_PROYECTO.md
-└── public/                # Archivos estáticos
+├── src/                        # Frontend React
+│   ├── pages/                  # Páginas de la aplicación
+│   │   └── admin/              # Páginas de administración (superadmin)
+│   ├── components/             # Componentes reutilizables
+│   │   ├── auth/               # Componentes de autenticación
+│   │   ├── dashboard/          # Componentes del dashboard
+│   │   ├── layout/             # Layout principal
+│   │   └── ui/                 # Componentes shadcn/ui
+│   ├── contexts/               # Contextos React (Auth)
+│   ├── hooks/                  # Custom hooks (React Query)
+│   ├── lib/                    # Utilidades (API, PDF, etc.)
+│   └── types/                  # Tipos TypeScript
+├── backend/                    # Backend Node.js + Express
+│   ├── prisma/                 # Schema y migraciones
+│   └── src/
+│       ├── controllers/        # Controladores de API
+│       ├── middleware/         # Middlewares (auth, tenant, etc.)
+│       ├── routes/             # Rutas de API
+│       ├── services/           # Servicios (email, notificaciones)
+│       └── scripts/            # Scripts de migración
+├── docs/                       # Documentación
+└── public/                     # Archivos estáticos
 ```
 
 Para más detalles, ver [ESTRUCTURA_PROYECTO.md](./docs/ESTRUCTURA_PROYECTO.md)
@@ -217,9 +271,9 @@ Ver [GUIA_CODIGO_LIMPIO.md](./docs/GUIA_CODIGO_LIMPIO.md) y [REACT_BEST_PRACTICE
 
 ## 🐛 Problemas Conocidos
 
-- No hay autenticación implementada (endpoints públicos)
-- El sistema de emails está preparado pero no configurado
+- El sistema de emails requiere configuración de proveedor (Nodemailer/Resend)
 - Falta sistema de backup automático
+- Algunas funcionalidades del calendario aún en refinamiento
 
 Estos puntos están planificados para las siguientes fases de desarrollo.
 

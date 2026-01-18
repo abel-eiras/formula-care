@@ -80,6 +80,7 @@ export async function login(req: Request, res: Response) {
       email: usuario.email,
       nombre: usuario.nombre,
       rol: usuario.rol,
+      farmaciaId: usuario.farmaciaId,
     });
 
     res.json({
@@ -89,6 +90,7 @@ export async function login(req: Request, res: Response) {
         email: usuario.email,
         nombre: usuario.nombre,
         rol: usuario.rol,
+        farmaciaId: usuario.farmaciaId,
       },
     });
   } catch (error) {
@@ -177,8 +179,16 @@ export async function obtenerUsuarioActual(req: Request, res: Response) {
         email: true,
         nombre: true,
         rol: true,
+        farmaciaId: true,
         ultimoAcceso: true,
         createdAt: true,
+        farmacia: {
+          select: {
+            id: true,
+            nombre: true,
+            slug: true,
+          }
+        }
       },
     });
 

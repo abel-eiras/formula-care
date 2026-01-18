@@ -7,6 +7,7 @@ import type { Request, Response } from 'express';
 import { z } from 'zod';
 import { prisma } from '../lib/prisma.js';
 import { getParamString } from '../lib/queryHelpers.js';
+import { obtenerFarmaciaIdRequerido, obtenerFarmaciaIdOpcional } from '../middleware/tenant.js';
 
 // ==========================================
 // PLANTILLAS POR DEFECTO
@@ -251,10 +252,13 @@ const actualizarPlantillaSchema = z.object({
  */
 export async function obtenerPlantillas(req: Request, res: Response) {
   try {
-    // Asegurar que existan las plantillas por defecto
-    await asegurarPlantillasDefault();
+    const farmaciaId = obtenerFarmaciaIdRequerido(req);
+    
+    // Asegurar que existan las plantillas por defecto para esta farmacia
+    await asegurarPlantillasDefault(farmaciaId);
 
     const plantillas = await prisma.plantillaEmail.findMany({
+      where: { farmaciaId },
       orderBy: { tipo: 'asc' },
     });
 
@@ -270,13 +274,16 @@ export async function obtenerPlantillas(req: Request, res: Response) {
  */
 export async function obtenerPlantilla(req: Request, res: Response) {
   try {
+    const farmaciaId = obtenerFarmaciaIdRequerido(req);
     const tipo = getParamString(req.params.tipo);
     if (!tipo) {
       return res.status(400).json({ error: 'Tipo de plantilla requerido' });
     }
 
     const plantilla = await prisma.plantillaEmail.findUnique({
-      where: { tipo },
+      where: { 
+        farmaciaId_tipo: { farmaciaId, tipo }
+      },
     });
 
     if (!plantilla) {
@@ -295,6 +302,7 @@ export async function obtenerPlantilla(req: Request, res: Response) {
  */
 export async function actualizarPlantilla(req: Request, res: Response) {
   try {
+    const farmaciaId = obtenerFarmaciaIdRequerido(req);
     const tipo = getParamString(req.params.tipo);
     if (!tipo) {
       return res.status(400).json({ error: 'Tipo de plantilla requerido' });
@@ -306,7 +314,9 @@ export async function actualizarPlantilla(req: Request, res: Response) {
     }
 
     const plantilla = await prisma.plantillaEmail.update({
-      where: { tipo },
+      where: { 
+        farmaciaId_tipo: { farmaciaId, tipo }
+      },
       data: validacion.data,
     });
 
@@ -322,6 +332,7 @@ export async function actualizarPlantilla(req: Request, res: Response) {
  */
 export async function restaurarPlantillaPorDefecto(req: Request, res: Response) {
   try {
+    const farmaciaId = obtenerFarmaciaIdRequerido(req);
     const tipo = getParamString(req.params.tipo) as keyof typeof PLANTILLAS_DEFAULT;
     if (!tipo) {
       return res.status(400).json({ error: 'Tipo de plantilla requerido' });
@@ -333,7 +344,9 @@ export async function restaurarPlantillaPorDefecto(req: Request, res: Response) 
     }
 
     const plantilla = await prisma.plantillaEmail.update({
-      where: { tipo },
+      where: { 
+        farmaciaId_tipo: { farmaciaId, tipo }
+      },
       data: {
         nombre: plantillaDefault.nombre,
         asunto: plantillaDefault.asunto,
@@ -360,17 +373,20 @@ export async function obtenerVariablesDisponibles(req: Request, res: Response) {
 // ==========================================
 
 /**
- * Asegura que existan las plantillas por defecto en la BD
+ * Asegura que existan las plantillas por defecto en la BD para una farmacia
  */
-async function asegurarPlantillasDefault() {
+export async function asegurarPlantillasDefault(farmaciaId: string) {
   for (const [tipo, datos] of Object.entries(PLANTILLAS_DEFAULT)) {
     const existe = await prisma.plantillaEmail.findUnique({
-      where: { tipo },
+      where: { 
+        farmaciaId_tipo: { farmaciaId, tipo }
+      },
     });
 
     if (!existe) {
       await prisma.plantillaEmail.create({
         data: {
+          farmaciaId,
           tipo,
           nombre: datos.nombre,
           asunto: datos.asunto,
@@ -378,7 +394,7 @@ async function asegurarPlantillasDefault() {
           activa: true,
         },
       });
-      console.log(`📧 Plantilla '${tipo}' creada por defecto`);
+      console.log(`📧 Plantilla '${tipo}' creada por defecto para farmacia ${farmaciaId}`);
     }
   }
 }

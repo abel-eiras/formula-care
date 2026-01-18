@@ -12,6 +12,7 @@ import { solicitudesRouter } from './routes/solicitudes.js';
 import { eventosRouter } from './routes/eventos.js';
 import { authRouter } from './routes/auth.js';
 import { plantillasEmailRouter } from './routes/plantillasEmail.js';
+import adminRouter from './routes/admin.js';
 import { verificarToken } from './middleware/auth.js';
 
 // Cargar variables de entorno
@@ -63,6 +64,10 @@ app.use('/api/notificaciones', authMiddleware, notificacionesRouter);
 app.use('/api/solicitudes', authMiddleware, solicitudesRouter);
 app.use('/api/eventos', authMiddleware, eventosRouter);
 app.use('/api/plantillas-email', authMiddleware, plantillasEmailRouter);
+
+// Rutas de administración de plataforma (superadmin)
+// Nota: el router ya incluye verificarToken + superadminMiddleware
+app.use('/api/admin', adminRouter);
 
 // Ruta de salud
 app.get('/api/health', (req, res) => {

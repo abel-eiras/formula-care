@@ -21,16 +21,22 @@ export async function crearNotificacionRevision(analisisId: string, pacienteId: 
 
     const paciente = await prisma.paciente.findUnique({
       where: { id: pacienteId },
-      select: { name: true },
+      select: { name: true, farmaciaId: true },
     });
+
+    if (!paciente?.farmaciaId) {
+      console.error('Paciente no encontrado o sin farmacia');
+      return;
+    }
 
     await prisma.notificacion.create({
       data: {
+        farmaciaId: paciente.farmaciaId,
         tipo: 'revision',
         pacienteId,
         analisisId,
         titulo: 'Próxima revisión programada',
-        mensaje: `Revisión programada para ${paciente?.name || 'el paciente'} el ${new Date(fechaRevision).toLocaleDateString('es-ES')}`,
+        mensaje: `Revisión programada para ${paciente.name || 'el paciente'} el ${new Date(fechaRevision).toLocaleDateString('es-ES')}`,
         canal: 'interno',
       },
     });
@@ -66,6 +72,7 @@ export async function crearNotificacionRecordatorioCita(citaId: string) {
     if (diffHoras > 0 && diffHoras <= 24) {
       await prisma.notificacion.create({
         data: {
+          farmaciaId: cita.farmaciaId,
           tipo: 'recordatorio',
           pacienteId: cita.pacienteId,
           citaId: cita.id,
@@ -106,13 +113,14 @@ export async function verificarRevisionesProximas() {
       },
       include: {
         paciente: {
-          select: { name: true },
+          select: { name: true, farmaciaId: true },
         },
       },
     });
 
     for (const analisis of analisisConRevision) {
       if (!analisis.proximaRevision) continue;
+      if (!analisis.paciente.farmaciaId) continue;
 
       // Verificar si ya existe notificación
       const existe = await prisma.notificacion.findFirst({
@@ -126,6 +134,7 @@ export async function verificarRevisionesProximas() {
       if (!existe) {
         await prisma.notificacion.create({
           data: {
+            farmaciaId: analisis.paciente.farmaciaId,
             tipo: 'revision',
             pacienteId: analisis.pacienteId,
             analisisId: analisis.id,

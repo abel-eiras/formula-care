@@ -3,6 +3,7 @@ import { prisma } from '../lib/prisma.js';
 import { z } from 'zod';
 import type { Prisma } from '@prisma/client';
 import { getQueryString, getParamString, getQueryNumber } from '../lib/queryHelpers.js';
+import { obtenerFarmaciaIdRequerido, obtenerFarmaciaIdOpcional } from '../middleware/tenant.js';
 
 // Esquema de validación para crear paciente
 const crearPacienteSchema = z.object({
@@ -24,6 +25,9 @@ const actualizarPacienteSchema = crearPacienteSchema.partial();
  */
 export async function obtenerPacientes(req: Request, res: Response) {
   try {
+    // Obtener farmaciaId del usuario autenticado
+    const farmaciaId = obtenerFarmaciaIdOpcional(req);
+    
     const busqueda = getQueryString(req.query.busqueda);
     const email = getQueryString(req.query.email);
     const sexo = getQueryString(req.query.sexo);
@@ -39,6 +43,11 @@ export async function obtenerPacientes(req: Request, res: Response) {
     
     // Construir condiciones de búsqueda
     const condiciones: Prisma.PacienteWhereInput[] = [];
+    
+    // Filtrar por farmacia (obligatorio para usuarios normales)
+    if (farmaciaId) {
+      condiciones.push({ farmaciaId });
+    }
     
     // Búsqueda general (nombre, teléfono, email)
     if (busqueda) {
@@ -168,12 +177,16 @@ export async function obtenerPaciente(req: Request, res: Response) {
  */
 export async function crearPaciente(req: Request, res: Response) {
   try {
+    // Obtener farmaciaId del usuario autenticado
+    const farmaciaId = obtenerFarmaciaIdRequerido(req);
+    
     const datos = crearPacienteSchema.parse(req.body);
 
     const paciente = await prisma.paciente.create({
       data: {
         ...datos,
         email: datos.email || undefined,
+        farmaciaId,
       },
     });
 
@@ -184,6 +197,10 @@ export async function crearPaciente(req: Request, res: Response) {
         error: 'Datos inválidos',
         detalles: error.errors,
       });
+    }
+
+    if (error instanceof Error && error.message.includes('farmacia')) {
+      return res.status(403).json({ error: error.message });
     }
 
     console.error('Error al crear paciente:', error);

@@ -1,0 +1,569 @@
+/**
+ * Controlador de Farmacias
+ * CRUD para gestión de farmacias (solo superadmin)
+ */
+
+import { Request, Response } from 'express';
+import { z } from 'zod';
+import bcrypt from 'bcryptjs';
+import { prisma } from '../lib/prisma.js';
+import { getParamString } from '../lib/queryHelpers.js';
+
+// Función para generar slug a partir del nombre
+function generarSlug(nombre: string): string {
+  return nombre
+    .toLowerCase()
+    .normalize('NFD')
+    .replace(/[\u0300-\u036f]/g, '')
+    .replace(/[^a-z0-9]+/g, '-')
+    .replace(/^-+|-+$/g, '');
+}
+
+// Esquema de validación para crear farmacia
+const crearFarmaciaSchema = z.object({
+  nombre: z.string().min(2, 'El nombre debe tener al menos 2 caracteres'),
+  slug: z.string().optional(), // Se genera automáticamente si no se proporciona
+  direccion: z.string().optional(),
+  ciudad: z.string().optional(),
+  telefono: z.string().optional(),
+  email: z.string().email('Email inválido').optional(),
+  web: z.string().optional(),
+  plan: z.enum(['basico', 'profesional', 'enterprise']).default('basico'),
+  maxUsuarios: z.number().int().min(1).default(3),
+  maxPacientes: z.number().int().min(1).default(500),
+  fechaExpiracion: z.string().optional(), // ISO date string
+  // Datos del admin inicial
+  adminEmail: z.string().email('Email del admin inválido'),
+  adminPassword: z.string().min(6, 'La contraseña debe tener al menos 6 caracteres'),
+  adminNombre: z.string().min(2, 'El nombre del admin debe tener al menos 2 caracteres'),
+});
+
+// Esquema para actualizar farmacia
+const actualizarFarmaciaSchema = z.object({
+  nombre: z.string().min(2).optional(),
+  direccion: z.string().optional(),
+  ciudad: z.string().optional(),
+  telefono: z.string().optional(),
+  email: z.string().email().optional(),
+  web: z.string().optional(),
+  activa: z.boolean().optional(),
+  plan: z.enum(['basico', 'profesional', 'enterprise']).optional(),
+  maxUsuarios: z.number().int().min(1).optional(),
+  maxPacientes: z.number().int().min(1).optional(),
+  fechaExpiracion: z.string().nullable().optional(),
+});
+
+/**
+ * GET /api/admin/farmacias
+ * Listar todas las farmacias
+ */
+export async function listarFarmacias(req: Request, res: Response) {
+  try {
+    const { activa, plan, busqueda } = req.query;
+
+    // Construir filtros
+    const where: Record<string, unknown> = {};
+    
+    if (activa !== undefined) {
+      where.activa = activa === 'true';
+    }
+    
+    if (plan && typeof plan === 'string') {
+      where.plan = plan;
+    }
+    
+    if (busqueda && typeof busqueda === 'string') {
+      where.OR = [
+        { nombre: { contains: busqueda } },
+        { email: { contains: busqueda } },
+        { slug: { contains: busqueda } },
+      ];
+    }
+
+    const farmacias = await prisma.farmacia.findMany({
+      where,
+      include: {
+        _count: {
+          select: {
+            usuarios: true,
+            pacientes: true,
+          }
+        }
+      },
+      orderBy: { createdAt: 'desc' },
+    });
+
+    // Transformar respuesta
+    const resultado = farmacias.map(f => ({
+      id: f.id,
+      nombre: f.nombre,
+      slug: f.slug,
+      direccion: f.direccion,
+      ciudad: f.ciudad,
+      telefono: f.telefono,
+      email: f.email,
+      web: f.web,
+      logo: f.logo,
+      activa: f.activa,
+      plan: f.plan,
+      fechaAlta: f.fechaAlta.toISOString(),
+      fechaExpiracion: f.fechaExpiracion?.toISOString() || null,
+      maxUsuarios: f.maxUsuarios,
+      maxPacientes: f.maxPacientes,
+      totalUsuarios: f._count.usuarios,
+      totalPacientes: f._count.pacientes,
+      createdAt: f.createdAt.toISOString(),
+    }));
+
+    res.json(resultado);
+  } catch (error) {
+    console.error('Error al listar farmacias:', error);
+    res.status(500).json({ error: 'Error interno del servidor' });
+  }
+}
+
+/**
+ * GET /api/admin/farmacias/:id
+ * Obtener detalle de una farmacia
+ */
+export async function obtenerFarmacia(req: Request, res: Response) {
+  try {
+    const id = getParamString(req.params.id);
+
+    const farmacia = await prisma.farmacia.findUnique({
+      where: { id },
+      include: {
+        usuarios: {
+          select: {
+            id: true,
+            email: true,
+            nombre: true,
+            rol: true,
+            activo: true,
+            ultimoAcceso: true,
+            createdAt: true,
+          },
+          orderBy: { createdAt: 'desc' },
+        },
+        _count: {
+          select: {
+            usuarios: true,
+            pacientes: true,
+            citas: true,
+            eventos: true,
+          }
+        },
+        configuracion: {
+          select: {
+            id: true,
+            valoracionBioActiva: true,
+            emailProvider: true,
+          }
+        },
+      },
+    });
+
+    if (!farmacia) {
+      return res.status(404).json({ error: 'Farmacia no encontrada' });
+    }
+
+    res.json({
+      id: farmacia.id,
+      nombre: farmacia.nombre,
+      slug: farmacia.slug,
+      direccion: farmacia.direccion,
+      ciudad: farmacia.ciudad,
+      telefono: farmacia.telefono,
+      email: farmacia.email,
+      web: farmacia.web,
+      logo: farmacia.logo,
+      activa: farmacia.activa,
+      plan: farmacia.plan,
+      fechaAlta: farmacia.fechaAlta.toISOString(),
+      fechaExpiracion: farmacia.fechaExpiracion?.toISOString() || null,
+      maxUsuarios: farmacia.maxUsuarios,
+      maxPacientes: farmacia.maxPacientes,
+      usuarios: farmacia.usuarios,
+      estadisticas: {
+        totalUsuarios: farmacia._count.usuarios,
+        totalPacientes: farmacia._count.pacientes,
+        totalCitas: farmacia._count.citas,
+        totalEventos: farmacia._count.eventos,
+      },
+      configuracion: farmacia.configuracion,
+      createdAt: farmacia.createdAt.toISOString(),
+      updatedAt: farmacia.updatedAt.toISOString(),
+    });
+  } catch (error) {
+    console.error('Error al obtener farmacia:', error);
+    res.status(500).json({ error: 'Error interno del servidor' });
+  }
+}
+
+/**
+ * POST /api/admin/farmacias
+ * Crear nueva farmacia con usuario admin
+ */
+export async function crearFarmacia(req: Request, res: Response) {
+  try {
+    const datos = crearFarmaciaSchema.parse(req.body);
+
+    // Generar slug si no se proporciona
+    const slug = datos.slug || generarSlug(datos.nombre);
+
+    // Verificar que el slug no exista
+    const slugExiste = await prisma.farmacia.findUnique({
+      where: { slug },
+    });
+
+    if (slugExiste) {
+      return res.status(400).json({
+        error: 'Slug ya existe',
+        mensaje: 'Ya existe una farmacia con ese identificador',
+      });
+    }
+
+    // Verificar que el email del admin no exista
+    const adminExiste = await prisma.usuario.findUnique({
+      where: { email: datos.adminEmail.toLowerCase() },
+    });
+
+    if (adminExiste) {
+      return res.status(400).json({
+        error: 'Email ya registrado',
+        mensaje: 'Ya existe un usuario con ese email',
+      });
+    }
+
+    // Crear farmacia y admin en transacción
+    const resultado = await prisma.$transaction(async (tx) => {
+      // 1. Crear farmacia
+      const farmacia = await tx.farmacia.create({
+        data: {
+          nombre: datos.nombre,
+          slug,
+          direccion: datos.direccion,
+          ciudad: datos.ciudad,
+          telefono: datos.telefono,
+          email: datos.email,
+          web: datos.web,
+          activa: true,
+          plan: datos.plan,
+          maxUsuarios: datos.maxUsuarios,
+          maxPacientes: datos.maxPacientes,
+          fechaExpiracion: datos.fechaExpiracion ? new Date(datos.fechaExpiracion) : null,
+        },
+      });
+
+      // 2. Crear usuario admin
+      const salt = await bcrypt.genSalt(10);
+      const passwordHash = await bcrypt.hash(datos.adminPassword, salt);
+
+      const admin = await tx.usuario.create({
+        data: {
+          email: datos.adminEmail.toLowerCase(),
+          password: passwordHash,
+          nombre: datos.adminNombre,
+          rol: 'admin',
+          farmaciaId: farmacia.id,
+        },
+      });
+
+      // 3. Crear configuración por defecto
+      await tx.configuracion.create({
+        data: {
+          farmaciaId: farmacia.id,
+          farmaciaNombre: farmacia.nombre,
+          farmaciaDireccion: farmacia.direccion,
+          farmaciaCiudad: farmacia.ciudad,
+          farmaciaTelefono: farmacia.telefono,
+          farmaciaEmail: farmacia.email,
+          farmaciaWeb: farmacia.web,
+        },
+      });
+
+      // 4. Crear configuración de calendario por defecto
+      await tx.configuracionCalendario.create({
+        data: {
+          farmaciaId: farmacia.id,
+        },
+      });
+
+      return { farmacia, admin };
+    });
+
+    res.status(201).json({
+      mensaje: 'Farmacia creada correctamente',
+      farmacia: {
+        id: resultado.farmacia.id,
+        nombre: resultado.farmacia.nombre,
+        slug: resultado.farmacia.slug,
+        activa: resultado.farmacia.activa,
+        plan: resultado.farmacia.plan,
+      },
+      admin: {
+        id: resultado.admin.id,
+        email: resultado.admin.email,
+        nombre: resultado.admin.nombre,
+      },
+    });
+  } catch (error) {
+    if (error instanceof z.ZodError) {
+      return res.status(400).json({
+        error: 'Datos inválidos',
+        detalles: error.errors,
+      });
+    }
+
+    console.error('Error al crear farmacia:', error);
+    res.status(500).json({ error: 'Error interno del servidor' });
+  }
+}
+
+/**
+ * PUT /api/admin/farmacias/:id
+ * Actualizar farmacia
+ */
+export async function actualizarFarmacia(req: Request, res: Response) {
+  try {
+    const id = getParamString(req.params.id);
+    const datos = actualizarFarmaciaSchema.parse(req.body);
+
+    const farmacia = await prisma.farmacia.findUnique({
+      where: { id },
+    });
+
+    if (!farmacia) {
+      return res.status(404).json({ error: 'Farmacia no encontrada' });
+    }
+
+    const farmaciaActualizada = await prisma.farmacia.update({
+      where: { id },
+      data: {
+        nombre: datos.nombre,
+        direccion: datos.direccion,
+        ciudad: datos.ciudad,
+        telefono: datos.telefono,
+        email: datos.email,
+        web: datos.web,
+        activa: datos.activa,
+        plan: datos.plan,
+        maxUsuarios: datos.maxUsuarios,
+        maxPacientes: datos.maxPacientes,
+        fechaExpiracion: datos.fechaExpiracion !== undefined 
+          ? (datos.fechaExpiracion ? new Date(datos.fechaExpiracion) : null)
+          : undefined,
+      },
+    });
+
+    // Sincronizar datos con configuración si existe
+    if (datos.nombre || datos.direccion || datos.ciudad || datos.telefono || datos.email || datos.web) {
+      await prisma.configuracion.updateMany({
+        where: { farmaciaId: id },
+        data: {
+          farmaciaNombre: datos.nombre,
+          farmaciaDireccion: datos.direccion,
+          farmaciaCiudad: datos.ciudad,
+          farmaciaTelefono: datos.telefono,
+          farmaciaEmail: datos.email,
+          farmaciaWeb: datos.web,
+        },
+      });
+    }
+
+    res.json({
+      mensaje: 'Farmacia actualizada correctamente',
+      farmacia: farmaciaActualizada,
+    });
+  } catch (error) {
+    if (error instanceof z.ZodError) {
+      return res.status(400).json({
+        error: 'Datos inválidos',
+        detalles: error.errors,
+      });
+    }
+
+    console.error('Error al actualizar farmacia:', error);
+    res.status(500).json({ error: 'Error interno del servidor' });
+  }
+}
+
+/**
+ * DELETE /api/admin/farmacias/:id
+ * Desactivar farmacia (soft delete)
+ */
+export async function desactivarFarmacia(req: Request, res: Response) {
+  try {
+    const id = getParamString(req.params.id);
+
+    const farmacia = await prisma.farmacia.findUnique({
+      where: { id },
+    });
+
+    if (!farmacia) {
+      return res.status(404).json({ error: 'Farmacia no encontrada' });
+    }
+
+    await prisma.farmacia.update({
+      where: { id },
+      data: { activa: false },
+    });
+
+    // También desactivar usuarios de la farmacia
+    await prisma.usuario.updateMany({
+      where: { farmaciaId: id },
+      data: { activo: false },
+    });
+
+    res.json({ mensaje: 'Farmacia desactivada correctamente' });
+  } catch (error) {
+    console.error('Error al desactivar farmacia:', error);
+    res.status(500).json({ error: 'Error interno del servidor' });
+  }
+}
+
+/**
+ * POST /api/admin/farmacias/:id/activar
+ * Reactivar farmacia
+ */
+export async function activarFarmacia(req: Request, res: Response) {
+  try {
+    const id = getParamString(req.params.id);
+
+    const farmacia = await prisma.farmacia.findUnique({
+      where: { id },
+    });
+
+    if (!farmacia) {
+      return res.status(404).json({ error: 'Farmacia no encontrada' });
+    }
+
+    await prisma.farmacia.update({
+      where: { id },
+      data: { activa: true },
+    });
+
+    res.json({ mensaje: 'Farmacia activada correctamente' });
+  } catch (error) {
+    console.error('Error al activar farmacia:', error);
+    res.status(500).json({ error: 'Error interno del servidor' });
+  }
+}
+
+/**
+ * GET /api/admin/farmacias/:id/usuarios
+ * Listar usuarios de una farmacia
+ */
+export async function listarUsuariosFarmacia(req: Request, res: Response) {
+  try {
+    const farmaciaId = getParamString(req.params.id);
+
+    const farmacia = await prisma.farmacia.findUnique({
+      where: { id: farmaciaId },
+    });
+
+    if (!farmacia) {
+      return res.status(404).json({ error: 'Farmacia no encontrada' });
+    }
+
+    const usuarios = await prisma.usuario.findMany({
+      where: { farmaciaId },
+      select: {
+        id: true,
+        email: true,
+        nombre: true,
+        rol: true,
+        activo: true,
+        ultimoAcceso: true,
+        createdAt: true,
+      },
+      orderBy: { createdAt: 'desc' },
+    });
+
+    res.json(usuarios);
+  } catch (error) {
+    console.error('Error al listar usuarios:', error);
+    res.status(500).json({ error: 'Error interno del servidor' });
+  }
+}
+
+/**
+ * POST /api/admin/farmacias/:id/usuarios
+ * Crear usuario para una farmacia
+ */
+export async function crearUsuarioFarmacia(req: Request, res: Response) {
+  try {
+    const farmaciaId = getParamString(req.params.id);
+
+    const farmacia = await prisma.farmacia.findUnique({
+      where: { id: farmaciaId },
+      include: {
+        _count: { select: { usuarios: true } }
+      }
+    });
+
+    if (!farmacia) {
+      return res.status(404).json({ error: 'Farmacia no encontrada' });
+    }
+
+    // Verificar límite de usuarios
+    if (farmacia._count.usuarios >= farmacia.maxUsuarios) {
+      return res.status(400).json({
+        error: 'Límite alcanzado',
+        mensaje: `Esta farmacia ha alcanzado el límite de ${farmacia.maxUsuarios} usuarios`,
+      });
+    }
+
+    const { email, password, nombre, rol } = req.body;
+
+    // Validar datos
+    if (!email || !password || !nombre) {
+      return res.status(400).json({
+        error: 'Datos incompletos',
+        mensaje: 'Email, contraseña y nombre son requeridos',
+      });
+    }
+
+    // Verificar que el email no exista
+    const emailExiste = await prisma.usuario.findUnique({
+      where: { email: email.toLowerCase() },
+    });
+
+    if (emailExiste) {
+      return res.status(400).json({
+        error: 'Email ya registrado',
+        mensaje: 'Ya existe un usuario con ese email',
+      });
+    }
+
+    // Crear usuario
+    const salt = await bcrypt.genSalt(10);
+    const passwordHash = await bcrypt.hash(password, salt);
+
+    const usuario = await prisma.usuario.create({
+      data: {
+        email: email.toLowerCase(),
+        password: passwordHash,
+        nombre,
+        rol: rol || 'usuario',
+        farmaciaId,
+      },
+      select: {
+        id: true,
+        email: true,
+        nombre: true,
+        rol: true,
+        activo: true,
+        createdAt: true,
+      },
+    });
+
+    res.status(201).json({
+      mensaje: 'Usuario creado correctamente',
+      usuario,
+    });
+  } catch (error) {
+    console.error('Error al crear usuario:', error);
+    res.status(500).json({ error: 'Error interno del servidor' });
+  }
+}
