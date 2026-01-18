@@ -9,6 +9,7 @@ import { Request, Response, NextFunction } from 'express';
 
 // Extender el tipo Request para incluir farmaciaId
 declare global {
+  // eslint-disable-next-line @typescript-eslint/no-namespace
   namespace Express {
     interface Request {
       farmaciaId?: string | null;
