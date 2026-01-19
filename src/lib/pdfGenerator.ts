@@ -33,6 +33,7 @@ function showLoadingToast(message: string = 'Generando PDF...'): () => void {
 
 /**
  * Genera un PDF a partir de un elemento HTML
+ * Captura el HTML renderizado y lo convierte a PDF con paginación correcta
  */
 export async function generatePDFFromElement(
   element: HTMLElement,
@@ -42,79 +43,76 @@ export async function generatePDFFromElement(
     filename = 'documento.pdf',
     format = 'a4',
     orientation = 'portrait',
-    quality = 2, // Aumentar calidad por defecto
-    margin = 10,
+    quality = 2,
+    margin = 5,
   } = options;
 
   const removeToast = showLoadingToast();
 
   try {
     // Esperar un momento para que los estilos se apliquen
-    await new Promise(resolve => setTimeout(resolve, 100));
+    await new Promise(resolve => setTimeout(resolve, 200));
 
-    // Configurar canvas con mejor calidad
-    const canvas = await html2canvas(element, {
-      scale: quality,
-      useCORS: true,
-      logging: false,
-      backgroundColor: '#ffffff',
-      width: element.scrollWidth,
-      height: element.scrollHeight,
-      windowWidth: element.scrollWidth,
-      windowHeight: element.scrollHeight,
-      allowTaint: false,
-      removeContainer: false,
-    });
+    // Dimensiones del PDF en mm
+    const pageWidth = format === 'a4' ? 210 : 216;
+    const pageHeight = format === 'a4' ? 297 : 279;
+    const marginMm = margin;
+    const contentWidth = pageWidth - marginMm * 2;
+    const contentHeight = pageHeight - marginMm * 2;
 
-    // Calcular dimensiones del PDF
-    const imgWidth = format === 'a4' ? 210 : 216; // mm
-    const imgHeight = (canvas.height * imgWidth) / canvas.width;
+    // Crear el PDF
     const pdf = new jsPDF({
       orientation: orientation === 'portrait' ? 'p' : 'l',
       unit: 'mm',
       format: format,
     });
 
-    // Agregar márgenes
-    const marginMm = margin;
-    const pageHeight = format === 'a4' ? 297 : 279;
-    const contentWidth = imgWidth - marginMm * 2;
-    const contentHeight = (imgHeight * contentWidth) / imgWidth;
-    const availableHeight = pageHeight - marginMm * 2;
+    // Calcular el ancho del elemento en píxeles para A4 (aprox 794px a 96dpi para 210mm)
+    const targetWidthPx = Math.round((contentWidth / 25.4) * 96 * quality);
+    
+    // Capturar el elemento completo con alta calidad
+    const canvas = await html2canvas(element, {
+      scale: quality,
+      useCORS: true,
+      logging: false,
+      backgroundColor: '#ffffff',
+      windowWidth: element.scrollWidth,
+      windowHeight: element.scrollHeight,
+      allowTaint: true,
+    });
 
-    // Calcular posición inicial
-    let heightLeft = contentHeight;
-    let position = marginMm;
-    let pageNumber = 1;
+    // Calcular proporciones
+    const imgData = canvas.toDataURL('image/png', 1.0);
+    const imgWidth = contentWidth;
+    const imgHeight = (canvas.height * imgWidth) / canvas.width;
+    
+    // Altura disponible por página en la misma escala que la imagen
+    const pageContentHeightScaled = contentHeight;
+    
+    // Número de páginas necesarias
+    const totalPages = Math.ceil(imgHeight / pageContentHeightScaled);
 
-    // Agregar primera página
-    pdf.addImage(
-      canvas.toDataURL('image/png', 1.0),
-      'PNG',
-      marginMm,
-      position,
-      contentWidth,
-      Math.min(contentHeight, availableHeight)
-    );
+    // Generar cada página
+    for (let page = 0; page < totalPages; page++) {
+      if (page > 0) {
+        pdf.addPage();
+      }
 
-    heightLeft -= availableHeight;
+      // Calcular la posición Y para esta página
+      // La imagen se posiciona de forma que la parte correcta sea visible
+      const yPosition = marginMm - (page * pageContentHeightScaled);
 
-    // Agregar páginas adicionales si es necesario
-    while (heightLeft > 0) {
-      pdf.addPage();
-      pageNumber++;
-      position = -((pageNumber - 1) * availableHeight) + marginMm;
-      
+      // Agregar la imagen completa, pero desplazada para mostrar la sección correcta
       pdf.addImage(
-        canvas.toDataURL('image/png', 1.0),
+        imgData,
         'PNG',
         marginMm,
-        position,
-        contentWidth,
-        contentHeight
+        yPosition,
+        imgWidth,
+        imgHeight,
+        undefined,
+        'FAST'
       );
-      
-      heightLeft -= availableHeight;
     }
 
     // Descargar PDF

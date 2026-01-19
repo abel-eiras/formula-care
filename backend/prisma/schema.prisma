@@ -181,6 +181,7 @@ model AnalisisBio {
   // Medidas corporales
   weight                Float?
   height                Float?
+  perimetroAbdominal    Float?   // Perímetro abdominal en cm
   imc                   Float?   // Calculado automáticamente
   // Observaciones y recomendaciones
   observaciones         String?
