@@ -21,19 +21,25 @@ const loadPDFGenerator = () => import("@/lib/pdfGenerator");
 
 // Parámetros por defecto (usados si no hay configuración guardada)
 const PARAMETROS_DEFAULT: ParametroBioConfig[] = [
+  // Básicos: glucemia y tensión arterial
   { id: "glucemia", label: "Glucemia", unit: "mg/dL", grupo: "basicos", activo: true, orden: 1 },
-  { id: "cholesterol", label: "Colesterol Total", unit: "mg/dL", grupo: "basicos", activo: true, orden: 2 },
-  { id: "cholesterolHDL", label: "Colesterol HDL", unit: "mg/dL", grupo: "basicos", activo: true, orden: 3 },
-  { id: "cholesterolLDL", label: "Colesterol LDL", unit: "mg/dL", grupo: "basicos", activo: true, orden: 4 },
-  { id: "triglycerides", label: "Triglicéridos", unit: "mg/dL", grupo: "basicos", activo: true, orden: 5 },
-  { id: "hemoglobinaGlucosilada", label: "Hemoglobina Glucosilada (HbA1c)", unit: "%", grupo: "avanzados", activo: true, orden: 1 },
-  { id: "proteinaCReactiva", label: "Proteína C Reactiva (PCR)", unit: "mg/L", grupo: "avanzados", activo: true, orden: 2 },
-  { id: "vitaminaD", label: "Vitamina D", unit: "ng/mL", grupo: "avanzados", activo: true, orden: 3 },
-  { id: "ferritina", label: "Ferritina", unit: "ng/mL", grupo: "avanzados", activo: true, orden: 4 },
-  { id: "systolic", label: "Tensión Sistólica", unit: "mmHg", grupo: "tension", activo: true, orden: 1 },
-  { id: "diastolic", label: "Tensión Diastólica", unit: "mmHg", grupo: "tension", activo: true, orden: 2 },
-  { id: "pulsaciones", label: "Pulsaciones", unit: "lpm", grupo: "tension", activo: true, orden: 3 },
-  { id: "imc", label: "Índice de Masa Corporal (IMC)", unit: "kg/m²", grupo: "corporales", activo: true, orden: 1 },
+  { id: "systolic", label: "Tensión Sistólica", unit: "mmHg", grupo: "basicos", activo: true, orden: 2 },
+  { id: "diastolic", label: "Tensión Diastólica", unit: "mmHg", grupo: "basicos", activo: true, orden: 3 },
+  { id: "pulsaciones", label: "Pulsaciones", unit: "lpm", grupo: "basicos", activo: true, orden: 4 },
+  // Avanzados: colesterol y otros parámetros de sangre
+  { id: "cholesterol", label: "Colesterol Total", unit: "mg/dL", grupo: "avanzados", activo: true, orden: 1 },
+  { id: "cholesterolHDL", label: "Colesterol HDL", unit: "mg/dL", grupo: "avanzados", activo: true, orden: 2 },
+  { id: "cholesterolLDL", label: "Colesterol LDL", unit: "mg/dL", grupo: "avanzados", activo: true, orden: 3 },
+  { id: "triglycerides", label: "Triglicéridos", unit: "mg/dL", grupo: "avanzados", activo: true, orden: 4 },
+  { id: "hemoglobinaGlucosilada", label: "Hemoglobina Glucosilada (HbA1c)", unit: "%", grupo: "avanzados", activo: true, orden: 5 },
+  { id: "proteinaCReactiva", label: "Proteína C Reactiva (PCR)", unit: "mg/L", grupo: "avanzados", activo: true, orden: 6 },
+  { id: "vitaminaD", label: "Vitamina D", unit: "ng/mL", grupo: "avanzados", activo: true, orden: 7 },
+  { id: "ferritina", label: "Ferritina", unit: "ng/mL", grupo: "avanzados", activo: true, orden: 8 },
+  // Medidas corporales
+  { id: "weight", label: "Peso", unit: "kg", grupo: "corporales", activo: true, orden: 1 },
+  { id: "height", label: "Altura", unit: "cm", grupo: "corporales", activo: true, orden: 2 },
+  { id: "perimetroAbdominal", label: "Perímetro Abdominal", unit: "cm", grupo: "corporales", activo: true, orden: 3 },
+  { id: "imc", label: "IMC", unit: "kg/m²", grupo: "corporales", activo: true, orden: 4 },
 ];
 
 // Componente para mostrar badge de valoración
@@ -502,56 +508,7 @@ export default function ServicioBio() {
 
         {/* Columna Derecha */}
         <div className="space-y-6">
-          {/* Bloque 3: Tensión Arterial y Pulsaciones */}
-          {getParametrosGrupo("tension").length > 0 && (
-            <Card className="shadow-sm border-border/50">
-              <CardContent className="pt-6">
-                <h3 className="text-lg font-semibold mb-4 text-destructive">Tensión Arterial y Pulsaciones</h3>
-                <div className="space-y-4">
-                  {/* Sistólica y Diastólica en grid */}
-                  {(isParametroActivo("systolic") || isParametroActivo("diastolic")) && (
-                    <div className="grid grid-cols-2 gap-4">
-                      {isParametroActivo("systolic") && (
-                        <ParametroInput
-                          id="systolic"
-                          label="Sistólica"
-                          unit="mmHg"
-                          value={formData.systolic}
-                          onChange={(value) => handleChange("systolic", value)}
-                          configuracion={configuracion}
-                          parametroId="systolic"
-                        />
-                      )}
-                      {isParametroActivo("diastolic") && (
-                        <ParametroInput
-                          id="diastolic"
-                          label="Diastólica"
-                          unit="mmHg"
-                          value={formData.diastolic}
-                          onChange={(value) => handleChange("diastolic", value)}
-                          configuracion={configuracion}
-                          parametroId="diastolic"
-                        />
-                      )}
-                    </div>
-                  )}
-                  {isParametroActivo("pulsaciones") && (
-                    <ParametroInput
-                      id="pulsaciones"
-                      label="Pulsaciones"
-                      unit="lpm"
-                      value={formData.pulsaciones}
-                      onChange={(value) => handleChange("pulsaciones", value)}
-                      configuracion={configuracion}
-                      parametroId="pulsaciones"
-                    />
-                  )}
-                </div>
-              </CardContent>
-            </Card>
-          )}
-
-          {/* Bloque 4: Medidas Corporales */}
+          {/* Bloque 3: Medidas Corporales */}
           <Card className="shadow-sm border-border/50">
             <CardContent className="pt-6">
               <h3 className="text-lg font-semibold mb-4 text-success">Medidas Corporales</h3>
