@@ -9,11 +9,13 @@ async function actualizarParametros() {
   console.log('🔧 Actualizando parámetros bioquímicos...\n');
 
   // Configuración de parámetros bioquímicos completa
-  // NOTA: Los grupos válidos son: 'basicos', 'avanzados', 'corporales'
-  // El grupo 'tension' está hardcodeado en el frontend (systolic, diastolic, pulsaciones)
+  // Grupos válidos: 'basicos', 'avanzados', 'corporales'
   const parametrosBioConfig = [
-    // BÁSICOS - Glucemia y presión arterial
+    // BÁSICOS - Glucemia, tensión arterial y pulso
     { id: 'glucemia', label: 'Glucemia', unit: 'mg/dL', grupo: 'basicos', activo: true, orden: 1 },
+    { id: 'systolic', label: 'Tensión Sistólica', unit: 'mmHg', grupo: 'basicos', activo: true, orden: 2 },
+    { id: 'diastolic', label: 'Tensión Diastólica', unit: 'mmHg', grupo: 'basicos', activo: true, orden: 3 },
+    { id: 'pulsaciones', label: 'Pulsaciones', unit: 'lpm', grupo: 'basicos', activo: true, orden: 4 },
     // AVANZADOS - Colesterol, triglicéridos y otros parámetros de sangre
     { id: 'cholesterol', label: 'Colesterol Total', unit: 'mg/dL', grupo: 'avanzados', activo: true, orden: 1 },
     { id: 'cholesterolHDL', label: 'Colesterol HDL', unit: 'mg/dL', grupo: 'avanzados', activo: true, orden: 2 },
@@ -23,7 +25,7 @@ async function actualizarParametros() {
     { id: 'proteinaCReactiva', label: 'Proteína C Reactiva (PCR)', unit: 'mg/L', grupo: 'avanzados', activo: true, orden: 6 },
     { id: 'vitaminaD', label: 'Vitamina D', unit: 'ng/mL', grupo: 'avanzados', activo: true, orden: 7 },
     { id: 'ferritina', label: 'Ferritina', unit: 'ng/mL', grupo: 'avanzados', activo: true, orden: 8 },
-    // MEDIDAS CORPORALES (grupo: 'corporales')
+    // MEDIDAS CORPORALES
     { id: 'weight', label: 'Peso', unit: 'kg', grupo: 'corporales', activo: true, orden: 1 },
     { id: 'height', label: 'Altura', unit: 'cm', grupo: 'corporales', activo: true, orden: 2 },
     { id: 'perimetroAbdominal', label: 'Perímetro Abdominal', unit: 'cm', grupo: 'corporales', activo: true, orden: 3 },
@@ -66,9 +68,9 @@ async function actualizarParametros() {
 
   console.log('\n✅ Parámetros bioquímicos actualizados correctamente');
   console.log('\n📋 Grupos de parámetros:');
-  console.log('   - Básicos: Glucemia, Presión Sistólica, Presión Diastólica, Pulso');
+  console.log('   - Básicos: Glucemia, Tensión Sistólica, Tensión Diastólica, Pulsaciones');
   console.log('   - Avanzados: Colesterol (Total, HDL, LDL), Triglicéridos, HbA1c, PCR, Vitamina D, Ferritina');
-  console.log('   - Medidas: Peso, Altura, Perímetro Abdominal, IMC');
+  console.log('   - Medidas Corporales: Peso, Altura, Perímetro Abdominal, IMC');
 }
 
 actualizarParametros()

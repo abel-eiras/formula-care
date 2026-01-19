@@ -39,10 +39,6 @@ const PARAMETROS_DEFAULT: ParametroBioConfig[] = [
   { id: "proteinaCReactiva", label: "Proteína C Reactiva (PCR)", unit: "mg/L", grupo: "avanzados", activo: true, orden: 2 },
   { id: "vitaminaD", label: "Vitamina D", unit: "ng/mL", grupo: "avanzados", activo: true, orden: 3 },
   { id: "ferritina", label: "Ferritina", unit: "ng/mL", grupo: "avanzados", activo: true, orden: 4 },
-  // Grupo: Tensión
-  { id: "systolic", label: "Tensión Sistólica", unit: "mmHg", grupo: "tension", activo: true, orden: 1 },
-  { id: "diastolic", label: "Tensión Diastólica", unit: "mmHg", grupo: "tension", activo: true, orden: 2 },
-  { id: "pulsaciones", label: "Pulsaciones", unit: "lpm", grupo: "tension", activo: true, orden: 3 },
   // Grupo: Corporales
   { id: "imc", label: "Índice de Masa Corporal (IMC)", unit: "kg/m²", grupo: "corporales", activo: true, orden: 1 },
 ];
@@ -50,7 +46,6 @@ const PARAMETROS_DEFAULT: ParametroBioConfig[] = [
 const GRUPOS_INFO: Record<string, { label: string; color: string }> = {
   basicos: { label: "Parámetros Básicos", color: "text-primary" },
   avanzados: { label: "Parámetros Avanzados", color: "text-secondary" },
-  tension: { label: "Tensión Arterial y Pulsaciones", color: "text-destructive" },
   corporales: { label: "Medidas Corporales", color: "text-success" },
 };
 
