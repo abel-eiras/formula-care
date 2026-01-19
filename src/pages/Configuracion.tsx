@@ -662,7 +662,13 @@ function ParametrosBioquimicosTab({
         </CardHeader>
         <CardContent>
           <Accordion type="multiple" className="space-y-2">
-            {Object.entries(GRUPOS_INFO).map(([grupo, info]) => {
+            {Object.entries(GRUPOS_INFO)
+              .filter(([grupo]) => {
+                // Ocultar grupos vacíos
+                const parametrosGrupo = parametrosPorGrupo[grupo] || [];
+                return parametrosGrupo.length > 0;
+              })
+              .map(([grupo, info]) => {
               const parametrosGrupo = parametrosPorGrupo[grupo] || [];
               const activos = parametrosGrupo.filter((p) => p.activo).length;
               
@@ -678,11 +684,7 @@ function ParametrosBioquimicosTab({
                   </AccordionTrigger>
                   <AccordionContent>
                     <div className="space-y-2 pt-2">
-                      {parametrosGrupo.length === 0 ? (
-                        <p className="text-sm text-muted-foreground py-2">
-                          No hay parámetros en este grupo
-                        </p>
-                      ) : (
+                      {
                         parametrosGrupo.map((param) => (
                           <div
                             key={param.id}
