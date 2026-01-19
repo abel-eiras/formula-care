@@ -24,10 +24,10 @@ async function main() {
   console.log('🌱 Iniciando seed de base de datos...\n');
 
   // =============================================
-  // 1. CREAR SUPERADMIN
+  // 1. CREAR SUPERADMIN (REDACTED_EMAIL)
   // =============================================
-  const superadminEmail = process.env.SUPERADMIN_EMAIL || 'superadmin@sistema.local';
-  const superadminPassword = process.env.SUPERADMIN_PASSWORD || 'superadmin123';
+  const superadminEmail = 'REDACTED_EMAIL';
+  const superadminPassword = 'FormulaFarma2026!';
 
   const superadminExiste = await prisma.usuario.findUnique({
     where: { email: superadminEmail }
@@ -41,7 +41,7 @@ async function main() {
       data: {
         email: superadminEmail,
         password: passwordHash,
-        nombre: 'Super Administrador',
+        nombre: 'Abel - Fórmula Farma',
         rol: 'superadmin',
         farmaciaId: null,
       },
