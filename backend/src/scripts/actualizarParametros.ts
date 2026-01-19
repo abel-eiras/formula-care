@@ -9,26 +9,25 @@ async function actualizarParametros() {
   console.log('🔧 Actualizando parámetros bioquímicos...\n');
 
   // Configuración de parámetros bioquímicos completa
+  // NOTA: Los grupos válidos son: 'basicos', 'avanzados', 'corporales'
+  // El grupo 'tension' está hardcodeado en el frontend (systolic, diastolic, pulsaciones)
   const parametrosBioConfig = [
-    // BÁSICOS
+    // BÁSICOS - Glucemia y presión arterial
     { id: 'glucemia', label: 'Glucemia', unit: 'mg/dL', grupo: 'basicos', activo: true, orden: 1 },
-    { id: 'systolic', label: 'Presión Sistólica', unit: 'mmHg', grupo: 'basicos', activo: true, orden: 2 },
-    { id: 'diastolic', label: 'Presión Diastólica', unit: 'mmHg', grupo: 'basicos', activo: true, orden: 3 },
-    { id: 'pulsaciones', label: 'Pulso', unit: 'ppm', grupo: 'basicos', activo: true, orden: 4 },
-    // AVANZADOS
-    { id: 'cholesterol', label: 'Colesterol Total', unit: 'mg/dL', grupo: 'avanzados', activo: true, orden: 5 },
-    { id: 'cholesterolHDL', label: 'Colesterol HDL', unit: 'mg/dL', grupo: 'avanzados', activo: true, orden: 6 },
-    { id: 'cholesterolLDL', label: 'Colesterol LDL', unit: 'mg/dL', grupo: 'avanzados', activo: true, orden: 7 },
-    { id: 'triglycerides', label: 'Triglicéridos', unit: 'mg/dL', grupo: 'avanzados', activo: true, orden: 8 },
-    { id: 'hemoglobinaGlucosilada', label: 'Hemoglobina Glucosilada (HbA1c)', unit: '%', grupo: 'avanzados', activo: true, orden: 9 },
-    { id: 'proteinaCReactiva', label: 'Proteína C Reactiva', unit: 'mg/L', grupo: 'avanzados', activo: true, orden: 10 },
-    { id: 'vitaminaD', label: 'Vitamina D', unit: 'ng/mL', grupo: 'avanzados', activo: true, orden: 11 },
-    { id: 'ferritina', label: 'Ferritina', unit: 'ng/mL', grupo: 'avanzados', activo: true, orden: 12 },
-    // MEDIDAS CORPORALES
-    { id: 'weight', label: 'Peso', unit: 'kg', grupo: 'medidas', activo: true, orden: 13 },
-    { id: 'height', label: 'Altura', unit: 'cm', grupo: 'medidas', activo: true, orden: 14 },
-    { id: 'perimetroAbdominal', label: 'Perímetro Abdominal', unit: 'cm', grupo: 'medidas', activo: true, orden: 15 },
-    { id: 'imc', label: 'IMC', unit: 'kg/m²', grupo: 'medidas', activo: true, orden: 16 },
+    // AVANZADOS - Colesterol, triglicéridos y otros parámetros de sangre
+    { id: 'cholesterol', label: 'Colesterol Total', unit: 'mg/dL', grupo: 'avanzados', activo: true, orden: 1 },
+    { id: 'cholesterolHDL', label: 'Colesterol HDL', unit: 'mg/dL', grupo: 'avanzados', activo: true, orden: 2 },
+    { id: 'cholesterolLDL', label: 'Colesterol LDL', unit: 'mg/dL', grupo: 'avanzados', activo: true, orden: 3 },
+    { id: 'triglycerides', label: 'Triglicéridos', unit: 'mg/dL', grupo: 'avanzados', activo: true, orden: 4 },
+    { id: 'hemoglobinaGlucosilada', label: 'Hemoglobina Glucosilada (HbA1c)', unit: '%', grupo: 'avanzados', activo: true, orden: 5 },
+    { id: 'proteinaCReactiva', label: 'Proteína C Reactiva (PCR)', unit: 'mg/L', grupo: 'avanzados', activo: true, orden: 6 },
+    { id: 'vitaminaD', label: 'Vitamina D', unit: 'ng/mL', grupo: 'avanzados', activo: true, orden: 7 },
+    { id: 'ferritina', label: 'Ferritina', unit: 'ng/mL', grupo: 'avanzados', activo: true, orden: 8 },
+    // MEDIDAS CORPORALES (grupo: 'corporales')
+    { id: 'weight', label: 'Peso', unit: 'kg', grupo: 'corporales', activo: true, orden: 1 },
+    { id: 'height', label: 'Altura', unit: 'cm', grupo: 'corporales', activo: true, orden: 2 },
+    { id: 'perimetroAbdominal', label: 'Perímetro Abdominal', unit: 'cm', grupo: 'corporales', activo: true, orden: 3 },
+    { id: 'imc', label: 'IMC', unit: 'kg/m²', grupo: 'corporales', activo: true, orden: 4 },
   ];
 
   // Parámetros de referencia
