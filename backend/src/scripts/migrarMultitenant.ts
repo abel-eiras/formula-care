@@ -119,13 +119,13 @@ async function migrarMultitenant() {
   });
   console.log(`✅ ${usuariosActualizados.count} usuarios actualizados\n`);
 
-  // 6. Actualizar pacientes (usando Prisma ORM)
+  // 6. Actualizar pacientes (usando Prisma ORM - PostgreSQL compatible)
   console.log('🏥 Actualizando pacientes...');
   const pacientesActualizados = await prisma.paciente.updateMany({
     where: {
       OR: [
         { farmaciaId: '' },
-        { farmaciaId: { isSet: false } }
+        { farmaciaId: null }
       ]
     },
     data: { farmaciaId: farmacia.id }
@@ -138,7 +138,7 @@ async function migrarMultitenant() {
     where: {
       OR: [
         { farmaciaId: '' },
-        { farmaciaId: { isSet: false } }
+        { farmaciaId: null }
       ]
     },
     data: { farmaciaId: farmacia.id }
@@ -151,7 +151,7 @@ async function migrarMultitenant() {
     where: {
       OR: [
         { farmaciaId: '' },
-        { farmaciaId: { isSet: false } }
+        { farmaciaId: null }
       ]
     },
     data: { farmaciaId: farmacia.id }
@@ -164,7 +164,7 @@ async function migrarMultitenant() {
     where: {
       OR: [
         { farmaciaId: '' },
-        { farmaciaId: { isSet: false } }
+        { farmaciaId: null }
       ]
     },
     data: { farmaciaId: farmacia.id }
@@ -177,7 +177,7 @@ async function migrarMultitenant() {
     where: {
       OR: [
         { farmaciaId: '' },
-        { farmaciaId: { isSet: false } }
+        { farmaciaId: null }
       ]
     },
     data: { farmaciaId: farmacia.id }
@@ -190,7 +190,7 @@ async function migrarMultitenant() {
     where: {
       OR: [
         { farmaciaId: '' },
-        { farmaciaId: { isSet: false } }
+        { farmaciaId: null }
       ]
     },
     data: { farmaciaId: farmacia.id }
