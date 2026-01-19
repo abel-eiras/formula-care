@@ -10,15 +10,15 @@ import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle }
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Alert, AlertDescription } from '@/components/ui/alert';
-import { Loader2, Lock, Mail, Building2 } from 'lucide-react';
+import { Loader2, Lock, Mail } from 'lucide-react';
 import { useAuthContext } from '@/contexts/AuthContext';
 
 export default function Login() {
   const navigate = useNavigate();
   const { login, isAuthenticated, isLoading: authLoading, error: authError } = useAuthContext();
 
-  // Nombre genérico para login (no necesitamos autenticación para esto)
-  const nombreFarmacia = 'Sistema de Gestión';
+  // Nombre de la aplicación
+  const nombreApp = 'Fórmula Care';
 
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
@@ -69,11 +69,11 @@ export default function Login() {
       <div className="w-full max-w-md">
         {/* Logo y título */}
         <div className="text-center mb-8">
-          <div className="inline-flex items-center justify-center w-16 h-16 rounded-full bg-primary/10 mb-4">
-            <Building2 className="h-8 w-8 text-primary" />
+          <div className="inline-flex items-center justify-center w-20 h-20 mb-4">
+            <img src="/logo.webp" alt="Fórmula Care" className="w-full h-full object-contain" />
           </div>
-          <h1 className="text-2xl font-bold text-foreground">{nombreFarmacia}</h1>
-          <p className="text-muted-foreground mt-1">Sistema de Gestión de Servicios</p>
+          <h1 className="text-2xl font-bold text-foreground">{nombreApp}</h1>
+          <p className="text-muted-foreground mt-1">Una app de Fórmula Farma</p>
         </div>
 
         {/* Formulario de login */}
@@ -252,7 +252,7 @@ export default function Login() {
 
         {/* Footer */}
         <p className="text-center text-sm text-muted-foreground mt-6">
-          © {new Date().getFullYear()} {nombreFarmacia}. Todos los derechos reservados.
+          © {new Date().getFullYear()} Fórmula Farma. Todos los derechos reservados.
         </p>
       </div>
     </div>

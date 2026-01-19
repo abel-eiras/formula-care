@@ -4,6 +4,7 @@ import { z } from 'zod';
 import { getQueryString, getParamString } from '../lib/queryHelpers.js';
 import { obtenerFarmaciaIdRequerido, obtenerFarmaciaIdOpcional } from '../middleware/tenant.js';
 import { enviarConfirmacionCita } from '../services/emailService.js';
+import { decryptPacienteData } from '../services/encryptionService.js';
 
 // Esquema de validación para crear cita
 const crearCitaSchema = z.object({
@@ -47,7 +48,13 @@ export async function obtenerCitas(req: Request, res: Response) {
       ],
     });
 
-    res.json(citas);
+    // Desencriptar datos del paciente en cada cita
+    const citasDesencriptadas = citas.map(cita => ({
+      ...cita,
+      paciente: cita.paciente ? decryptPacienteData(cita.paciente) : null,
+    }));
+
+    res.json(citasDesencriptadas);
   } catch (error) {
     console.error('Error al obtener citas:', error);
     res.status(500).json({ error: 'Error al obtener citas' });
@@ -72,7 +79,13 @@ export async function obtenerCita(req: Request, res: Response) {
       return res.status(404).json({ error: 'Cita no encontrada' });
     }
 
-    res.json(cita);
+    // Desencriptar datos del paciente
+    const citaDesencriptada = {
+      ...cita,
+      paciente: cita.paciente ? decryptPacienteData(cita.paciente) : null,
+    };
+
+    res.json(citaDesencriptada);
   } catch (error) {
     console.error('Error al obtener cita:', error);
     res.status(500).json({ error: 'Error al obtener cita' });
@@ -117,17 +130,20 @@ export async function crearCita(req: Request, res: Response) {
       },
     });
 
+    // Desencriptar datos del paciente para respuesta y email
+    const pacienteDesencriptado = cita.paciente ? decryptPacienteData(cita.paciente) : null;
+
     // Enviar email de confirmación si el paciente tiene email
-    if (cita.paciente?.email) {
+    if (pacienteDesencriptado?.email) {
       try {
-        await enviarConfirmacionCita(cita.paciente.email, {
+        await enviarConfirmacionCita(pacienteDesencriptado.email, {
           citaId: cita.id,
           tipo: cita.tipo,
           fecha: cita.fecha,
           hora: cita.hora,
-          nombreCliente: cita.paciente.name,
+          nombreCliente: pacienteDesencriptado.name,
         });
-        console.log(`✅ Email de confirmación enviado a ${cita.paciente.email}`);
+        console.log(`✅ Email de confirmación enviado a ${pacienteDesencriptado.email}`);
       } catch (emailError) {
         // No fallar la creación de cita por error de email
         console.error('⚠️  Error al enviar email de confirmación:', emailError);
@@ -136,7 +152,11 @@ export async function crearCita(req: Request, res: Response) {
       console.log('ℹ️  Cita creada sin email (paciente sin email registrado)');
     }
 
-    res.status(201).json(cita);
+    // Devolver cita con paciente desencriptado
+    res.status(201).json({
+      ...cita,
+      paciente: pacienteDesencriptado,
+    });
   } catch (error) {
     if (error instanceof z.ZodError) {
       return res.status(400).json({
@@ -206,8 +226,13 @@ export async function actualizarCita(req: Request, res: Response) {
       },
     });
 
+    // Desencriptar datos del paciente
+    const citaDesencriptada = {
+      ...cita,
+      paciente: cita.paciente ? decryptPacienteData(cita.paciente) : null,
+    };
 
-    res.json(cita);
+    res.json(citaDesencriptada);
   } catch (error) {
     if (error instanceof z.ZodError) {
       return res.status(400).json({

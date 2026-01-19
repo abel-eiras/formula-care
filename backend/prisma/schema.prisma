@@ -6,7 +6,7 @@ generator client {
 }
 
 datasource db {
-  provider = "sqlite"
+  provider = "postgresql"
   url      = env("DATABASE_URL")
 }
 
@@ -74,14 +74,17 @@ model Usuario {
 // ==========================================
 // MODELO DE PACIENTE
 // ==========================================
+// NOTA: Los campos name, phone y email están ENCRIPTADOS con AES-256-GCM
+// Para búsquedas por email usar emailHash (SHA-256)
 model Paciente {
   id          String   @id @default(cuid())
   farmaciaId  String   // Cada paciente pertenece a una farmacia
-  name        String
+  name        String   // ENCRIPTADO: nombre del paciente
   age         Int
   sex         String   // "M", "F", "O"
-  phone       String
-  email       String?
+  phone       String   // ENCRIPTADO: teléfono del paciente
+  email       String?  // ENCRIPTADO: email del paciente
+  emailHash   String?  // SHA-256 del email (para búsquedas exactas)
   birthDate   String?  // Fecha en formato ISO
   address     String?
   notes       String?
@@ -99,8 +102,7 @@ model Paciente {
   solicitudesCita SolicitudCita[]
 
   @@index([farmaciaId])
-  @@index([name])
-  @@index([phone])
+  @@index([emailHash])
   @@index([origen])
 }
 
@@ -320,21 +322,24 @@ model Configuracion {
 // ==========================================
 // MODELO DE SOLICITUD DE CITA (desde página pública)
 // ==========================================
+// NOTA: Los campos nombreCliente, emailCliente y telefonoCliente están ENCRIPTADOS con AES-256-GCM
+// Para búsquedas por email usar emailClienteHash (SHA-256)
 model SolicitudCita {
-  id            String   @id @default(cuid())
-  farmaciaId    String   // Cada solicitud pertenece a una farmacia
-  nombreCliente String
-  emailCliente  String
-  telefonoCliente String
-  tipo          String   // "dermo", "bio", "consulta", "seguimiento"
-  fecha         String   // Fecha en formato ISO
-  hora          String   // Formato "HH:mm"
-  estado        String   @default("pendiente") // "pendiente", "aprobada", "rechazada"
-  notas         String?  // Mensaje opcional del cliente
-  pacienteId    String?  // Si el cliente ya existe en BD
-  citaId        String?  // Si se convierte en cita aprobada
-  createdAt     DateTime @default(now())
-  updatedAt     DateTime @updatedAt
+  id               String   @id @default(cuid())
+  farmaciaId       String   // Cada solicitud pertenece a una farmacia
+  nombreCliente    String   // ENCRIPTADO: nombre del cliente
+  emailCliente     String   // ENCRIPTADO: email del cliente
+  emailClienteHash String   // SHA-256 del email (para búsquedas exactas)
+  telefonoCliente  String   // ENCRIPTADO: teléfono del cliente
+  tipo             String   // "dermo", "bio", "consulta", "seguimiento"
+  fecha            String   // Fecha en formato ISO
+  hora             String   // Formato "HH:mm"
+  estado           String   @default("pendiente") // "pendiente", "aprobada", "rechazada"
+  notas            String?  // Mensaje opcional del cliente
+  pacienteId       String?  // Si el cliente ya existe en BD
+  citaId           String?  // Si se convierte en cita aprobada
+  createdAt        DateTime @default(now())
+  updatedAt        DateTime @updatedAt
 
   // Relaciones
   farmacia Farmacia  @relation(fields: [farmaciaId], references: [id], onDelete: Cascade)
@@ -345,7 +350,7 @@ model SolicitudCita {
   @@index([fecha])
   @@index([estado])
   @@index([tipo])
-  @@index([emailCliente])
+  @@index([emailClienteHash])
 }
 
 // ==========================================

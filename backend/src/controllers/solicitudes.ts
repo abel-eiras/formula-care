@@ -3,6 +3,13 @@ import { prisma } from '../lib/prisma.js';
 import { verificarDisponibilidad } from '../services/disponibilidadService.js';
 import { getQueryString, getParamString } from '../lib/queryHelpers.js';
 import { obtenerFarmaciaIdRequerido, obtenerFarmaciaIdOpcional } from '../middleware/tenant.js';
+import { 
+  decryptPacienteData, 
+  decryptSolicitudData,
+  encryptPacienteData,
+  hashEmail,
+  decrypt
+} from '../services/encryptionService.js';
 
 /**
  * Obtener todas las solicitudes con filtro opcional por estado
@@ -42,7 +49,16 @@ export async function obtenerSolicitudes(req: Request, res: Response) {
       },
     });
 
-    res.json(solicitudes);
+    // Desencriptar datos sensibles de solicitudes y pacientes
+    const solicitudesDesencriptadas = solicitudes.map(s => {
+      const solicitudDecrypted = decryptSolicitudData(s);
+      return {
+        ...solicitudDecrypted,
+        paciente: s.paciente ? decryptPacienteData(s.paciente) : null,
+      };
+    });
+
+    res.json(solicitudesDesencriptadas);
   } catch (error) {
     console.error('Error al obtener solicitudes:', error);
     res.status(500).json({ error: 'Error al obtener solicitudes' });
@@ -69,7 +85,14 @@ export async function obtenerSolicitud(req: Request, res: Response) {
       return res.status(404).json({ error: 'Solicitud no encontrada' });
     }
 
-    res.json(solicitud);
+    // Desencriptar datos sensibles
+    const solicitudDesencriptada = {
+      ...decryptSolicitudData(solicitud),
+      paciente: solicitud.paciente ? decryptPacienteData(solicitud.paciente) : null,
+      cita: solicitud.cita,
+    };
+
+    res.json(solicitudDesencriptada);
   } catch (error) {
     console.error('Error al obtener solicitud:', error);
     res.status(500).json({ error: 'Error al obtener solicitud' });
@@ -125,22 +148,37 @@ export async function aprobarSolicitud(req: Request, res: Response) {
     let paciente = solicitudConPaciente.paciente;
 
     if (!paciente) {
-      // Si no tiene paciente asociado, buscarlo por email o crearlo
+      // Si no tiene paciente asociado, buscarlo por emailHash o crearlo
+      // Los datos de la solicitud están encriptados, primero desencriptamos para obtener el email
+      const emailClienteDesencriptado = decrypt(solicitudConPaciente.emailCliente);
+      const emailHashCliente = hashEmail(emailClienteDesencriptado);
+      
       paciente = await prisma.paciente.findFirst({
         where: {
           farmaciaId,
-          email: solicitudConPaciente.emailCliente,
+          emailHash: emailHashCliente,
         },
       });
 
       if (!paciente) {
-        // Crear paciente con datos de la solicitud
+        // Crear paciente con datos de la solicitud (ya encriptados, reutilizamos)
+        // Pero necesitamos desencriptar para re-encriptar con el formato correcto del paciente
+        const nombreDesencriptado = decrypt(solicitudConPaciente.nombreCliente);
+        const telefonoDesencriptado = decrypt(solicitudConPaciente.telefonoCliente);
+        
+        const datosEncriptados = encryptPacienteData({
+          name: nombreDesencriptado,
+          email: emailClienteDesencriptado,
+          phone: telefonoDesencriptado,
+        });
+        
         paciente = await prisma.paciente.create({
           data: {
             farmaciaId,
-            name: solicitudConPaciente.nombreCliente,
-            email: solicitudConPaciente.emailCliente,
-            phone: solicitudConPaciente.telefonoCliente,
+            name: datosEncriptados.name!,
+            email: datosEncriptados.email,
+            emailHash: datosEncriptados.emailHash,
+            phone: datosEncriptados.phone!,
             age: 0, // Se puede actualizar después
             sex: 'O', // Por defecto "Otro"
           },
@@ -148,11 +186,14 @@ export async function aprobarSolicitud(req: Request, res: Response) {
       }
     }
 
+    // Desencriptar datos de la solicitud para usarlos en título de cita, notificaciones y emails
+    const solicitudDesencriptada = decryptSolicitudData(solicitudConPaciente);
+    
     // Crear la cita
     const cita = await prisma.cita.create({
       data: {
         farmaciaId,
-        titulo: `Cita ${solicitudConPaciente.tipo} - ${solicitudConPaciente.nombreCliente}`,
+        titulo: `Cita ${solicitudConPaciente.tipo} - ${solicitudDesencriptada.nombreCliente}`,
         pacienteId: paciente.id,
         fecha: solicitudConPaciente.fecha,
         hora: solicitudConPaciente.hora,
@@ -211,7 +252,7 @@ export async function aprobarSolicitud(req: Request, res: Response) {
         data: {
           citaId: cita.id,
           titulo: `Cita ${solicitudConPaciente.tipo} aprobada`,
-          mensaje: `Se ha aprobado la solicitud de cita ${solicitudConPaciente.tipo} para ${solicitudConPaciente.nombreCliente} el ${solicitudConPaciente.fecha} a las ${solicitudConPaciente.hora}`,
+          mensaje: `Se ha aprobado la solicitud de cita ${solicitudConPaciente.tipo} para ${solicitudDesencriptada.nombreCliente} el ${solicitudConPaciente.fecha} a las ${solicitudConPaciente.hora}`,
           leida: false,
         },
       });
@@ -224,7 +265,7 @@ export async function aprobarSolicitud(req: Request, res: Response) {
           pacienteId: paciente.id,
           citaId: cita.id,
           titulo: `Cita ${solicitudConPaciente.tipo} aprobada`,
-          mensaje: `Se ha aprobado la solicitud de cita ${solicitudConPaciente.tipo} para ${solicitudConPaciente.nombreCliente} el ${solicitudConPaciente.fecha} a las ${solicitudConPaciente.hora}`,
+          mensaje: `Se ha aprobado la solicitud de cita ${solicitudConPaciente.tipo} para ${solicitudDesencriptada.nombreCliente} el ${solicitudConPaciente.fecha} a las ${solicitudConPaciente.hora}`,
           canal: 'interno',
           enviada: false,
           leida: false,
@@ -232,17 +273,17 @@ export async function aprobarSolicitud(req: Request, res: Response) {
       });
     }
 
-    // Enviar email de confirmación al cliente
+    // Enviar email de confirmación al cliente (usar datos desencriptados)
     try {
       const { enviarConfirmacionCita } = await import('../services/emailService.js');
-      await enviarConfirmacionCita(solicitudConPaciente.emailCliente, {
+      await enviarConfirmacionCita(solicitudDesencriptada.emailCliente!, {
         citaId: cita.id,
         tipo: solicitudConPaciente.tipo,
         fecha: solicitudConPaciente.fecha,
         hora: solicitudConPaciente.hora,
-        nombreCliente: solicitudConPaciente.nombreCliente,
+        nombreCliente: solicitudDesencriptada.nombreCliente!,
       });
-      console.log(`✅ Email de confirmación enviado a ${solicitudConPaciente.emailCliente}`);
+      console.log(`✅ Email de confirmación enviado a ${solicitudDesencriptada.emailCliente}`);
     } catch (emailError) {
       console.error('Error al enviar email de confirmación:', emailError);
       // No fallar la operación si el email falla
@@ -330,17 +371,20 @@ export async function rechazarSolicitud(req: Request, res: Response) {
       });
     }
 
+    // Desencriptar datos para el email
+    const solicitudDesencriptada = decryptSolicitudData(solicitud);
+    
     // Enviar email al cliente informando del rechazo
     try {
       const { enviarRechazoSolicitud } = await import('../services/emailService.js');
-      await enviarRechazoSolicitud(solicitud.emailCliente, {
+      await enviarRechazoSolicitud(solicitudDesencriptada.emailCliente!, {
         tipo: solicitud.tipo,
         fecha: solicitud.fecha,
         hora: solicitud.hora,
-        nombreCliente: solicitud.nombreCliente,
+        nombreCliente: solicitudDesencriptada.nombreCliente!,
         motivo: motivo || undefined,
       });
-      console.log(`✅ Email de rechazo enviado a ${solicitud.emailCliente}`);
+      console.log(`✅ Email de rechazo enviado a ${solicitudDesencriptada.emailCliente}`);
     } catch (emailError) {
       console.error('Error al enviar email de rechazo:', emailError);
       // No fallar la operación si el email falla

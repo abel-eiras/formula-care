@@ -5,6 +5,8 @@ import { componentTagger } from "lovable-tagger";
 
 // https://vitejs.dev/config/
 export default defineConfig(({ mode }) => ({
+  // Base path para producción (acceso via /formula-care/)
+  base: mode === "production" ? "/formula-care/" : "/",
   server: {
     host: "::",
     port: 5173,
