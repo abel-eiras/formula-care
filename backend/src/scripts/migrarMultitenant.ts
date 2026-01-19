@@ -8,6 +8,8 @@
  * 4. Convierte el usuario admin actual en admin de esa farmacia
  * 
  * Uso: npx tsx src/scripts/migrarMultitenant.ts
+ * 
+ * NOTA: Este script es compatible con PostgreSQL (Supabase)
  */
 
 import { PrismaClient } from '@prisma/client';
@@ -36,17 +38,10 @@ async function migrarMultitenant() {
     return;
   }
 
-  // 2. Obtener configuración actual (si existe)
-  const configActual = await prisma.$queryRaw<Array<{
-    farmaciaNombre: string | null;
-    farmaciaDireccion: string | null;
-    farmaciaCiudad: string | null;
-    farmaciaTelefono: string | null;
-    farmaciaEmail: string | null;
-    farmaciaWeb: string | null;
-  }>>`SELECT farmaciaNombre, farmaciaDireccion, farmaciaCiudad, farmaciaTelefono, farmaciaEmail, farmaciaWeb FROM Configuracion LIMIT 1`;
+  // 2. Obtener configuración actual (si existe) - usando Prisma ORM para compatibilidad PostgreSQL
+  const configExistente = await prisma.configuracion.findFirst();
 
-  const config = configActual[0] || {
+  const config = configExistente || {
     farmaciaNombre: 'Mi Farmacia',
     farmaciaDireccion: null,
     farmaciaCiudad: null,
@@ -124,141 +119,128 @@ async function migrarMultitenant() {
   });
   console.log(`✅ ${usuariosActualizados.count} usuarios actualizados\n`);
 
-  // 6. Actualizar pacientes
+  // 6. Actualizar pacientes (usando Prisma ORM)
   console.log('🏥 Actualizando pacientes...');
   const pacientesActualizados = await prisma.paciente.updateMany({
-    where: { farmaciaId: farmacia.id }, // Ya debería tener el campo
+    where: {
+      OR: [
+        { farmaciaId: '' },
+        { farmaciaId: { isSet: false } }
+      ]
+    },
     data: { farmaciaId: farmacia.id }
   });
-  // Si el campo no existe, usamos raw query
-  try {
-    await prisma.$executeRaw`UPDATE Paciente SET farmaciaId = ${farmacia.id} WHERE farmaciaId IS NULL OR farmaciaId = ''`;
-    console.log('✅ Pacientes actualizados\n');
-  } catch {
-    console.log('ℹ️ Pacientes ya tienen farmaciaId o la tabla está vacía\n');
-  }
+  console.log(`✅ ${pacientesActualizados.count} pacientes actualizados\n`);
 
   // 7. Actualizar citas
   console.log('📅 Actualizando citas...');
-  try {
-    await prisma.$executeRaw`UPDATE Cita SET farmaciaId = ${farmacia.id} WHERE farmaciaId IS NULL OR farmaciaId = ''`;
-    console.log('✅ Citas actualizadas\n');
-  } catch {
-    console.log('ℹ️ Citas ya tienen farmaciaId o la tabla está vacía\n');
-  }
+  const citasActualizadas = await prisma.cita.updateMany({
+    where: {
+      OR: [
+        { farmaciaId: '' },
+        { farmaciaId: { isSet: false } }
+      ]
+    },
+    data: { farmaciaId: farmacia.id }
+  });
+  console.log(`✅ ${citasActualizadas.count} citas actualizadas\n`);
 
   // 8. Actualizar notificaciones
   console.log('🔔 Actualizando notificaciones...');
-  try {
-    await prisma.$executeRaw`UPDATE Notificacion SET farmaciaId = ${farmacia.id} WHERE farmaciaId IS NULL OR farmaciaId = ''`;
-    console.log('✅ Notificaciones actualizadas\n');
-  } catch {
-    console.log('ℹ️ Notificaciones ya tienen farmaciaId o la tabla está vacía\n');
-  }
+  const notificacionesActualizadas = await prisma.notificacion.updateMany({
+    where: {
+      OR: [
+        { farmaciaId: '' },
+        { farmaciaId: { isSet: false } }
+      ]
+    },
+    data: { farmaciaId: farmacia.id }
+  });
+  console.log(`✅ ${notificacionesActualizadas.count} notificaciones actualizadas\n`);
 
   // 9. Actualizar solicitudes de cita
   console.log('📝 Actualizando solicitudes de cita...');
-  try {
-    await prisma.$executeRaw`UPDATE SolicitudCita SET farmaciaId = ${farmacia.id} WHERE farmaciaId IS NULL OR farmaciaId = ''`;
-    console.log('✅ Solicitudes actualizadas\n');
-  } catch {
-    console.log('ℹ️ Solicitudes ya tienen farmaciaId o la tabla está vacía\n');
-  }
+  const solicitudesActualizadas = await prisma.solicitudCita.updateMany({
+    where: {
+      OR: [
+        { farmaciaId: '' },
+        { farmaciaId: { isSet: false } }
+      ]
+    },
+    data: { farmaciaId: farmacia.id }
+  });
+  console.log(`✅ ${solicitudesActualizadas.count} solicitudes actualizadas\n`);
 
   // 10. Actualizar eventos
   console.log('🎉 Actualizando eventos...');
-  try {
-    await prisma.$executeRaw`UPDATE Evento SET farmaciaId = ${farmacia.id} WHERE farmaciaId IS NULL OR farmaciaId = ''`;
-    console.log('✅ Eventos actualizados\n');
-  } catch {
-    console.log('ℹ️ Eventos ya tienen farmaciaId o la tabla está vacía\n');
-  }
+  const eventosActualizados = await prisma.evento.updateMany({
+    where: {
+      OR: [
+        { farmaciaId: '' },
+        { farmaciaId: { isSet: false } }
+      ]
+    },
+    data: { farmaciaId: farmacia.id }
+  });
+  console.log(`✅ ${eventosActualizados.count} eventos actualizados\n`);
 
   // 11. Actualizar plantillas de email
   console.log('📧 Actualizando plantillas de email...');
-  try {
-    await prisma.$executeRaw`UPDATE PlantillaEmail SET farmaciaId = ${farmacia.id} WHERE farmaciaId IS NULL OR farmaciaId = ''`;
-    console.log('✅ Plantillas actualizadas\n');
-  } catch {
-    console.log('ℹ️ Plantillas ya tienen farmaciaId o la tabla está vacía\n');
-  }
+  const plantillasActualizadas = await prisma.plantillaEmail.updateMany({
+    where: {
+      OR: [
+        { farmaciaId: '' },
+        { farmaciaId: { isSet: false } }
+      ]
+    },
+    data: { farmaciaId: farmacia.id }
+  });
+  console.log(`✅ ${plantillasActualizadas.count} plantillas actualizadas\n`);
 
-  // 12. Crear configuración para la farmacia
+  // 12. Crear configuración para la farmacia (si no existe ya vinculada)
   console.log('⚙️ Creando configuración para la farmacia...');
   
-  // Intentar obtener datos de la configuración antigua
-  const configAntigua = await prisma.$queryRaw<Array<Record<string, unknown>>>`SELECT * FROM Configuracion LIMIT 1`;
-  
-  if (configAntigua.length > 0) {
-    const cfg = configAntigua[0];
-    await prisma.configuracion.create({
-      data: {
-        farmaciaId: farmacia.id,
-        farmaciaNombre: cfg.farmaciaNombre as string || nombreFarmacia,
-        farmaciaDireccion: cfg.farmaciaDireccion as string || null,
-        farmaciaCiudad: cfg.farmaciaCiudad as string || null,
-        farmaciaTelefono: cfg.farmaciaTelefono as string || null,
-        farmaciaEmail: cfg.farmaciaEmail as string || null,
-        farmaciaWeb: cfg.farmaciaWeb as string || null,
-        farmaciaWhatsapp: cfg.farmaciaWhatsapp as string || null,
-        farmaciaLogo: cfg.farmaciaLogo as string || null,
-        valoracionBioActiva: cfg.valoracionBioActiva as boolean ?? true,
-        parametrosReferencia: cfg.parametrosReferencia as string || '{}',
-        parametrosBioConfig: cfg.parametrosBioConfig as string || '[]',
-        rgpdRazonSocial: cfg.rgpdRazonSocial as string || null,
-        rgpdCif: cfg.rgpdCif as string || null,
-        rgpdDireccionFiscal: cfg.rgpdDireccionFiscal as string || null,
-        rgpdEmailContacto: cfg.rgpdEmailContacto as string || null,
-        rgpdResponsable: cfg.rgpdResponsable as string || null,
-        rgpdDpo: cfg.rgpdDpo as string || null,
-        textoAvisoLegal: cfg.textoAvisoLegal as string || null,
-        textoPoliticaPrivacidad: cfg.textoPoliticaPrivacidad as string || null,
-        textoPoliticaCookies: cfg.textoPoliticaCookies as string || null,
-        textoConsentimiento: cfg.textoConsentimiento as string || null,
-        consentimientoRequerido: cfg.consentimientoRequerido as boolean ?? true,
-        consentimientoVersion: cfg.consentimientoVersion as string || 'v1.0',
-        retencionDatosMeses: cfg.retencionDatosMeses as number || 60,
-        emailProvider: cfg.emailProvider as string || 'smtp',
-        resendApiKey: cfg.resendApiKey as string || null,
-        emailRemitente: cfg.emailRemitente as string || null,
-        emailNombreRemitente: cfg.emailNombreRemitente as string || null,
-      },
-    });
-    console.log('✅ Configuración migrada\n');
+  const configYaExiste = await prisma.configuracion.findUnique({
+    where: { farmaciaId: farmacia.id }
+  });
+
+  if (!configYaExiste) {
+    // Usar datos de configuración existente sin farmaciaId o crear nuevos
+    if (configExistente && !configExistente.farmaciaId) {
+      // Actualizar la configuración existente para vincularla a la farmacia
+      await prisma.configuracion.update({
+        where: { id: configExistente.id },
+        data: { farmaciaId: farmacia.id }
+      });
+      console.log('✅ Configuración existente vinculada a la farmacia\n');
+    } else {
+      await prisma.configuracion.create({
+        data: {
+          farmaciaId: farmacia.id,
+          farmaciaNombre: nombreFarmacia,
+        },
+      });
+      console.log('✅ Configuración creada por defecto\n');
+    }
   } else {
-    await prisma.configuracion.create({
-      data: {
-        farmaciaId: farmacia.id,
-        farmaciaNombre: nombreFarmacia,
-      },
-    });
-    console.log('✅ Configuración creada por defecto\n');
+    console.log('ℹ️ La farmacia ya tiene configuración\n');
   }
 
   // 13. Crear configuración de calendario
   console.log('📆 Creando configuración de calendario...');
-  const calAntiguo = await prisma.$queryRaw<Array<Record<string, unknown>>>`SELECT * FROM ConfiguracionCalendario LIMIT 1`;
+  const calExiste = await prisma.configuracionCalendario.findUnique({
+    where: { farmaciaId: farmacia.id }
+  });
   
-  if (calAntiguo.length > 0) {
-    const cal = calAntiguo[0];
-    await prisma.configuracionCalendario.create({
-      data: {
-        farmaciaId: farmacia.id,
-        horariosPorTipo: cal.horariosPorTipo as string || '{}',
-        fechasBloqueadas: cal.fechasBloqueadas as string || '[]',
-        horasBloqueadas: cal.horasBloqueadas as string || '{}',
-        autoAceptar: cal.autoAceptar as boolean ?? false,
-        duracionPorTipo: cal.duracionPorTipo as string || '{}',
-      },
-    });
-    console.log('✅ Configuración de calendario migrada\n');
-  } else {
+  if (!calExiste) {
     await prisma.configuracionCalendario.create({
       data: {
         farmaciaId: farmacia.id,
       },
     });
     console.log('✅ Configuración de calendario creada por defecto\n');
+  } else {
+    console.log('ℹ️ La farmacia ya tiene configuración de calendario\n');
   }
 
   console.log('═══════════════════════════════════════════════════════');

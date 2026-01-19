@@ -2,6 +2,11 @@ import { Request, Response } from 'express';
 import { prisma } from '../lib/prisma.js';
 import { z } from 'zod';
 import { obtenerDisponibilidad, verificarDisponibilidad } from '../services/disponibilidadService.js';
+import { 
+  encryptPacienteData, 
+  encryptSolicitudData,
+  hashEmail 
+} from '../services/encryptionService.js';
 
 /**
  * Obtener textos legales públicos de una farmacia por su slug
@@ -313,23 +318,31 @@ export async function solicitarCita(req: Request, res: Response) {
 
     const autoAceptar = configCalendario.autoAceptar;
 
-    // Buscar si el paciente ya existe por email en esta farmacia
+    // Buscar si el paciente ya existe por email en esta farmacia (usando hash)
+    const emailHashCliente = hashEmail(datos.emailCliente);
     let paciente = await prisma.paciente.findFirst({
       where: {
         farmaciaId,
-        email: datos.emailCliente,
+        emailHash: emailHashCliente,
       },
     });
 
-    // Si no existe, crear el paciente (con datos mínimos)
+    // Si no existe, crear el paciente (con datos mínimos y encriptados)
     if (!paciente) {
-      // Extraer edad aproximada del nombre si es posible, sino usar 0
+      // Encriptar datos sensibles del paciente
+      const datosEncriptados = encryptPacienteData({
+        name: datos.nombreCliente,
+        email: datos.emailCliente,
+        phone: datos.telefonoCliente,
+      });
+      
       paciente = await prisma.paciente.create({
         data: {
           farmaciaId,
-          name: datos.nombreCliente,
-          email: datos.emailCliente,
-          phone: datos.telefonoCliente,
+          name: datosEncriptados.name!,
+          email: datosEncriptados.email,
+          emailHash: datosEncriptados.emailHash,
+          phone: datosEncriptados.phone!,
           age: 0, // Se puede actualizar después
           sex: 'O', // Por defecto "Otro"
           origen: 'autoregistro',
@@ -340,14 +353,22 @@ export async function solicitarCita(req: Request, res: Response) {
     let solicitud;
     let cita = null;
 
+    // Encriptar datos de la solicitud
+    const solicitudEncriptada = encryptSolicitudData({
+      nombreCliente: datos.nombreCliente,
+      emailCliente: datos.emailCliente,
+      telefonoCliente: datos.telefonoCliente,
+    });
+
     if (autoAceptar) {
       // Auto-aceptar: crear solicitud como aprobada y crear la cita
       solicitud = await prisma.solicitudCita.create({
         data: {
           farmaciaId,
-          nombreCliente: datos.nombreCliente,
-          emailCliente: datos.emailCliente,
-          telefonoCliente: datos.telefonoCliente,
+          nombreCliente: solicitudEncriptada.nombreCliente!,
+          emailCliente: solicitudEncriptada.emailCliente!,
+          emailClienteHash: solicitudEncriptada.emailClienteHash!,
+          telefonoCliente: solicitudEncriptada.telefonoCliente!,
           tipo: datos.tipo === 'evento' && datos.eventoId ? `evento:${datos.eventoId}` : datos.tipo,
           fecha: datos.fecha,
           hora: datos.hora,
@@ -401,13 +422,14 @@ export async function solicitarCita(req: Request, res: Response) {
         nombreCliente: datos.nombreCliente,
       });
     } else {
-      // Crear solicitud como pendiente
+      // Crear solicitud como pendiente (datos ya encriptados arriba)
       solicitud = await prisma.solicitudCita.create({
         data: {
           farmaciaId,
-          nombreCliente: datos.nombreCliente,
-          emailCliente: datos.emailCliente,
-          telefonoCliente: datos.telefonoCliente,
+          nombreCliente: solicitudEncriptada.nombreCliente!,
+          emailCliente: solicitudEncriptada.emailCliente!,
+          emailClienteHash: solicitudEncriptada.emailClienteHash!,
+          telefonoCliente: solicitudEncriptada.telefonoCliente!,
           tipo: datos.tipo === 'evento' && datos.eventoId ? `evento:${datos.eventoId}` : datos.tipo,
           fecha: datos.fecha,
           hora: datos.hora,

@@ -4,6 +4,12 @@ import { z } from 'zod';
 import type { Prisma } from '@prisma/client';
 import { getQueryString, getParamString, getQueryNumber } from '../lib/queryHelpers.js';
 import { obtenerFarmaciaIdRequerido, obtenerFarmaciaIdOpcional } from '../middleware/tenant.js';
+import { 
+  encryptPacienteData, 
+  decryptPacienteData, 
+  decryptPacientesList,
+  hashEmail 
+} from '../services/encryptionService.js';
 
 // Esquema de validación para crear paciente
 const crearPacienteSchema = z.object({
@@ -22,6 +28,8 @@ const actualizarPacienteSchema = crearPacienteSchema.partial();
 
 /**
  * Obtener todos los pacientes con búsqueda y filtros avanzados
+ * NOTA: Los campos name, phone y email están encriptados en BD
+ * La búsqueda se realiza desencriptando en memoria (viable para < 200 pacientes)
  */
 export async function obtenerPacientes(req: Request, res: Response) {
   try {
@@ -41,28 +49,12 @@ export async function obtenerPacientes(req: Request, res: Response) {
     const ordenarPor = getQueryString(req.query.ordenarPor) ?? 'createdAt';
     const orden = getQueryString(req.query.orden) ?? 'desc';
     
-    // Construir condiciones de búsqueda
+    // Construir condiciones de búsqueda (solo campos NO encriptados)
     const condiciones: Prisma.PacienteWhereInput[] = [];
     
     // Filtrar por farmacia (obligatorio para usuarios normales)
     if (farmaciaId) {
       condiciones.push({ farmaciaId });
-    }
-    
-    // Búsqueda general (nombre, teléfono, email)
-    if (busqueda) {
-      condiciones.push({
-        OR: [
-          { name: { contains: busqueda } },
-          { phone: { contains: busqueda } },
-          { email: { contains: busqueda } },
-        ],
-      });
-    }
-    
-    // Filtro por email específico
-    if (email) {
-      condiciones.push({ email: { contains: email } });
     }
     
     // Filtro por sexo
@@ -101,8 +93,8 @@ export async function obtenerPacientes(req: Request, res: Response) {
     
     const where = condiciones.length > 0 ? { AND: condiciones } : {};
     
-    // Obtener pacientes
-    const pacientes = await prisma.paciente.findMany({
+    // Obtener pacientes de la BD
+    const pacientesEncriptados = await prisma.paciente.findMany({
       where,
       orderBy: { 
         [ordenarPor]: orden === 'asc' ? 'asc' : 'desc' 
@@ -118,9 +110,31 @@ export async function obtenerPacientes(req: Request, res: Response) {
       },
     });
     
-    // Filtrar por tipo de servicio si se especifica (post-query porque requiere relación)
-    let pacientesFiltrados = pacientes;
+    // Desencriptar datos sensibles (name, phone, email)
+    const pacientesDesencriptados = decryptPacientesList(pacientesEncriptados);
     
+    // Aplicar filtros en campos encriptados (búsqueda en memoria)
+    let pacientesFiltrados = pacientesDesencriptados;
+    
+    // Búsqueda general (nombre, teléfono, email) - ahora en memoria
+    if (busqueda) {
+      const busquedaLower = busqueda.toLowerCase();
+      pacientesFiltrados = pacientesFiltrados.filter(p => 
+        p.name.toLowerCase().includes(busquedaLower) ||
+        p.phone.toLowerCase().includes(busquedaLower) ||
+        (p.email && p.email.toLowerCase().includes(busquedaLower))
+      );
+    }
+    
+    // Filtro por email específico - ahora en memoria
+    if (email) {
+      const emailLower = email.toLowerCase();
+      pacientesFiltrados = pacientesFiltrados.filter(p => 
+        p.email && p.email.toLowerCase().includes(emailLower)
+      );
+    }
+    
+    // Filtrar por tipo de servicio si se especifica
     if (tieneDermo === 'true') {
       pacientesFiltrados = pacientesFiltrados.filter(p => p._count.analisisDermo > 0);
     }
@@ -138,6 +152,7 @@ export async function obtenerPacientes(req: Request, res: Response) {
 
 /**
  * Obtener un paciente específico por ID
+ * Desencripta automáticamente los datos sensibles antes de enviar
  */
 export async function obtenerPaciente(req: Request, res: Response) {
   try {
@@ -165,7 +180,10 @@ export async function obtenerPaciente(req: Request, res: Response) {
       return res.status(404).json({ error: 'Paciente no encontrado' });
     }
 
-    res.json(paciente);
+    // Desencriptar datos sensibles antes de enviar
+    const pacienteDesencriptado = decryptPacienteData(paciente);
+
+    res.json(pacienteDesencriptado);
   } catch (error) {
     console.error('Error al obtener paciente:', error);
     res.status(500).json({ error: 'Error al obtener paciente' });
@@ -174,6 +192,7 @@ export async function obtenerPaciente(req: Request, res: Response) {
 
 /**
  * Crear un nuevo paciente
+ * Encripta automáticamente los datos sensibles (name, phone, email)
  */
 export async function crearPaciente(req: Request, res: Response) {
   try {
@@ -182,15 +201,25 @@ export async function crearPaciente(req: Request, res: Response) {
     
     const datos = crearPacienteSchema.parse(req.body);
 
+    // Encriptar datos sensibles antes de guardar
+    const datosEncriptados = encryptPacienteData({
+      name: datos.name,
+      phone: datos.phone,
+      email: datos.email || undefined,
+    });
+
     const paciente = await prisma.paciente.create({
       data: {
         ...datos,
-        email: datos.email || undefined,
+        ...datosEncriptados,
+        email: datosEncriptados.email || undefined,
         farmaciaId,
       },
     });
 
-    res.status(201).json(paciente);
+    // Devolver datos desencriptados al frontend
+    const pacienteDesencriptado = decryptPacienteData(paciente);
+    res.status(201).json(pacienteDesencriptado);
   } catch (error) {
     if (error instanceof z.ZodError) {
       return res.status(400).json({
@@ -210,18 +239,46 @@ export async function crearPaciente(req: Request, res: Response) {
 
 /**
  * Actualizar un paciente existente
+ * Encripta automáticamente los datos sensibles que se modifiquen
  */
 export async function actualizarPaciente(req: Request, res: Response) {
   try {
     const id = getParamString(req.params.id);
     const datos = actualizarPacienteSchema.parse(req.body);
 
+    // Preparar datos para actualización, encriptando campos sensibles
+    const datosActualizacion: Record<string, unknown> = { ...datos };
+    
+    // Encriptar campos sensibles si están presentes
+    if (datos.name !== undefined) {
+      const encrypted = encryptPacienteData({ name: datos.name });
+      datosActualizacion.name = encrypted.name;
+    }
+    
+    if (datos.phone !== undefined) {
+      const encrypted = encryptPacienteData({ phone: datos.phone });
+      datosActualizacion.phone = encrypted.phone;
+    }
+    
+    if (datos.email !== undefined) {
+      if (datos.email) {
+        const encrypted = encryptPacienteData({ email: datos.email });
+        datosActualizacion.email = encrypted.email;
+        datosActualizacion.emailHash = encrypted.emailHash;
+      } else {
+        datosActualizacion.email = null;
+        datosActualizacion.emailHash = null;
+      }
+    }
+
     const paciente = await prisma.paciente.update({
       where: { id },
-      data: datos,
+      data: datosActualizacion,
     });
 
-    res.json(paciente);
+    // Devolver datos desencriptados
+    const pacienteDesencriptado = decryptPacienteData(paciente);
+    res.json(pacienteDesencriptado);
   } catch (error) {
     if (error instanceof z.ZodError) {
       return res.status(400).json({

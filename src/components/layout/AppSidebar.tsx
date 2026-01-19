@@ -103,8 +103,8 @@ export function AppSidebar() {
               </>
             ) : (
               <>
-                <span className="text-lg font-bold text-sidebar-foreground">Farmacia</span>
-                <span className="text-sm font-medium text-sidebar-muted">Pontevea</span>
+                <span className="text-lg font-bold text-sidebar-foreground">Fórmula</span>
+                <span className="text-sm font-medium text-sidebar-muted">Care</span>
               </>
             )}
           </div>

@@ -4,6 +4,7 @@ import { z } from 'zod';
 import { crearNotificacionRevision } from '../services/notificacionesService.js';
 import type { Prisma } from '@prisma/client';
 import { getQueryString, getParamString, getQueryNumber } from '../lib/queryHelpers.js';
+import { decryptPacienteData } from '../services/encryptionService.js';
 
 // Esquema de validación para análisis dermocosmético (plantilla completa)
 const crearAnalisisDermoSchema = z.object({
@@ -126,9 +127,10 @@ export async function crearAnalisisDermo(req: Request, res: Response) {
       );
     }
 
-    // Parsear JSON strings de vuelta a objetos/arrays
+    // Parsear JSON strings de vuelta a objetos/arrays y desencriptar paciente
     res.status(201).json({
       ...analisis,
+      paciente: analisis.paciente ? decryptPacienteData(analisis.paciente) : null,
       valoracionPiel: JSON.parse(analisis.valoracionPiel),
       habitos: JSON.parse(analisis.habitos),
       concerns: JSON.parse(analisis.concerns),
@@ -167,9 +169,10 @@ export async function obtenerAnalisisDermo(req: Request, res: Response) {
       return res.status(404).json({ error: 'Análisis no encontrado' });
     }
 
-    // Parsear todos los campos JSON
+    // Parsear todos los campos JSON y desencriptar paciente
     res.json({
       ...analisis,
+      paciente: analisis.paciente ? decryptPacienteData(analisis.paciente) : null,
       valoracionPiel: JSON.parse(analisis.valoracionPiel),
       habitos: JSON.parse(analisis.habitos),
       concerns: JSON.parse(analisis.concerns),
@@ -248,9 +251,10 @@ export async function obtenerTodosAnalisisDermo(req: Request, res: Response) {
       take: limit,
     });
 
-    // Parsear campos JSON
+    // Parsear campos JSON y desencriptar pacientes
     const analisisParsed = analisis.map((a) => ({
       ...a,
+      paciente: a.paciente ? decryptPacienteData(a.paciente) : null,
       valoracionPiel: JSON.parse(a.valoracionPiel),
       habitos: JSON.parse(a.habitos),
       concerns: JSON.parse(a.concerns),
@@ -284,6 +288,7 @@ export async function obtenerAnalisisDermoPorPaciente(req: Request, res: Respons
     res.json(
       analisis.map((a) => ({
         ...a,
+        paciente: a.paciente ? decryptPacienteData(a.paciente) : null,
         valoracionPiel: JSON.parse(a.valoracionPiel),
         habitos: JSON.parse(a.habitos),
         concerns: JSON.parse(a.concerns),
@@ -346,9 +351,10 @@ export async function actualizarAnalisisDermo(req: Request, res: Response) {
       );
     }
 
-    // Parsear JSON strings de vuelta a objetos/arrays
+    // Parsear JSON strings de vuelta a objetos/arrays y desencriptar paciente
     res.json({
       ...analisis,
+      paciente: analisis.paciente ? decryptPacienteData(analisis.paciente) : null,
       valoracionPiel: JSON.parse(analisis.valoracionPiel),
       habitos: JSON.parse(analisis.habitos),
       concerns: JSON.parse(analisis.concerns),
@@ -416,7 +422,11 @@ export async function crearAnalisisBio(req: Request, res: Response) {
       },
     });
 
-    res.status(201).json(analisis);
+    // Desencriptar datos del paciente
+    res.status(201).json({
+      ...analisis,
+      paciente: analisis.paciente ? decryptPacienteData(analisis.paciente) : null,
+    });
   } catch (error) {
     if (error instanceof z.ZodError) {
       return res.status(400).json({
@@ -448,7 +458,11 @@ export async function obtenerAnalisisBio(req: Request, res: Response) {
       return res.status(404).json({ error: 'Análisis no encontrado' });
     }
 
-    res.json(analisis);
+    // Desencriptar datos del paciente
+    res.json({
+      ...analisis,
+      paciente: analisis.paciente ? decryptPacienteData(analisis.paciente) : null,
+    });
   } catch (error) {
     console.error('Error al obtener análisis bio:', error);
     res.status(500).json({ error: 'Error al obtener análisis bioquímico' });
@@ -516,7 +530,13 @@ export async function obtenerTodosAnalisisBio(req: Request, res: Response) {
       take: limit,
     });
 
-    res.json(analisis);
+    // Desencriptar datos de pacientes
+    const analisisDesencriptados = analisis.map(a => ({
+      ...a,
+      paciente: a.paciente ? decryptPacienteData(a.paciente) : null,
+    }));
+
+    res.json(analisisDesencriptados);
   } catch (error) {
     console.error('Error al obtener análisis bio:', error);
     res.status(500).json({ error: 'Error al obtener análisis bioquímicos' });
@@ -538,7 +558,13 @@ export async function obtenerAnalisisBioPorPaciente(req: Request, res: Response)
       orderBy: { fecha: 'desc' },
     });
 
-    res.json(analisis);
+    // Desencriptar datos de pacientes
+    const analisisDesencriptados = analisis.map(a => ({
+      ...a,
+      paciente: a.paciente ? decryptPacienteData(a.paciente) : null,
+    }));
+
+    res.json(analisisDesencriptados);
   } catch (error) {
     console.error('Error al obtener análisis bio por paciente:', error);
     res.status(500).json({ error: 'Error al obtener análisis bioquímico' });
@@ -594,7 +620,11 @@ export async function actualizarAnalisisBio(req: Request, res: Response) {
       },
     });
 
-    res.json(analisis);
+    // Desencriptar datos del paciente
+    res.json({
+      ...analisis,
+      paciente: analisis.paciente ? decryptPacienteData(analisis.paciente) : null,
+    });
   } catch (error) {
     if (error instanceof z.ZodError) {
       return res.status(400).json({
