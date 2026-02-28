@@ -893,7 +893,7 @@ function ParametrosBioquimicosTab({
                             </div>
                           </div>
                         ))
-                      )}
+                      }
                     </div>
                   </AccordionContent>
                 </AccordionItem>
