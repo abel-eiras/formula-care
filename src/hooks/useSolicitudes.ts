@@ -96,6 +96,7 @@ export function useSolicitarCita() {
       fecha: string;
       hora: string;
       notas?: string;
+      captchaToken?: string;
     }) => {
       return api.post<{
         id: string;

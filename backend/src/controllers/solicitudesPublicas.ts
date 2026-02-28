@@ -89,7 +89,53 @@ const solicitarCitaSchema = z.object({
   fecha: z.string().regex(/^\d{4}-\d{2}-\d{2}$/, 'Formato de fecha inválido (YYYY-MM-DD)'),
   hora: z.string().regex(/^([0-1]?[0-9]|2[0-3]):[0-5][0-9]$/, 'Formato de hora inválido (HH:mm)'),
   notas: z.string().optional(),
+  captchaToken: z.string().optional(), // Token de reCAPTCHA Enterprise para validación server-side
 });
+
+// Site key del proyecto (debe coincidir con el frontend)
+const RECAPTCHA_ENTERPRISE_SITE_KEY = process.env.RECAPTCHA_ENTERPRISE_SITE_KEY || '6Lc_wHosAAAAAF0_2KG7b0YqJNJVcot-RphIp1K1';
+const RECAPTCHA_ENTERPRISE_ACTION = 'solicitar_cita';
+
+/**
+ * Verifica el token con reCAPTCHA Enterprise (API de assessments)
+ * Documentación: https://cloud.google.com/recaptcha-enterprise/docs/rest
+ */
+async function verificarCaptchaEnterprise(token: string): Promise<boolean> {
+  const apiKey = process.env.RECAPTCHA_ENTERPRISE_API_KEY;
+  const projectId = process.env.RECAPTCHA_ENTERPRISE_PROJECT_ID || 'formulafarma';
+  if (!apiKey) return true; // Si no está configurado, no bloquear
+
+  try {
+    const url = `https://recaptchaenterprise.googleapis.com/v1/projects/${projectId}/assessments?key=${apiKey}`;
+    const res = await fetch(url, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        event: {
+          token,
+          expectedAction: RECAPTCHA_ENTERPRISE_ACTION,
+          siteKey: RECAPTCHA_ENTERPRISE_SITE_KEY,
+        },
+      }),
+    });
+    if (!res.ok) {
+      console.error('reCAPTCHA Enterprise API error:', res.status, await res.text());
+      return false;
+    }
+    const data = (await res.json()) as {
+      tokenProperties?: { valid: boolean; invalidReason?: string };
+      event?: { expectedAction?: string };
+    };
+    const valid = data.tokenProperties?.valid === true;
+    if (!valid && data.tokenProperties?.invalidReason) {
+      console.warn('reCAPTCHA token invalid:', data.tokenProperties.invalidReason);
+    }
+    return valid;
+  } catch (error) {
+    console.error('Error al verificar reCAPTCHA Enterprise:', error);
+    return false;
+  }
+}
 
 /**
  * Obtener farmacia por slug (helper interno)
@@ -273,6 +319,24 @@ export async function obtenerDisponibilidadPublica(req: Request, res: Response) 
 export async function solicitarCita(req: Request, res: Response) {
   try {
     const datos = solicitarCitaSchema.parse(req.body);
+
+    // Validar reCAPTCHA Enterprise si está configurado
+    if (process.env.RECAPTCHA_ENTERPRISE_API_KEY) {
+      const token = datos.captchaToken;
+      if (!token) {
+        return res.status(400).json({
+          error: 'Verificación de seguridad requerida',
+          codigo: 'CAPTCHA_REQUERIDO',
+        });
+      }
+      const captchaValido = await verificarCaptchaEnterprise(token);
+      if (!captchaValido) {
+        return res.status(400).json({
+          error: 'La verificación de seguridad ha fallado. Inténtalo de nuevo.',
+          codigo: 'CAPTCHA_INVALIDO',
+        });
+      }
+    }
 
     // Obtener farmacia por slug
     const farmacia = await obtenerFarmaciaPorSlug(datos.farmaciaSlug);

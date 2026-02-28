@@ -13,6 +13,8 @@ const farmaciaSchema = z.object({
   farmaciaWeb: z.string().optional(),
   farmaciaWhatsapp: z.string().optional(),
   farmaciaLogo: z.string().optional(),
+  temaActivo: z.string().optional(),
+  coloresMarca: z.record(z.string(), z.string()).optional(),
 });
 
 // Esquema de validación para configuración RGPD
@@ -52,6 +54,26 @@ const rangoParametroSchema = z.object({
 // Esquema de validación para parámetros de referencia
 const parametrosReferenciaSchema = z.record(z.string(), rangoParametroSchema);
 
+// Parámetros bioquímicos por defecto (lista completa para nuevas farmacias)
+const PARAMETROS_BIO_CONFIG_DEFAULT = [
+  { id: 'glucemia', label: 'Glucemia', unit: 'mg/dL', grupo: 'basicos', activo: true, orden: 1 },
+  { id: 'cholesterol', label: 'Colesterol Total', unit: 'mg/dL', grupo: 'basicos', activo: true, orden: 2 },
+  { id: 'cholesterolHDL', label: 'Colesterol HDL', unit: 'mg/dL', grupo: 'basicos', activo: true, orden: 3 },
+  { id: 'cholesterolLDL', label: 'Colesterol LDL', unit: 'mg/dL', grupo: 'basicos', activo: true, orden: 4 },
+  { id: 'triglycerides', label: 'Triglicéridos', unit: 'mg/dL', grupo: 'basicos', activo: true, orden: 5 },
+  { id: 'hemoglobinaGlucosilada', label: 'Hemoglobina Glucosilada (HbA1c)', unit: '%', grupo: 'avanzados', activo: true, orden: 1 },
+  { id: 'proteinaCReactiva', label: 'Proteína C Reactiva (PCR)', unit: 'mg/L', grupo: 'avanzados', activo: true, orden: 2 },
+  { id: 'vitaminaD', label: 'Vitamina D', unit: 'ng/mL', grupo: 'avanzados', activo: true, orden: 3 },
+  { id: 'ferritina', label: 'Ferritina', unit: 'ng/mL', grupo: 'avanzados', activo: true, orden: 4 },
+  { id: 'systolic', label: 'Tensión Sistólica', unit: 'mmHg', grupo: 'tension', activo: true, orden: 1 },
+  { id: 'diastolic', label: 'Tensión Diastólica', unit: 'mmHg', grupo: 'tension', activo: true, orden: 2 },
+  { id: 'pulsaciones', label: 'Pulsaciones', unit: 'lpm', grupo: 'tension', activo: true, orden: 3 },
+  { id: 'weight', label: 'Peso', unit: 'kg', grupo: 'corporales', activo: true, orden: 1 },
+  { id: 'height', label: 'Altura', unit: 'cm', grupo: 'corporales', activo: true, orden: 2 },
+  { id: 'perimetroAbdominal', label: 'Perímetro abdominal', unit: 'cm', grupo: 'corporales', activo: true, orden: 3 },
+  { id: 'imc', label: 'Índice de Masa Corporal (IMC)', unit: 'kg/m²', grupo: 'corporales', activo: true, orden: 4 },
+];
+
 // Parámetros de referencia por defecto
 const PARAMETROS_REFERENCIA_DEFAULT = {
   glucemia: { normalMin: 70, normalMax: 100, advertenciaMin: 100, advertenciaMax: 125, criticoMin: 0, criticoMax: 70, criticoMin2: 125, criticoMax2: 999 },
@@ -80,12 +102,13 @@ export async function obtenerConfiguracion(req: Request, res: Response) {
       where: { farmaciaId },
     });
 
-    // Si no existe, crear con valores por defecto
+    // Si no existe, crear con valores por defecto (parámetros de referencia y lista de parámetros bio)
     if (!config) {
       config = await prisma.configuracion.create({
         data: {
           farmaciaId,
           parametrosReferencia: JSON.stringify(PARAMETROS_REFERENCIA_DEFAULT),
+          parametrosBioConfig: JSON.stringify(PARAMETROS_BIO_CONFIG_DEFAULT),
         },
       });
     }
@@ -100,10 +123,23 @@ export async function obtenerConfiguracion(req: Request, res: Response) {
       ? JSON.parse(config.parametrosBioConfig)
       : config.parametrosBioConfig || [];
 
+    // Parsear colores de marca (JSON)
+    let coloresMarca: Record<string, string> | null = null;
+    if (config.coloresMarca) {
+      try {
+        coloresMarca = typeof config.coloresMarca === 'string'
+          ? JSON.parse(config.coloresMarca)
+          : (config.coloresMarca as Record<string, string>);
+      } catch {
+        coloresMarca = null;
+      }
+    }
+
     res.json({
       ...config,
       parametrosReferencia,
       parametrosBioConfig,
+      coloresMarca,
     });
   } catch (error) {
     console.error('Error al obtener configuración:', error);
@@ -119,6 +155,12 @@ export async function actualizarFarmacia(req: Request, res: Response) {
     const farmaciaId = obtenerFarmaciaIdRequerido(req);
     const datos = farmaciaSchema.parse(req.body);
 
+    // Serializar coloresMarca a JSON si viene como objeto
+    const dataParaPrisma = { ...datos } as Record<string, unknown>;
+    if (dataParaPrisma.coloresMarca != null && typeof dataParaPrisma.coloresMarca === 'object') {
+      dataParaPrisma.coloresMarca = JSON.stringify(dataParaPrisma.coloresMarca);
+    }
+
     // Verificar que existe la configuración
     let config = await prisma.configuracion.findUnique({
       where: { farmaciaId },
@@ -129,14 +171,14 @@ export async function actualizarFarmacia(req: Request, res: Response) {
       config = await prisma.configuracion.create({
         data: {
           farmaciaId,
-          ...datos,
+          ...dataParaPrisma,
         },
       });
     } else {
       // Actualizar
       config = await prisma.configuracion.update({
         where: { farmaciaId },
-        data: datos,
+        data: dataParaPrisma,
       });
     }
 

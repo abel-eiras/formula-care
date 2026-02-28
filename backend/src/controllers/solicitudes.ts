@@ -383,6 +383,7 @@ export async function rechazarSolicitud(req: Request, res: Response) {
         hora: solicitud.hora,
         nombreCliente: solicitudDesencriptada.nombreCliente!,
         motivo: motivo || undefined,
+        farmaciaId: solicitud.farmaciaId,
       });
       console.log(`✅ Email de rechazo enviado a ${solicitudDesencriptada.emailCliente}`);
     } catch (emailError) {

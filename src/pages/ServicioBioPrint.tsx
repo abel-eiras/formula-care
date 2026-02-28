@@ -31,6 +31,9 @@ export default function ServicioBioPrint() {
   const direccionFarmacia = config?.farmaciaDireccion || '';
   const ciudadFarmacia = config?.farmaciaCiudad || '';
   const telefonoFarmacia = config?.farmaciaTelefono || '';
+  const logoUrl = config?.farmaciaLogo
+    ? (config.farmaciaLogo.startsWith("data:") ? config.farmaciaLogo : `/microcaya/${config.farmaciaLogo}`)
+    : "/logo.png";
 
   const paciente = analisis?.pacienteId
     ? pacientes.find((p) => p.id === analisis.pacienteId)
@@ -149,6 +152,19 @@ export default function ServicioBioPrint() {
           margin-left: 4px;
         }
 
+        .accent-box {
+          background-color: #f0f5f7;
+          border-left: 4px solid #6495a8;
+          padding: 15px;
+        }
+
+        .print-textarea {
+          border: none;
+          border-bottom: 1px solid #e2e8f0;
+          padding: 8px 0;
+          min-height: 40px;
+        }
+
         .grid-2cols {
           display: grid;
           grid-template-columns: 1fr 1fr;
@@ -192,7 +208,7 @@ export default function ServicioBioPrint() {
         <div className="flex justify-between items-center mb-8">
           <div className="logo-container">
             <img
-              src="/logo.png"
+              src={logoUrl}
               alt={`${nombreFarmacia} Logo`}
               className="logo-img"
               onError={(e) => {
@@ -391,24 +407,19 @@ export default function ServicioBioPrint() {
           </div>
         </div>
 
-        {/* Observaciones y Recomendaciones - Siempre visible */}
-        <div className="section-header">Observaciones y Recomendaciones</div>
-        <div className="grid-2cols mb-6">
-          <div className="space-y-2">
-            <div className="param-row">
-              <span className="param-label">Observaciones</span>
-            </div>
-            <div className="text-sm whitespace-pre-wrap" style={{ padding: "8px 0", minHeight: "60px", borderBottom: "1px solid #e2e8f0" }}>
-              {analisis.observaciones || ""}
-            </div>
+        {/* Observaciones - Siempre visible */}
+        <div className="section-header">Observaciones</div>
+        <div className="accent-box mb-4">
+          <div className="text-sm whitespace-pre-wrap" style={{ minHeight: "44px" }}>
+            {analisis.observaciones || "—"}
           </div>
-          <div className="space-y-2">
-            <div className="param-row">
-              <span className="param-label">Recomendaciones</span>
-            </div>
-            <div className="text-sm whitespace-pre-wrap" style={{ padding: "8px 0", minHeight: "60px", borderBottom: "1px solid #e2e8f0" }}>
-              {analisis.recomendaciones || ""}
-            </div>
+        </div>
+
+        {/* Recomendaciones - Apartado destacado como en informe dermocosmético */}
+        <div className="section-header">Recomendaciones</div>
+        <div className="accent-box mb-6">
+          <div className="text-sm whitespace-pre-wrap" style={{ minHeight: "60px" }}>
+            {analisis.recomendaciones || "—"}
           </div>
         </div>
 

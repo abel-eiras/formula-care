@@ -54,11 +54,11 @@ let resendClient: Resend | null = null;
 // ==========================================
 
 /**
- * Obtiene la configuración de email desde BD y variables de entorno
+ * Obtiene la configuración de email desde BD por farmacia y variables de entorno
  */
-async function obtenerConfigEmail(): Promise<ConfigEmail> {
+async function obtenerConfigEmail(farmaciaId: string): Promise<ConfigEmail> {
   const config = await prisma.configuracion.findUnique({
-    where: { id: 'config' },
+    where: { farmaciaId },
   });
 
   return {
@@ -230,11 +230,11 @@ function htmlATexto(html: string): string {
 // ==========================================
 
 /**
- * Obtiene los datos de la farmacia desde la configuración
+ * Obtiene los datos de la farmacia desde la configuración (por farmaciaId)
  */
-async function obtenerDatosFarmacia() {
+async function obtenerDatosFarmacia(farmaciaId: string) {
   const config = await prisma.configuracion.findUnique({
-    where: { id: 'config' },
+    where: { farmaciaId },
   });
 
   return {
@@ -279,15 +279,16 @@ function obtenerNombreTipoServicio(tipo: string): string {
 // ==========================================
 
 /**
- * Envía un email usando el proveedor configurado
+ * Envía un email usando el proveedor configurado de la farmacia
  */
 async function enviarEmail(
   destinatario: string,
   asunto: string,
   html: string,
+  farmaciaId: string,
   texto?: string
 ): Promise<boolean> {
-  const config = await obtenerConfigEmail();
+  const config = await obtenerConfigEmail(farmaciaId);
 
   try {
     if (config.provider === 'resend' && config.resendApiKey) {
@@ -391,8 +392,12 @@ export async function enviarConfirmacionCita(
       select: { farmaciaId: true },
     });
     const farmaciaId = cita?.farmaciaId;
+    if (!farmaciaId) {
+      console.warn('❌ No se puede enviar confirmación: cita sin farmaciaId');
+      return false;
+    }
 
-    const datosFarmacia = await obtenerDatosFarmacia();
+    const datosFarmacia = await obtenerDatosFarmacia(farmaciaId);
 
     // Generar tokens de acción
     const tokens = await generarTokensAccionCita(datosCita.citaId);
@@ -429,7 +434,7 @@ export async function enviarConfirmacionCita(
       asunto = `Confirmación de cita - ${datos.tipoServicio}`;
     }
 
-    const enviado = await enviarEmail(emailDestinatario, asunto, html);
+    const enviado = await enviarEmail(emailDestinatario, asunto, html, farmaciaId);
 
     if (enviado) {
       // Marcar cita como email de confirmación enviado
@@ -466,8 +471,12 @@ export async function enviarRecordatorioCita(
       select: { farmaciaId: true },
     });
     const farmaciaId = cita?.farmaciaId;
+    if (!farmaciaId) {
+      console.warn('❌ No se puede enviar recordatorio: cita sin farmaciaId');
+      return false;
+    }
 
-    const datosFarmacia = await obtenerDatosFarmacia();
+    const datosFarmacia = await obtenerDatosFarmacia(farmaciaId);
     const tokens = await generarTokensAccionCita(datosCita.citaId);
     const urls = construirUrlsAccion(tokens);
 
@@ -499,7 +508,7 @@ export async function enviarRecordatorioCita(
       asunto = `Recordatorio: Tu cita es mañana - ${datos.tipoServicio}`;
     }
 
-    const enviado = await enviarEmail(emailDestinatario, asunto, html);
+    const enviado = await enviarEmail(emailDestinatario, asunto, html, farmaciaId);
 
     if (enviado) {
       await prisma.cita.update({
@@ -527,20 +536,25 @@ export async function enviarCancelacionCita(
     nombreCliente: string;
     motivoRechazo?: string;
     citaId?: string;
+    farmaciaId?: string; // Requerido cuando no hay citaId (ej. rechazo de solicitud)
   }
 ): Promise<boolean> {
   try {
-    // Obtener farmaciaId de la cita si hay citaId
-    let farmaciaId: string | undefined;
-    if (datosCita.citaId) {
+    // Obtener farmaciaId de la cita o del parámetro
+    let farmaciaId: string | undefined = datosCita.farmaciaId;
+    if (!farmaciaId && datosCita.citaId) {
       const cita = await prisma.cita.findUnique({
         where: { id: datosCita.citaId },
         select: { farmaciaId: true },
       });
       farmaciaId = cita?.farmaciaId;
     }
+    if (!farmaciaId) {
+      console.warn('❌ No se puede enviar cancelación: falta farmaciaId');
+      return false;
+    }
 
-    const datosFarmacia = await obtenerDatosFarmacia();
+    const datosFarmacia = await obtenerDatosFarmacia(farmaciaId);
 
     const datos: DatosEmail = {
       nombrePaciente: datosCita.nombreCliente,
@@ -568,7 +582,7 @@ export async function enviarCancelacionCita(
       asunto = `Cita cancelada - ${datos.tipoServicio}`;
     }
 
-    return await enviarEmail(emailDestinatario, asunto, html);
+    return await enviarEmail(emailDestinatario, asunto, html, farmaciaId);
   } catch (error) {
     console.error('❌ Error al enviar cancelación:', error);
     return false;
@@ -577,6 +591,7 @@ export async function enviarCancelacionCita(
 
 /**
  * Envía email de rechazo de solicitud (mantener compatibilidad)
+ * Requiere farmaciaId para cargar datos y plantilla de la farmacia.
  */
 export async function enviarRechazoSolicitud(
   emailDestinatario: string,
@@ -586,11 +601,13 @@ export async function enviarRechazoSolicitud(
     hora: string;
     nombreCliente: string;
     motivo?: string;
+    farmaciaId: string;
   }
 ): Promise<boolean> {
   return enviarCancelacionCita(emailDestinatario, {
     ...datosSolicitud,
     motivoRechazo: datosSolicitud.motivo,
+    farmaciaId: datosSolicitud.farmaciaId,
   });
 }
 

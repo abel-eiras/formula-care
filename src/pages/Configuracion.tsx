@@ -13,7 +13,7 @@ import { Calendar } from "@/components/ui/calendar";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
 import { Textarea } from "@/components/ui/textarea";
-import { ArrowLeft, Save, Settings, Building2, FlaskConical, Calendar as CalendarIcon, Plus, Trash2, GripVertical, Eye, EyeOff, Pencil, Shield, FileText, AlertTriangle, Mail } from "lucide-react";
+import { ArrowLeft, Save, Settings, Building2, FlaskConical, Calendar as CalendarIcon, Plus, Trash2, GripVertical, Eye, EyeOff, Pencil, Shield, FileText, AlertTriangle, Mail, Palette } from "lucide-react";
 import { Link } from "react-router-dom";
 import { toast } from "sonner";
 import { useConfiguracion, useActualizarFarmacia, useActualizarParametrosReferencia, useActualizarValoracionBio, useActualizarParametrosBioConfig, useConfiguracionCalendario, useActualizarConfiguracionCalendario, useConfiguracionRgpd, useActualizarRgpd } from "@/hooks/useConfiguracion";
@@ -21,8 +21,8 @@ import { useEventos, useCrearEvento, useActualizarEvento, useEliminarEvento } fr
 import { usePlantillasEmail, useVariablesPlantilla, useActualizarPlantilla, useRestaurarPlantilla } from "@/hooks/usePlantillasEmail";
 import { EditorPlantillaEmail } from "@/components/configuracion/EditorPlantillaEmail";
 import type { Evento, ParametroBioConfig, ConfiguracionRgpd, PlantillaEmail } from "@/types";
-import { cn } from "@/lib/utils";
-import type { ParametroReferencia } from "@/types";
+import { cn, hexToHsl } from "@/lib/utils";
+import type { ParametroReferencia, ColoresMarca } from "@/types";
 import { format } from "date-fns";
 import { es } from "date-fns/locale";
 
@@ -49,6 +49,26 @@ const GRUPOS_INFO: Record<string, { label: string; color: string }> = {
   corporales: { label: "Medidas Corporales", color: "text-success" },
 };
 
+// Temas preconfigurados para colores de marca
+const TEMAS_PRECONFIGURADOS: Record<string, { nombre: string; colores: ColoresMarca }> = {
+  default: {
+    nombre: "Por defecto",
+    colores: { primario: "#79438f", secundario: "#6495a8", fondo: "#f8fafc", texto: "#1e293b" },
+  },
+  pontevea: {
+    nombre: "Pontevea",
+    colores: { primario: "#79438f", secundario: "#6495a8", fondo: "#f8f4fa", texto: "#333333" },
+  },
+  verde: {
+    nombre: "Verde profesional",
+    colores: { primario: "#0d9488", secundario: "#14b8a6", fondo: "#f0fdfa", texto: "#134e4a" },
+  },
+  azul: {
+    nombre: "Azul corporativo",
+    colores: { primario: "#2563eb", secundario: "#3b82f6", fondo: "#eff6ff", texto: "#1e3a8a" },
+  },
+};
+
 export default function Configuracion() {
   const { data: config, isLoading } = useConfiguracion();
   const actualizarFarmacia = useActualizarFarmacia();
@@ -66,6 +86,8 @@ export default function Configuracion() {
     farmaciaWeb: "",
     farmaciaWhatsapp: "",
     farmaciaLogo: "",
+    temaActivo: "default",
+    coloresMarca: undefined as ColoresMarca | undefined,
   });
 
   // Estado para parámetros de referencia
@@ -80,7 +102,8 @@ export default function Configuracion() {
   // Cargar datos cuando se obtiene la configuración
   useEffect(() => {
     if (config) {
-      setFarmaciaData({
+      setFarmaciaData((prev) => ({
+        ...prev,
         farmaciaNombre: config.farmaciaNombre || "",
         farmaciaDireccion: config.farmaciaDireccion || "",
         farmaciaCiudad: config.farmaciaCiudad || "",
@@ -89,7 +112,9 @@ export default function Configuracion() {
         farmaciaWeb: config.farmaciaWeb || "",
         farmaciaWhatsapp: config.farmaciaWhatsapp || "",
         farmaciaLogo: config.farmaciaLogo || "",
-      });
+        temaActivo: config.temaActivo || "default",
+        coloresMarca: config.coloresMarca ?? undefined,
+      }));
       setParametros(config.parametrosReferencia || {});
       setValoracionActiva(config.valoracionBioActiva ?? true);
       // Si hay configuración guardada, usarla; si no, usar los valores por defecto
@@ -100,6 +125,24 @@ export default function Configuracion() {
       }
     }
   }, [config]);
+
+  // Aplicar colores de marca al documento (variables CSS)
+  useEffect(() => {
+    const tema = farmaciaData.temaActivo || "default";
+    const colores = farmaciaData.temaActivo === "custom" && farmaciaData.coloresMarca
+      ? farmaciaData.coloresMarca
+      : TEMAS_PRECONFIGURADOS[tema]?.colores ?? TEMAS_PRECONFIGURADOS.default.colores;
+    const root = document.documentElement;
+    if (colores.primario) {
+      root.style.setProperty("--primary", hexToHsl(colores.primario));
+      root.style.setProperty("--ring", hexToHsl(colores.primario));
+      root.style.setProperty("--sidebar-background", hexToHsl(colores.primario));
+      root.style.setProperty("--sidebar-ring", "0 0% 100%");
+    }
+    if (colores.secundario) root.style.setProperty("--secondary", hexToHsl(colores.secundario));
+    if (colores.fondo) root.style.setProperty("--background", hexToHsl(colores.fondo));
+    if (colores.texto) root.style.setProperty("--foreground", hexToHsl(colores.texto));
+  }, [farmaciaData.temaActivo, farmaciaData.coloresMarca]);
 
   const handleGuardarFarmacia = async () => {
     try {
@@ -170,11 +213,16 @@ export default function Configuracion() {
       </div>
 
       <Tabs defaultValue="farmacia" className="space-y-6">
-        <TabsList className="grid w-full grid-cols-5">
+        <TabsList className="grid w-full grid-cols-6">
           <TabsTrigger value="farmacia" className="gap-2">
             <Building2 className="h-4 w-4" />
             <span className="hidden sm:inline">Datos de la Farmacia</span>
             <span className="sm:hidden">Farmacia</span>
+          </TabsTrigger>
+          <TabsTrigger value="apariencia" className="gap-2">
+            <Palette className="h-4 w-4" />
+            <span className="hidden sm:inline">Apariencia</span>
+            <span className="sm:hidden">Colores</span>
           </TabsTrigger>
           <TabsTrigger value="parametros" className="gap-2">
             <FlaskConical className="h-4 w-4" />
@@ -332,6 +380,114 @@ export default function Configuracion() {
                 >
                   <Save className="h-4 w-4" />
                   {actualizarFarmacia.isPending ? "Guardando..." : "Guardar Cambios"}
+                </Button>
+              </div>
+            </CardContent>
+          </Card>
+        </TabsContent>
+
+        {/* Tab: Apariencia / Colores de marca */}
+        <TabsContent value="apariencia">
+          <Card className="shadow-sm border-border/50">
+            <CardHeader>
+              <CardTitle>Colores y tema</CardTitle>
+              <CardDescription>
+                Ajusta los colores de la aplicación a los de tu marca. Los cambios se aplican al instante.
+              </CardDescription>
+            </CardHeader>
+            <CardContent className="space-y-6">
+              <div className="space-y-2">
+                <Label>Tema preconfigurado</Label>
+                <Select
+                  value={farmaciaData.temaActivo || "default"}
+                  onValueChange={(value) => {
+                    const tema = TEMAS_PRECONFIGURADOS[value];
+                    setFarmaciaData((prev) => ({
+                      ...prev,
+                      temaActivo: value,
+                      coloresMarca: value === "custom" ? (prev.coloresMarca ?? TEMAS_PRECONFIGURADOS.default.colores) : tema?.colores,
+                    }));
+                  }}
+                >
+                  <SelectTrigger className="w-full max-w-xs">
+                    <SelectValue placeholder="Seleccionar tema" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    {Object.entries(TEMAS_PRECONFIGURADOS).map(([id, { nombre }]) => (
+                      <SelectItem key={id} value={id}>
+                        {nombre}
+                      </SelectItem>
+                    ))}
+                    <SelectItem value="custom">Personalizado</SelectItem>
+                  </SelectContent>
+                </Select>
+              </div>
+              {farmaciaData.temaActivo === "custom" && (
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 pt-2 border-t">
+                  <div className="space-y-2">
+                    <Label htmlFor="colorPrimario">Color primario</Label>
+                    <div className="flex gap-2 items-center">
+                      <Input
+                        id="colorPrimario"
+                        type="color"
+                        className="w-14 h-10 p-1 cursor-pointer"
+                        value={farmaciaData.coloresMarca?.primario ?? "#79438f"}
+                        onChange={(e) =>
+                          setFarmaciaData((prev) => ({
+                            ...prev,
+                            coloresMarca: { ...prev.coloresMarca, primario: e.target.value },
+                          }))
+                        }
+                      />
+                      <Input
+                        className="flex-1 font-mono text-sm"
+                        value={farmaciaData.coloresMarca?.primario ?? "#79438f"}
+                        onChange={(e) =>
+                          setFarmaciaData((prev) => ({
+                            ...prev,
+                            coloresMarca: { ...prev.coloresMarca, primario: e.target.value },
+                          }))
+                        }
+                      />
+                    </div>
+                  </div>
+                  <div className="space-y-2">
+                    <Label htmlFor="colorSecundario">Color secundario</Label>
+                    <div className="flex gap-2 items-center">
+                      <Input
+                        id="colorSecundario"
+                        type="color"
+                        className="w-14 h-10 p-1 cursor-pointer"
+                        value={farmaciaData.coloresMarca?.secundario ?? "#6495a8"}
+                        onChange={(e) =>
+                          setFarmaciaData((prev) => ({
+                            ...prev,
+                            coloresMarca: { ...prev.coloresMarca, secundario: e.target.value },
+                          }))
+                        }
+                      />
+                      <Input
+                        className="flex-1 font-mono text-sm"
+                        value={farmaciaData.coloresMarca?.secundario ?? "#6495a8"}
+                        onChange={(e) =>
+                          setFarmaciaData((prev) => ({
+                            ...prev,
+                            coloresMarca: { ...prev.coloresMarca, secundario: e.target.value },
+                          }))
+                        }
+                      />
+                    </div>
+                  </div>
+                </div>
+              )}
+              <div className="flex justify-end pt-4">
+                <Button
+                  onClick={handleGuardarFarmacia}
+                  disabled={actualizarFarmacia.isPending}
+                  className="gap-2"
+                >
+                  <Save className="h-4 w-4" />
+                  {actualizarFarmacia.isPending ? "Guardando..." : "Guardar tema"}
                 </Button>
               </div>
             </CardContent>
