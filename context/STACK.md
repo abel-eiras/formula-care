@@ -2,6 +2,18 @@
 
 Resumen del stack y convenciones del proyecto para contexto rápido (agentes y desarrolladores).
 
+## Hosting (producción)
+
+Cada parte del sistema está alojada en un servicio distinto:
+
+| Parte       | Servicio | URL / nota |
+|------------|----------|------------|
+| **Frontend** | Vercel   | Despliegue automático desde el repo (rama `main`). |
+| **Backend**  | Render   | Web Service `formula-care-api` → `https://formula-care-api.onrender.com` (plan Free: se duerme por inactividad). |
+| **Base de datos** | Supabase | PostgreSQL gestionado; el backend usa su `DATABASE_URL` en producción. |
+
+En desarrollo: frontend en `localhost:5173`, backend en `localhost:3000`, BD en SQLite (`backend/prisma/dev.db`) o conexión local a Supabase.
+
 ## Frontend (raíz del proyecto)
 
 | Tecnología | Uso |
@@ -26,7 +38,7 @@ Estructura relevante: `src/pages/`, `src/components/`, `src/hooks/`, `src/lib/`,
 | **Express** | API REST |
 | **Prisma** | ORM y migraciones |
 | **SQLite** | Desarrollo (archivo `dev.db`) |
-| **PostgreSQL / MySQL** | Producción (según despliegue) |
+| **PostgreSQL** | Producción (Supabase) |
 | **Zod** | Validación de entradas |
 | **JWT** | Autenticación |
 | **Nodemailer / Resend** | Envío de correos |

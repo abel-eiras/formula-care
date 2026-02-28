@@ -2,6 +2,8 @@
 
 Esta carpeta concentra la documentación de referencia para trabajar en el proyecto, especialmente pensada para **agentes de IA** y desarrolladores que necesiten contexto rápido.
 
+**Hosting en producción:** Frontend en Vercel, backend en Render, base de datos en Supabase. Detalle en [STACK.md](STACK.md#hosting-producción).
+
 ## Uso para agentes
 
 - **Primera vez en el proyecto:** Lee [STACK.md](STACK.md) y [QUICKSTART.md](QUICKSTART.md).

@@ -122,9 +122,21 @@ npm run dev
 ### Backend
 - **Node.js + Express** - Servidor API REST
 - **Prisma** - ORM para base de datos
-- **SQLite** - Base de datos (PostgreSQL en producción)
+- **SQLite** - Desarrollo; **PostgreSQL (Supabase)** en producción
 - **Zod** - Validación de esquemas
 - **TypeScript estricto** - Sin errores de compilación
+
+---
+
+## 🌐 Dónde está alojado (producción)
+
+| Parte | Servicio | Nota |
+|-------|----------|------|
+| **Frontend** | [Vercel](https://vercel.com) | Despliegue automático desde este repo (rama `main`). |
+| **Backend (API)** | [Render](https://render.com) | Web Service `formula-care-api` → `https://formula-care-api.onrender.com`. |
+| **Base de datos** | [Supabase](https://supabase.com) | PostgreSQL; el backend la usa en producción vía `DATABASE_URL`. |
+
+Detalle en [context/STACK.md](context/STACK.md).
 
 ---
 

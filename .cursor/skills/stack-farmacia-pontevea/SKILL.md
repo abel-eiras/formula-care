@@ -32,7 +32,7 @@ El frontend vive en la **raíz**: `src/`, `public/`, `index.html`, `vite.config.
 | Express     | API REST      |
 | Prisma      | ORM           |
 | SQLite      | Dev (dev.db)  |
-| PostgreSQL/MySQL | Producción |
+| PostgreSQL (Supabase) | Producción |
 | Zod         | Validación    |
 | JWT         | Auth          |
 
@@ -60,7 +60,13 @@ Estructura típica: `backend/src/routes/`, `controllers/`, `middleware/`, `servi
 - **Idioma:** Comentarios y documentación en **español**. Nombres de variables/funciones en español cuando sea claro.
 - **API:** Rutas bajo prefijo `/api/`. Autenticación JWT. Validación con Zod en backend.
 - **Nombres:** Componentes/páginas PascalCase; hooks con prefijo `use`; archivos de utilidades y tipos en camelCase.
-- **Base de datos:** Prisma; en desarrollo SQLite (`file:./dev.db`); en producción PostgreSQL o MySQL según despliegue.
+- **Base de datos:** Prisma; en desarrollo SQLite (`file:./dev.db`); en producción PostgreSQL (Supabase).
+
+## Hosting (producción)
+
+- **Frontend:** Vercel (deploy automático desde el repo).
+- **Backend:** Render → `https://formula-care-api.onrender.com`.
+- **Base de datos:** Supabase (PostgreSQL).
 
 ## Puntos de entrada
 
