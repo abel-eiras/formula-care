@@ -58,7 +58,7 @@ Sistema de gestión para servicios asistenciales de farmacia, incluyendo anális
 - Tests automatizados
 
 ### 📝 Planificado
-Ver [PROPUESTA_DESARROLLO.md](./PROPUESTA_DESARROLLO.md) para detalles completos.
+Ver la carpeta [context/](context/) para documentación (guías activas e histórica).
 
 ---
 
@@ -152,20 +152,20 @@ farmaciapontevea_servicios/
 │       ├── routes/             # Rutas de API
 │       ├── services/           # Servicios (email, notificaciones)
 │       └── scripts/            # Scripts de migración
-├── docs/                       # Documentación
+├── context/                    # Documentación (guías, integraciones, histórico)
 └── public/                     # Archivos estáticos
 ```
 
-Para más detalles, ver [ESTRUCTURA_PROYECTO.md](./docs/ESTRUCTURA_PROYECTO.md)
+Para más detalles, ver [context/guias/ESTRUCTURA_PROYECTO.md](context/guias/ESTRUCTURA_PROYECTO.md)
 
 ---
 
 ## 📚 Documentación
 
-- **[Propuesta de Desarrollo](./PROPUESTA_DESARROLLO.md)** - Plan completo del proyecto
-- **[Guía de Código Limpio](./docs/GUIA_CODIGO_LIMPIO.md)** - Estándares de código
-- **[Estructura del Proyecto](./docs/ESTRUCTURA_PROYECTO.md)** - Organización de archivos
-- **[Mejores Prácticas de React](./docs/REACT_BEST_PRACTICES.md)** - Optimización y rendimiento en React
+- **[context/README.md](context/README.md)** - Índice de documentación (guías, stack, inicio rápido)
+- **[AGENTS.md](AGENTS.md)** - Guía para agentes de IA (reglas, checklist, referencias)
+- Guías activas en [context/guias/](context/guias/) (código limpio, React, estructura, despliegue)
+- Backend: [backend/README.md](backend/README.md), [backend/EMAIL_CONFIG.md](backend/EMAIL_CONFIG.md)
 
 ---
 

@@ -29,12 +29,16 @@
 
 ## 📚 Documentos de Referencia
 
-Al trabajar en este proyecto, consulta estos documentos:
+Toda la documentación de referencia está en la carpeta **context/**. Consulta:
 
-1. **[PROPUESTA_DESARROLLO.md](./PROPUESTA_DESARROLLO.md)** - Plan completo y alcance del proyecto
-2. **[docs/GUIA_CODIGO_LIMPIO.md](./docs/GUIA_CODIGO_LIMPIO.md)** - Estándares de código y ejemplos
-3. **[docs/ESTRUCTURA_PROYECTO.md](./docs/ESTRUCTURA_PROYECTO.md)** - Organización de carpetas y archivos
-4. **[docs/REACT_BEST_PRACTICES.md](./docs/REACT_BEST_PRACTICES.md)** - Mejores prácticas de React basadas en Vercel Labs Agent Skills
+- **[context/README.md](./context/README.md)** - Índice de documentación para agentes
+- **[context/STACK.md](./context/STACK.md)** - Stack tecnológico y convenciones
+- **[context/QUICKSTART.md](./context/QUICKSTART.md)** - Inicio rápido (comandos, verificación)
+- **[context/guias/GUIA_CODIGO_LIMPIO.md](./context/guias/GUIA_CODIGO_LIMPIO.md)** - Estándares de código y ejemplos
+- **[context/guias/ESTRUCTURA_PROYECTO.md](./context/guias/ESTRUCTURA_PROYECTO.md)** - Organización de carpetas y archivos
+- **[context/guias/REACT_BEST_PRACTICES.md](./context/guias/REACT_BEST_PRACTICES.md)** - Mejores prácticas de React (Vercel Labs)
+- **[context/guias/GUIA_DESPLIEGUE.md](./context/guias/GUIA_DESPLIEGUE.md)** - Despliegue en producción
+- **Backend:** [backend/README.md](./backend/README.md) (API), [backend/EMAIL_CONFIG.md](./backend/EMAIL_CONFIG.md) (correo)
 
 ## 🔴 Reglas Críticas de React (Prioridad Máxima)
 
@@ -92,18 +96,26 @@ const Dashboard = lazy(() => import('./pages/Dashboard'))
 ## 📁 Estructura de Carpetas
 
 ```
-src/
-├── pages/           # Páginas (PascalCase)
-├── components/      # Componentes reutilizables
-│   ├── ui/         # Componentes UI base
-│   ├── layout/     # Layout components
-│   └── [feature]/  # Componentes por funcionalidad
-├── hooks/          # Custom hooks (camelCase con "use")
-├── lib/            # Utilidades
-│   ├── api.ts      # Cliente HTTP
-│   └── utils.ts    # Funciones auxiliares
-└── types/          # TypeScript types
+(raíz)
+├── src/              # Frontend React (Vite)
+│   ├── pages/        # Páginas (PascalCase)
+│   ├── components/   # Componentes reutilizables (ui/, layout/, [feature]/)
+│   ├── hooks/        # Custom hooks (camelCase con "use")
+│   ├── lib/          # api.ts, utils.ts, etc.
+│   └── types/        # TypeScript types
+├── backend/          # API Node.js + Express + Prisma
+├── context/          # Documentación para agentes (guías, old, integraciones)
+└── .cursor/skills/   # Skills de proyecto (react-codigo-limpio, stack-farmacia-pontevea)
 ```
+
+## 🧩 Skills de Proyecto
+
+En **.cursor/skills/** hay skills específicos de este repositorio:
+
+| Skill | Cuándo usarlo |
+|-------|----------------|
+| **react-codigo-limpio** | Al escribir o revisar código React/TypeScript; aplicar estándares de código limpio, evitar waterfalls, optimizar bundle y re-renders. |
+| **stack-farmacia-pontevea** | Cuando necesites contexto del stack (React, Vite, Prisma, Express) o de la estructura del proyecto. |
 
 ## ✅ Checklist Antes de Commit
 
@@ -155,4 +167,4 @@ Antes de micro-optimizaciones.
 
 ---
 
-**Última actualización:** Enero 2024
+**Última actualización:** Febrero 2025
