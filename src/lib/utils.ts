@@ -28,3 +28,11 @@ export function hexToHsl(hex: string): string {
   }
   return `${Math.round(h * 360)} ${Math.round(s * 100)}% ${Math.round(l * 100)}%`;
 }
+
+/** Misma función que hexToHsl pero con luminosidad fija (0-100). Útil para texto legible sobre fondo oscuro (sidebar). */
+export function hexToHslWithLuminosity(hex: string, luminosityPercent: number): string {
+  const hsl = hexToHsl(hex);
+  const match = hsl.match(/^(\d+)\s+(\d+%)/);
+  if (!match) return "0 0% 80%";
+  return `${match[1]} ${match[2]} ${Math.min(100, Math.max(0, luminosityPercent))}%`;
+}

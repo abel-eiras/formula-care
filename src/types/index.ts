@@ -3,6 +3,12 @@ export interface ColoresMarca {
   secundario?: string;
   fondo?: string;
   texto?: string;
+  /** Color para subtítulos y texto secundario (mejor contraste en sidebar e informes) */
+  textoSecundario?: string;
+  /** Color de acento: botones, ítem activo en sidebar */
+  acento?: string;
+  /** Color de líneas divisorias y bordes de marca */
+  linea?: string;
   [key: string]: string | undefined;
 }
 

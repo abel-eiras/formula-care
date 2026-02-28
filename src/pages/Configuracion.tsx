@@ -21,7 +21,8 @@ import { useEventos, useCrearEvento, useActualizarEvento, useEliminarEvento } fr
 import { usePlantillasEmail, useVariablesPlantilla, useActualizarPlantilla, useRestaurarPlantilla } from "@/hooks/usePlantillasEmail";
 import { EditorPlantillaEmail } from "@/components/configuracion/EditorPlantillaEmail";
 import type { Evento, ParametroBioConfig, ConfiguracionRgpd, PlantillaEmail } from "@/types";
-import { cn, hexToHsl } from "@/lib/utils";
+import { cn, hexToHsl, hexToHslWithLuminosity } from "@/lib/utils";
+import { TEMAS_PRECONFIGURADOS, getColoresParaConfig } from "@/lib/coloresMarca";
 import type { ParametroReferencia, ColoresMarca } from "@/types";
 import { format } from "date-fns";
 import { es } from "date-fns/locale";
@@ -49,25 +50,60 @@ const GRUPOS_INFO: Record<string, { label: string; color: string }> = {
   corporales: { label: "Medidas Corporales", color: "text-success" },
 };
 
-// Temas preconfigurados para colores de marca
-const TEMAS_PRECONFIGURADOS: Record<string, { nombre: string; colores: ColoresMarca }> = {
-  default: {
-    nombre: "Por defecto",
-    colores: { primario: "#79438f", secundario: "#6495a8", fondo: "#f8fafc", texto: "#1e293b" },
-  },
-  pontevea: {
-    nombre: "Pontevea",
-    colores: { primario: "#79438f", secundario: "#6495a8", fondo: "#f8f4fa", texto: "#333333" },
-  },
-  verde: {
-    nombre: "Verde profesional",
-    colores: { primario: "#0d9488", secundario: "#14b8a6", fondo: "#f0fdfa", texto: "#134e4a" },
-  },
-  azul: {
-    nombre: "Azul corporativo",
-    colores: { primario: "#2563eb", secundario: "#3b82f6", fondo: "#eff6ff", texto: "#1e3a8a" },
-  },
-};
+/** Vista previa de cómo se verá un informe con los colores actuales */
+function VistaPreviaInforme({ colores }: { colores: ColoresMarca }) {
+  const primario = colores.primario ?? "#79438f";
+  const secundario = colores.secundario ?? "#6495a8";
+  const texto = colores.texto ?? "#1e293b";
+  const textoSec = colores.textoSecundario ?? "#475569";
+  const linea = colores.linea ?? secundario;
+  const fondo = colores.fondo ?? "#f8fafc";
+
+  return (
+    <div className="space-y-2 pt-2 border-t">
+      <Label className="text-muted-foreground">Vista previa del informe</Label>
+      <div
+        className="rounded-lg border overflow-hidden text-left shadow-inner max-w-md"
+        style={{
+          backgroundColor: fondo,
+          color: texto,
+          fontFamily: "Montserrat, sans-serif",
+        }}
+      >
+        <div className="p-4">
+          <div className="flex justify-between items-start gap-4 mb-3">
+            <div className="text-[10px] font-bold uppercase" style={{ color: textoSec }}>
+              [Logo]
+            </div>
+            <div className="text-right" style={{ color: primario }}>
+              <span className="text-sm font-light">Informe</span>
+              <br />
+              <strong className="text-sm">de ejemplo</strong>
+            </div>
+          </div>
+          <div
+            className="text-[10px] font-semibold uppercase py-1.5 px-2 rounded mb-2"
+            style={{ backgroundColor: secundario, color: "white" }}
+          >
+            Sección de ejemplo
+          </div>
+          <div className="text-[10px] font-semibold uppercase mb-1" style={{ color: secundario }}>
+            Subtítulo / Etiqueta
+          </div>
+          <div
+            className="border-b pb-1 text-[10px]"
+            style={{ borderBottomColor: linea }}
+          >
+            Contenido de ejemplo para el informe del paciente.
+          </div>
+          <div className="mt-2 text-[9px]" style={{ color: textoSec }}>
+            Pie o texto secundario — así se verá en los informes impresos.
+          </div>
+        </div>
+      </div>
+    </div>
+  );
+}
 
 export default function Configuracion() {
   const { data: config, isLoading } = useConfiguracion();
@@ -126,22 +162,34 @@ export default function Configuracion() {
     }
   }, [config]);
 
-  // Aplicar colores de marca al documento (variables CSS)
+  // Aplicar colores de marca al documento (variables CSS) — app e informes coherentes
   useEffect(() => {
-    const tema = farmaciaData.temaActivo || "default";
-    const colores = farmaciaData.temaActivo === "custom" && farmaciaData.coloresMarca
-      ? farmaciaData.coloresMarca
-      : TEMAS_PRECONFIGURADOS[tema]?.colores ?? TEMAS_PRECONFIGURADOS.default.colores;
+    const colores = getColoresParaConfig({
+      temaActivo: farmaciaData.temaActivo,
+      coloresMarca: farmaciaData.coloresMarca,
+    });
     const root = document.documentElement;
     if (colores.primario) {
       root.style.setProperty("--primary", hexToHsl(colores.primario));
       root.style.setProperty("--ring", hexToHsl(colores.primario));
       root.style.setProperty("--sidebar-background", hexToHsl(colores.primario));
       root.style.setProperty("--sidebar-ring", "0 0% 100%");
+      // Subtítulo del sidebar ("Care"): tono claro del primario para buen contraste sobre fondo oscuro
+      root.style.setProperty("--sidebar-muted", hexToHslWithLuminosity(colores.primario, 78));
     }
     if (colores.secundario) root.style.setProperty("--secondary", hexToHsl(colores.secundario));
     if (colores.fondo) root.style.setProperty("--background", hexToHsl(colores.fondo));
     if (colores.texto) root.style.setProperty("--foreground", hexToHsl(colores.texto));
+    // Subtítulos y texto secundario (mejor contraste en sidebar, ej. "Care")
+    if (colores.textoSecundario) root.style.setProperty("--muted-foreground", hexToHsl(colores.textoSecundario));
+    // Acento: botones, ítem activo en sidebar
+    if (colores.acento) {
+      root.style.setProperty("--accent", hexToHsl(colores.acento));
+      root.style.setProperty("--sidebar-accent", hexToHsl(colores.acento));
+      root.style.setProperty("--sidebar-accent-foreground", "0 0% 100%");
+    }
+    // Líneas divisorias y bordes de marca
+    if (colores.linea) root.style.setProperty("--sidebar-border", hexToHsl(colores.linea));
   }, [farmaciaData.temaActivo, farmaciaData.coloresMarca]);
 
   const handleGuardarFarmacia = async () => {
@@ -392,7 +440,7 @@ export default function Configuracion() {
             <CardHeader>
               <CardTitle>Colores y tema</CardTitle>
               <CardDescription>
-                Ajusta los colores de la aplicación a los de tu marca. Los cambios se aplican al instante.
+                Ajusta los colores de la aplicación y de los informes para imprimir. Los cambios se aplican al instante y se reflejan en los informes de pacientes.
               </CardDescription>
             </CardHeader>
             <CardContent className="space-y-6">
@@ -425,7 +473,7 @@ export default function Configuracion() {
               {farmaciaData.temaActivo === "custom" && (
                 <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 pt-2 border-t">
                   <div className="space-y-2">
-                    <Label htmlFor="colorPrimario">Color primario</Label>
+                    <Label htmlFor="colorPrimario">Color primario (títulos, cabeceras)</Label>
                     <div className="flex gap-2 items-center">
                       <Input
                         id="colorPrimario"
@@ -452,7 +500,7 @@ export default function Configuracion() {
                     </div>
                   </div>
                   <div className="space-y-2">
-                    <Label htmlFor="colorSecundario">Color secundario</Label>
+                    <Label htmlFor="colorSecundario">Color secundario (bloques, secciones)</Label>
                     <div className="flex gap-2 items-center">
                       <Input
                         id="colorSecundario"
@@ -478,8 +526,152 @@ export default function Configuracion() {
                       />
                     </div>
                   </div>
+                  <div className="space-y-2">
+                    <Label htmlFor="colorFondo">Fondo (informes)</Label>
+                    <div className="flex gap-2 items-center">
+                      <Input
+                        id="colorFondo"
+                        type="color"
+                        className="w-14 h-10 p-1 cursor-pointer"
+                        value={farmaciaData.coloresMarca?.fondo ?? "#f8fafc"}
+                        onChange={(e) =>
+                          setFarmaciaData((prev) => ({
+                            ...prev,
+                            coloresMarca: { ...prev.coloresMarca, fondo: e.target.value },
+                          }))
+                        }
+                      />
+                      <Input
+                        className="flex-1 font-mono text-sm"
+                        value={farmaciaData.coloresMarca?.fondo ?? "#f8fafc"}
+                        onChange={(e) =>
+                          setFarmaciaData((prev) => ({
+                            ...prev,
+                            coloresMarca: { ...prev.coloresMarca, fondo: e.target.value },
+                          }))
+                        }
+                      />
+                    </div>
+                  </div>
+                  <div className="space-y-2">
+                    <Label htmlFor="colorTexto">Texto principal</Label>
+                    <div className="flex gap-2 items-center">
+                      <Input
+                        id="colorTexto"
+                        type="color"
+                        className="w-14 h-10 p-1 cursor-pointer"
+                        value={farmaciaData.coloresMarca?.texto ?? "#1e293b"}
+                        onChange={(e) =>
+                          setFarmaciaData((prev) => ({
+                            ...prev,
+                            coloresMarca: { ...prev.coloresMarca, texto: e.target.value },
+                          }))
+                        }
+                      />
+                      <Input
+                        className="flex-1 font-mono text-sm"
+                        value={farmaciaData.coloresMarca?.texto ?? "#1e293b"}
+                        onChange={(e) =>
+                          setFarmaciaData((prev) => ({
+                            ...prev,
+                            coloresMarca: { ...prev.coloresMarca, texto: e.target.value },
+                          }))
+                        }
+                      />
+                    </div>
+                  </div>
+                  <div className="space-y-2">
+                    <Label htmlFor="colorTextoSecundario">Texto secundario / subtítulos</Label>
+                    <div className="flex gap-2 items-center">
+                      <Input
+                        id="colorTextoSecundario"
+                        type="color"
+                        className="w-14 h-10 p-1 cursor-pointer"
+                        value={farmaciaData.coloresMarca?.textoSecundario ?? farmaciaData.coloresMarca?.secundario ?? "#475569"}
+                        onChange={(e) =>
+                          setFarmaciaData((prev) => ({
+                            ...prev,
+                            coloresMarca: { ...prev.coloresMarca, textoSecundario: e.target.value },
+                          }))
+                        }
+                      />
+                      <Input
+                        className="flex-1 font-mono text-sm"
+                        value={farmaciaData.coloresMarca?.textoSecundario ?? farmaciaData.coloresMarca?.secundario ?? "#475569"}
+                        onChange={(e) =>
+                          setFarmaciaData((prev) => ({
+                            ...prev,
+                            coloresMarca: { ...prev.coloresMarca, textoSecundario: e.target.value },
+                          }))
+                        }
+                      />
+                    </div>
+                  </div>
+                  <div className="space-y-2">
+                    <Label htmlFor="colorAcento">Acento (botones, ítem activo)</Label>
+                    <div className="flex gap-2 items-center">
+                      <Input
+                        id="colorAcento"
+                        type="color"
+                        className="w-14 h-10 p-1 cursor-pointer"
+                        value={farmaciaData.coloresMarca?.acento ?? farmaciaData.coloresMarca?.primario ?? "#79438f"}
+                        onChange={(e) =>
+                          setFarmaciaData((prev) => ({
+                            ...prev,
+                            coloresMarca: { ...prev.coloresMarca, acento: e.target.value },
+                          }))
+                        }
+                      />
+                      <Input
+                        className="flex-1 font-mono text-sm"
+                        value={farmaciaData.coloresMarca?.acento ?? farmaciaData.coloresMarca?.primario ?? "#79438f"}
+                        onChange={(e) =>
+                          setFarmaciaData((prev) => ({
+                            ...prev,
+                            coloresMarca: { ...prev.coloresMarca, acento: e.target.value },
+                          }))
+                        }
+                      />
+                    </div>
+                  </div>
+                  <div className="space-y-2">
+                    <Label htmlFor="colorLinea">Líneas divisorias y bordes</Label>
+                    <div className="flex gap-2 items-center">
+                      <Input
+                        id="colorLinea"
+                        type="color"
+                        className="w-14 h-10 p-1 cursor-pointer"
+                        value={farmaciaData.coloresMarca?.linea ?? farmaciaData.coloresMarca?.secundario ?? "#6495a8"}
+                        onChange={(e) =>
+                          setFarmaciaData((prev) => ({
+                            ...prev,
+                            coloresMarca: { ...prev.coloresMarca, linea: e.target.value },
+                          }))
+                        }
+                      />
+                      <Input
+                        className="flex-1 font-mono text-sm"
+                        value={farmaciaData.coloresMarca?.linea ?? farmaciaData.coloresMarca?.secundario ?? "#6495a8"}
+                        onChange={(e) =>
+                          setFarmaciaData((prev) => ({
+                            ...prev,
+                            coloresMarca: { ...prev.coloresMarca, linea: e.target.value },
+                          }))
+                        }
+                      />
+                    </div>
+                  </div>
                 </div>
               )}
+
+              {/* Vista previa de informe */}
+              <VistaPreviaInforme
+                colores={getColoresParaConfig({
+                  temaActivo: farmaciaData.temaActivo,
+                  coloresMarca: farmaciaData.coloresMarca,
+                })}
+              />
+
               <div className="flex justify-end pt-4">
                 <Button
                   onClick={handleGuardarFarmacia}

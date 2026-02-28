@@ -3,6 +3,7 @@ import { useSearchParams } from "react-router-dom";
 import { useAnalisisDermo } from "@/hooks/useAnalisisDermo";
 import { usePacientes } from "@/hooks/usePacientes";
 import { useConfiguracion } from "@/hooks/useConfiguracion";
+import { getColoresParaConfig } from "@/lib/coloresMarca";
 
 // Opciones de valoración de la piel
 const VALORACION_PIEL_LABELS: Record<string, string> = {
@@ -62,6 +63,8 @@ export default function ServicioDermoPrint() {
     ? pacientes.find((p) => p.id === analisis.pacienteId)
     : null;
 
+  const colores = getColoresParaConfig(config);
+
   // Auto-imprimir cuando se carga la página (solo si viene de la opción de imprimir)
   useEffect(() => {
     if (analisis) {
@@ -94,8 +97,8 @@ export default function ServicioDermoPrint() {
         
         .print-page {
           font-family: 'Montserrat', sans-serif;
-          background-color: #f3f4f6;
-          color: #333333;
+          background-color: ${colores.fondo ?? "#f3f4f6"};
+          color: ${colores.texto ?? "#333333"};
           padding: 20px;
           min-height: 100vh;
         }
@@ -116,7 +119,7 @@ export default function ServicioDermoPrint() {
 
         .header-title {
           text-align: right;
-          color: #79438f;
+          color: ${colores.primario};
         }
 
         .header-title h1 {
@@ -127,7 +130,7 @@ export default function ServicioDermoPrint() {
 
         .section-header {
           color: white;
-          background-color: #6495a8;
+          background-color: ${colores.secundario};
           font-weight: 600;
           font-size: 0.9rem;
           padding: 6px 15px;
@@ -159,13 +162,13 @@ export default function ServicioDermoPrint() {
           left: 0;
           height: 18px;
           width: 18px;
-          border: 1.5px solid #79438f;
+          border: 1.5px solid ${colores.primario};
           background-color: transparent;
           border-radius: 2px;
         }
 
         .check-item.checked .checkmark {
-          background-color: #79438f;
+          background-color: ${colores.primario};
         }
 
         .check-item.checked .checkmark:after {
@@ -188,7 +191,7 @@ export default function ServicioDermoPrint() {
         }
 
         .routine-title {
-          background-color: #79438f;
+          background-color: ${colores.primario};
           color: white;
           text-align: center;
           padding: 8px;
@@ -201,14 +204,14 @@ export default function ServicioDermoPrint() {
         .step-label {
           font-size: 0.7rem;
           font-weight: 600;
-          color: #6495a8;
+          color: ${colores.secundario};
           text-transform: uppercase;
           display: block;
           margin-top: 10px;
         }
 
         .footer-line {
-          border-top: 1px solid #79438f;
+          border-top: 1px solid ${colores.linea ?? colores.primario};
           margin-top: 40px;
           padding-top: 15px;
           display: flex;
@@ -225,7 +228,7 @@ export default function ServicioDermoPrint() {
 
         .accent-box {
           background-color: #f0f5f7;
-          border-left: 4px solid #6495a8;
+          border-left: 4px solid ${colores.secundario};
           padding: 15px;
         }
 
@@ -267,12 +270,12 @@ export default function ServicioDermoPrint() {
             padding: 30px; 
           }
           .checkmark { 
-            border: 1.5px solid #79438f !important; 
+            border: 1.5px solid ${colores.primario} !important; 
             -webkit-print-color-adjust: exact;
             print-color-adjust: exact;
           }
           .check-item.checked .checkmark { 
-            background-color: #79438f !important;
+            background-color: ${colores.primario} !important;
             -webkit-print-color-adjust: exact;
             print-color-adjust: exact;
           }
@@ -300,7 +303,7 @@ export default function ServicioDermoPrint() {
             <div style={{ display: "none" }} className="brand-text">
               <div
                 style={{
-                  color: "#79438f",
+                  color: colores.primario,
                   fontWeight: 800,
                   fontSize: "1.5rem",
                   textTransform: "uppercase",
@@ -444,26 +447,26 @@ export default function ServicioDermoPrint() {
         {/* Cuidados Semanales y Suplementación - Siempre visible */}
         <div className="grid grid-cols-2 gap-8 mt-6">
           <div className="accent-box">
-            <div className="text-[10px] font-bold uppercase text-[#6495a8] mb-2">Cuidados Semanales</div>
+            <div className="text-[10px] font-bold uppercase mb-2" style={{ color: colores.secundario }}>Cuidados Semanales</div>
             <div>
-              <label className="step-label" style={{ color: "#79438f" }}>
+              <label className="step-label" style={{ color: colores.primario }}>
                 Exfoliante
               </label>
-              <div className="print-textarea whitespace-pre-wrap" style={{ borderBottomColor: "#6495a8" }}>
+              <div className="print-textarea whitespace-pre-wrap" style={{ borderBottomColor: colores.secundario }}>
                 {analisis.cuidadosSemanales?.exfoliante || ""}
               </div>
             </div>
             <div>
-              <label className="step-label" style={{ color: "#79438f" }}>
+              <label className="step-label" style={{ color: colores.primario }}>
                 Mascarilla
               </label>
-              <div className="print-textarea whitespace-pre-wrap" style={{ borderBottomColor: "#6495a8" }}>
+              <div className="print-textarea whitespace-pre-wrap" style={{ borderBottomColor: colores.secundario }}>
                 {analisis.cuidadosSemanales?.mascarilla || ""}
               </div>
             </div>
           </div>
           <div className="accent-box">
-            <div className="text-[10px] font-bold uppercase text-[#6495a8] mb-2">Suplementación oral</div>
+            <div className="text-[10px] font-bold uppercase mb-2" style={{ color: colores.secundario }}>Suplementación oral</div>
             <div className="print-textarea whitespace-pre-wrap italic" style={{ minHeight: "120px" }}>
               {analisis.suplementacionOral || ""}
             </div>
@@ -473,13 +476,13 @@ export default function ServicioDermoPrint() {
         {/* Firmas - Siempre visible */}
         <div className="signature-area text-sm">
           <div className="flex items-center">
-            <span className="font-semibold text-[#79438f] uppercase text-xs mr-2">Próxima Revisión:</span>
+            <span className="font-semibold uppercase text-xs mr-2" style={{ color: colores.primario }}>Próxima Revisión:</span>
             <div className="print-field" style={{ width: "75%" }}>
               {analisis.proximaRevision ? formatearFechaPrint(analisis.proximaRevision) : ""}
             </div>
           </div>
           <div className="text-right">
-            <span className="font-semibold text-[#79438f] uppercase text-xs">Farmacéutico/a:</span>
+            <span className="font-semibold uppercase text-xs" style={{ color: colores.primario }}>Farmacéutico/a:</span>
             <div className="print-field" style={{ width: "75%" }}>
               {analisis.farmaceutico || ""}
             </div>
@@ -489,7 +492,7 @@ export default function ServicioDermoPrint() {
         {/* Información de Contacto */}
         <div className="footer-line">
           <div>
-            <strong style={{ color: "#79438f" }}>{nombreFarmacia}</strong>
+            <strong style={{ color: colores.primario }}>{nombreFarmacia}</strong>
             <br />
             {direccionFarmacia}
             <br />

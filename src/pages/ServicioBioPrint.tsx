@@ -3,6 +3,7 @@ import { useSearchParams } from "react-router-dom";
 import { useAnalisisBio } from "@/hooks/useAnalisisBio";
 import { usePacientes } from "@/hooks/usePacientes";
 import { useConfiguracion } from "@/hooks/useConfiguracion";
+import { getColoresParaConfig } from "@/lib/coloresMarca";
 
 /**
  * Formatea una fecha ISO a formato dd/mm/aaaa
@@ -39,6 +40,8 @@ export default function ServicioBioPrint() {
     ? pacientes.find((p) => p.id === analisis.pacienteId)
     : null;
 
+  const colores = getColoresParaConfig(config);
+
   // Auto-imprimir cuando se carga la página (solo si viene de la opción de imprimir)
   useEffect(() => {
     if (analisis) {
@@ -71,8 +74,8 @@ export default function ServicioBioPrint() {
         
         .print-page {
           font-family: 'Montserrat', sans-serif;
-          background-color: #f3f4f6;
-          color: #333333;
+          background-color: ${colores.fondo ?? "#f3f4f6"};
+          color: ${colores.texto ?? "#333333"};
           padding: 20px;
           min-height: 100vh;
         }
@@ -93,7 +96,7 @@ export default function ServicioBioPrint() {
 
         .header-title {
           text-align: right;
-          color: #79438f;
+          color: ${colores.primario};
         }
 
         .header-title h1 {
@@ -104,7 +107,7 @@ export default function ServicioBioPrint() {
 
         .section-header {
           color: white;
-          background-color: #6495a8;
+          background-color: ${colores.secundario};
           font-weight: 600;
           font-size: 0.9rem;
           padding: 6px 15px;
@@ -118,11 +121,11 @@ export default function ServicioBioPrint() {
         .block-title {
           font-size: 0.85rem;
           font-weight: 600;
-          color: #79438f;
+          color: ${colores.primario};
           text-transform: uppercase;
           margin-bottom: 12px;
           padding-bottom: 6px;
-          border-bottom: 2px solid #79438f;
+          border-bottom: 2px solid ${colores.linea ?? colores.primario};
         }
 
         .param-row {
@@ -154,7 +157,7 @@ export default function ServicioBioPrint() {
 
         .accent-box {
           background-color: #f0f5f7;
-          border-left: 4px solid #6495a8;
+          border-left: 4px solid ${colores.secundario};
           padding: 15px;
         }
 
@@ -172,7 +175,7 @@ export default function ServicioBioPrint() {
         }
 
         .footer-line {
-          border-top: 1px solid #79438f;
+          border-top: 1px solid ${colores.linea ?? colores.primario};
           margin-top: 40px;
           padding-top: 15px;
           display: flex;
@@ -220,7 +223,7 @@ export default function ServicioBioPrint() {
             <div style={{ display: "none" }} className="brand-text">
               <div
                 style={{
-                  color: "#79438f",
+                  color: colores.primario,
                   fontWeight: 800,
                   fontSize: "1.5rem",
                   textTransform: "uppercase",
@@ -426,7 +429,7 @@ export default function ServicioBioPrint() {
         {/* Información de Contacto */}
         <div className="footer-line">
           <div>
-            <strong style={{ color: "#79438f" }}>{nombreFarmacia}</strong>
+            <strong style={{ color: colores.primario }}>{nombreFarmacia}</strong>
             <br />
             {direccionFarmacia}
             <br />
