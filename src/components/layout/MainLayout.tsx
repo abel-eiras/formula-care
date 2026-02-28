@@ -1,4 +1,5 @@
 import { AppSidebar } from "./AppSidebar";
+import { ThemeFromConfig } from "./ThemeFromConfig";
 import { cn } from "@/lib/utils";
 
 interface MainLayoutProps {
@@ -8,6 +9,7 @@ interface MainLayoutProps {
 export function MainLayout({ children }: MainLayoutProps) {
   return (
     <div className="min-h-screen bg-background">
+      <ThemeFromConfig />
       <AppSidebar />
       <main className={cn(
         "min-h-screen transition-all duration-300",

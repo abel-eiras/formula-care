@@ -21,8 +21,9 @@ import { useEventos, useCrearEvento, useActualizarEvento, useEliminarEvento } fr
 import { usePlantillasEmail, useVariablesPlantilla, useActualizarPlantilla, useRestaurarPlantilla } from "@/hooks/usePlantillasEmail";
 import { EditorPlantillaEmail } from "@/components/configuracion/EditorPlantillaEmail";
 import type { Evento, ParametroBioConfig, ConfiguracionRgpd, PlantillaEmail } from "@/types";
-import { cn, hexToHsl, hexToHslWithLuminosity } from "@/lib/utils";
+import { cn } from "@/lib/utils";
 import { TEMAS_PRECONFIGURADOS, getColoresParaConfig } from "@/lib/coloresMarca";
+import { applyThemeToDocument } from "@/lib/theme";
 import type { ParametroReferencia, ColoresMarca } from "@/types";
 import { format } from "date-fns";
 import { es } from "date-fns/locale";
@@ -162,34 +163,12 @@ export default function Configuracion() {
     }
   }, [config]);
 
-  // Aplicar colores de marca al documento (variables CSS) — app e informes coherentes
+  // Aplicar colores de marca al documento (vista previa en tiempo real en esta página + persistir en localStorage)
   useEffect(() => {
-    const colores = getColoresParaConfig({
+    applyThemeToDocument({
       temaActivo: farmaciaData.temaActivo,
       coloresMarca: farmaciaData.coloresMarca,
     });
-    const root = document.documentElement;
-    if (colores.primario) {
-      root.style.setProperty("--primary", hexToHsl(colores.primario));
-      root.style.setProperty("--ring", hexToHsl(colores.primario));
-      root.style.setProperty("--sidebar-background", hexToHsl(colores.primario));
-      root.style.setProperty("--sidebar-ring", "0 0% 100%");
-      // Subtítulo del sidebar ("Care"): tono claro del primario para buen contraste sobre fondo oscuro
-      root.style.setProperty("--sidebar-muted", hexToHslWithLuminosity(colores.primario, 78));
-    }
-    if (colores.secundario) root.style.setProperty("--secondary", hexToHsl(colores.secundario));
-    if (colores.fondo) root.style.setProperty("--background", hexToHsl(colores.fondo));
-    if (colores.texto) root.style.setProperty("--foreground", hexToHsl(colores.texto));
-    // Subtítulos y texto secundario (mejor contraste en sidebar, ej. "Care")
-    if (colores.textoSecundario) root.style.setProperty("--muted-foreground", hexToHsl(colores.textoSecundario));
-    // Acento: botones, ítem activo en sidebar
-    if (colores.acento) {
-      root.style.setProperty("--accent", hexToHsl(colores.acento));
-      root.style.setProperty("--sidebar-accent", hexToHsl(colores.acento));
-      root.style.setProperty("--sidebar-accent-foreground", "0 0% 100%");
-    }
-    // Líneas divisorias y bordes de marca
-    if (colores.linea) root.style.setProperty("--sidebar-border", hexToHsl(colores.linea));
   }, [farmaciaData.temaActivo, farmaciaData.coloresMarca]);
 
   const handleGuardarFarmacia = async () => {
