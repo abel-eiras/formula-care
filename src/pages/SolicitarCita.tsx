@@ -18,6 +18,10 @@ import { cn } from '@/lib/utils';
 import { MessageCircle } from 'lucide-react';
 import { LoadingSpinner } from '@/components/ui/LoadingSpinner';
 
+// Site key de reCAPTCHA Enterprise (público, puede ir en el frontend)
+const RECAPTCHA_SITE_KEY = (import.meta.env.VITE_RECAPTCHA_SITE_KEY as string) || '6Lc_wHosAAAAAF0_2KG7b0YqJNJVcot-RphIp1K1';
+const RECAPTCHA_ACTION = 'solicitar_cita';
+
 // Tipo local para eventos
 interface EventoPublico {
   id: string;
@@ -25,6 +29,18 @@ interface EventoPublico {
   descripcion: string | null;
   fechas: string[];
   horas: string[];
+}
+
+// Declaración global para reCAPTCHA Enterprise
+declare global {
+  interface Window {
+    grecaptcha?: {
+      enterprise?: {
+        ready: (cb: () => void) => void;
+        execute: (siteKey: string, options: { action: string }) => Promise<string>;
+      };
+    };
+  }
 }
 
 export default function SolicitarCita() {
@@ -80,6 +96,16 @@ export default function SolicitarCita() {
     }
   }, [fechaSeleccionada, tipoParaDisponibilidad, refetchDisponibilidad]);
 
+  // Cargar script de reCAPTCHA Enterprise (invisible, token al enviar)
+  useEffect(() => {
+    if (document.querySelector('script[src*="recaptcha/enterprise"]')) return;
+    const script = document.createElement('script');
+    script.src = `https://www.google.com/recaptcha/enterprise.js?render=${RECAPTCHA_SITE_KEY}`;
+    script.async = true;
+    script.defer = true;
+    document.head.appendChild(script);
+  }, []);
+
   // Hook para crear solicitud
   const solicitarCita = useSolicitarCita();
 
@@ -113,13 +139,29 @@ export default function SolicitarCita() {
   fechaLimite.setDate(hoy.getDate() + 60);
 
 
-  // Manejar envío del formulario
+  // Manejar envío del formulario (reCAPTCHA Enterprise: token al hacer clic en Enviar)
   const handleEnviarSolicitud = async () => {
     if (!slug || !tipoServicio || !fechaSeleccionada || !horaSeleccionada) return;
 
     try {
       const tipoFinal = tipoServicio?.startsWith('evento:') ? 'evento' : tipoServicio;
       const eventoIdFinal = tipoServicio?.startsWith('evento:') ? tipoServicio.split(':')[1] : undefined;
+
+      let captchaToken: string | undefined;
+      if (typeof window !== 'undefined' && window.grecaptcha?.enterprise) {
+        captchaToken = await new Promise<string | undefined>((resolve) => {
+          window.grecaptcha!.enterprise!.ready(async () => {
+            try {
+              const token = await window.grecaptcha!.enterprise!.execute(RECAPTCHA_SITE_KEY, {
+                action: RECAPTCHA_ACTION,
+              });
+              resolve(token || undefined);
+            } catch {
+              resolve(undefined);
+            }
+          });
+        });
+      }
 
       const resultado = await solicitarCita.mutateAsync({
         farmaciaSlug: slug,
@@ -131,6 +173,7 @@ export default function SolicitarCita() {
         hora: horaSeleccionada,
         notas: datosCliente.notas || undefined,
         eventoId: eventoIdFinal,
+        captchaToken: captchaToken || undefined,
       });
 
       setResultadoSolicitud({
@@ -149,11 +192,20 @@ export default function SolicitarCita() {
           description: 'Te contactaremos pronto para confirmar tu cita.',
         });
       }
-    } catch (error) {
+    } catch (error: unknown) {
       console.error('Error al enviar solicitud:', error);
-      toast.error('Error al enviar solicitud', {
-        description: error instanceof Error ? error.message : 'Por favor, intenta de nuevo.',
-      });
+      const err = error as { response?: { data?: { codigo?: string; error?: string } } };
+      const codigo = err.response?.data?.codigo;
+      const mensaje = err.response?.data?.error;
+      if (codigo === 'CAPTCHA_REQUERIDO' || codigo === 'CAPTCHA_INVALIDO') {
+        toast.error('Verificación de seguridad', {
+          description: mensaje || 'La verificación de seguridad ha fallado. Inténtalo de nuevo.',
+        });
+      } else {
+        toast.error('Error al enviar solicitud', {
+          description: mensaje || (error instanceof Error ? error.message : 'Por favor, intenta de nuevo.'),
+        });
+      }
     }
   };
 
@@ -600,6 +652,8 @@ export default function SolicitarCita() {
                             rows={4}
                           />
                         </div>
+
+                        {/* reCAPTCHA Enterprise: invisible, se ejecuta al pulsar Enviar */}
 
                         {/* Checkbox RGPD */}
                         <div className="flex items-start gap-3 p-4 bg-gray-50 rounded-lg border">

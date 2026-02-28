@@ -336,6 +336,7 @@ export async function cancelarCita(req: Request, res: Response) {
         hora: cita.hora,
         nombreCliente: paciente.name,
         motivoRechazo: motivo || 'Cancelada a solicitud del paciente',
+        citaId: cita.id,
       });
     }
 

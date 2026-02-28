@@ -54,6 +54,9 @@ export default function ServicioDermoPrint() {
   const direccionFarmacia = config?.farmaciaDireccion || '';
   const ciudadFarmacia = config?.farmaciaCiudad || '';
   const telefonoFarmacia = config?.farmaciaTelefono || '';
+  const logoUrl = config?.farmaciaLogo
+    ? (config.farmaciaLogo.startsWith("data:") ? config.farmaciaLogo : `/microcaya/${config.farmaciaLogo}`)
+    : "/logo.png";
 
   const paciente = analisis?.pacienteId
     ? pacientes.find((p) => p.id === analisis.pacienteId)
@@ -285,7 +288,7 @@ export default function ServicioDermoPrint() {
         <div className="flex justify-between items-center mb-8">
           <div className="logo-container">
             <img
-              src="/logo.png"
+              src={logoUrl}
               alt={`${nombreFarmacia} Logo`}
               className="logo-img"
               onError={(e) => {

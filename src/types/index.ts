@@ -1,3 +1,11 @@
+export interface ColoresMarca {
+  primario?: string;
+  secundario?: string;
+  fondo?: string;
+  texto?: string;
+  [key: string]: string | undefined;
+}
+
 export interface Configuracion {
   id: string;
   farmaciaNombre?: string;
@@ -8,6 +16,8 @@ export interface Configuracion {
   farmaciaWeb?: string;
   farmaciaWhatsapp?: string;
   farmaciaLogo?: string;
+  temaActivo?: string;
+  coloresMarca?: ColoresMarca | null;
   valoracionBioActiva: boolean;
   parametrosReferencia: Record<string, ParametroReferencia>;
   parametrosBioConfig?: ParametroBioConfig[]; // Configuración de parámetros dinámicos
@@ -71,7 +81,7 @@ export interface ParametroBioConfig {
   id: string;           // Identificador único (ej: "glucemia", "custom_1")
   label: string;        // Nombre visible (ej: "Glucemia")
   unit: string;         // Unidad (ej: "mg/dL")
-  grupo: 'basicos' | 'avanzados' | 'corporales'; // Grupo para maquetación
+  grupo: 'basicos' | 'avanzados' | 'tension' | 'corporales'; // Grupo para maquetación
   activo: boolean;      // Si está activo/visible
   orden: number;        // Orden dentro del grupo
   esPersonalizado?: boolean; // Si es un parámetro creado por el usuario

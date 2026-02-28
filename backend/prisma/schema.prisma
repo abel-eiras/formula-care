@@ -274,6 +274,9 @@ model Configuracion {
   farmaciaWeb           String?
   farmaciaWhatsapp      String?
   farmaciaLogo          String?  // Ruta al logo
+  // Apariencia y marca (colores, tema)
+  temaActivo            String?  @default("default") // "default", "pontevea", "custom"
+  coloresMarca          String?  // JSON: { "primario": "#79438f", "secundario": "#6495a8", ... }
   // Configuración de valoración bioquímica
   valoracionBioActiva   Boolean  @default(true) // Activar/desactivar valoración global
   parametrosReferencia  String   @default("{}") // JSON con valores de referencia por parámetro

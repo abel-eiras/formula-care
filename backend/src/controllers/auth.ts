@@ -260,11 +260,18 @@ export async function cambiarPassword(req: Request, res: Response) {
 
 /**
  * GET /api/auth/usuarios
- * Listar todos los usuarios (solo admin)
+ * Listar usuarios (solo admin). Admins ven solo usuarios de su farmacia; superadmin ve todos.
  */
 export async function listarUsuarios(req: Request, res: Response) {
   try {
+    const user = req.usuario || req.user;
+    const where: { farmaciaId?: string | null } = {};
+    if (user?.rol !== 'superadmin' && user?.farmaciaId) {
+      where.farmaciaId = user.farmaciaId;
+    }
+
     const usuarios = await prisma.usuario.findMany({
+      where,
       select: {
         id: true,
         email: true,
@@ -286,18 +293,22 @@ export async function listarUsuarios(req: Request, res: Response) {
 
 /**
  * PUT /api/auth/usuarios/:id
- * Actualizar usuario (solo admin)
+ * Actualizar usuario (solo admin). Admin solo puede actualizar usuarios de su farmacia.
  */
 export async function actualizarUsuario(req: Request, res: Response) {
   try {
     const id = getParamString(req.params.id);
     const { nombre, rol, activo } = req.body;
+    const user = req.usuario || req.user;
 
     const usuario = await prisma.usuario.findUnique({
       where: { id },
     });
 
     if (!usuario) {
+      return res.status(404).json({ error: 'Usuario no encontrado' });
+    }
+    if (user?.rol !== 'superadmin' && user?.farmaciaId !== usuario.farmaciaId) {
       return res.status(404).json({ error: 'Usuario no encontrado' });
     }
 
@@ -345,6 +356,10 @@ export async function eliminarUsuario(req: Request, res: Response) {
     });
 
     if (!usuario) {
+      return res.status(404).json({ error: 'Usuario no encontrado' });
+    }
+    const user = req.usuario || req.user;
+    if (user?.rol !== 'superadmin' && user?.farmaciaId !== usuario.farmaciaId) {
       return res.status(404).json({ error: 'Usuario no encontrado' });
     }
 
