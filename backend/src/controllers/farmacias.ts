@@ -8,6 +8,10 @@ import { z } from 'zod';
 import bcrypt from 'bcryptjs';
 import { prisma } from '../lib/prisma.js';
 import { getParamString } from '../lib/queryHelpers.js';
+import {
+  PARAMETROS_BIO_CONFIG_DEFAULT,
+  PARAMETROS_REFERENCIA_DEFAULT,
+} from '../config/parametrosBioDefault.js';
 
 // Función para generar slug a partir del nombre
 function generarSlug(nombre: string): string {
@@ -269,7 +273,7 @@ export async function crearFarmacia(req: Request, res: Response) {
         },
       });
 
-      // 3. Crear configuración por defecto
+      // 3. Crear configuración por defecto (mismos parámetros bio que Farmacia Pontevea)
       await tx.configuracion.create({
         data: {
           farmaciaId: farmacia.id,
@@ -279,6 +283,9 @@ export async function crearFarmacia(req: Request, res: Response) {
           farmaciaTelefono: farmacia.telefono,
           farmaciaEmail: farmacia.email,
           farmaciaWeb: farmacia.web,
+          valoracionBioActiva: true,
+          parametrosReferencia: JSON.stringify(PARAMETROS_REFERENCIA_DEFAULT),
+          parametrosBioConfig: JSON.stringify(PARAMETROS_BIO_CONFIG_DEFAULT),
         },
       });
 

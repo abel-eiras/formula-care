@@ -14,6 +14,10 @@
 
 import { PrismaClient } from '@prisma/client';
 import bcrypt from 'bcryptjs';
+import {
+  PARAMETROS_BIO_CONFIG_DEFAULT,
+  PARAMETROS_REFERENCIA_DEFAULT,
+} from '../src/config/parametrosBioDefault.js';
 
 const prisma = new PrismaClient();
 
@@ -218,9 +222,12 @@ async function migrarMultitenant() {
         data: {
           farmaciaId: farmacia.id,
           farmaciaNombre: nombreFarmacia,
+          valoracionBioActiva: true,
+          parametrosReferencia: JSON.stringify(PARAMETROS_REFERENCIA_DEFAULT),
+          parametrosBioConfig: JSON.stringify(PARAMETROS_BIO_CONFIG_DEFAULT),
         },
       });
-      console.log('✅ Configuración creada por defecto\n');
+      console.log('✅ Configuración creada por defecto (parámetros bio = Pontevea)\n');
     }
   } else {
     console.log('ℹ️ La farmacia ya tiene configuración\n');

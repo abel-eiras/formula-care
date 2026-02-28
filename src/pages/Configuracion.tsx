@@ -310,7 +310,7 @@ export default function Configuracion() {
                     id="farmaciaNombre"
                     value={farmaciaData.farmaciaNombre}
                     onChange={(e) => setFarmaciaData({ ...farmaciaData, farmaciaNombre: e.target.value })}
-                    placeholder="Farmacia Pontevea"
+                    placeholder="Nombre de la farmacia"
                   />
                 </div>
                 <div className="space-y-2">
@@ -319,7 +319,7 @@ export default function Configuracion() {
                     id="farmaciaTelefono"
                     value={farmaciaData.farmaciaTelefono}
                     onChange={(e) => setFarmaciaData({ ...farmaciaData, farmaciaTelefono: e.target.value })}
-                    placeholder="981 815 708"
+                    placeholder="900 000 000"
                   />
                 </div>
                 <div className="space-y-2 md:col-span-2">
@@ -328,7 +328,7 @@ export default function Configuracion() {
                     id="farmaciaDireccion"
                     value={farmaciaData.farmaciaDireccion}
                     onChange={(e) => setFarmaciaData({ ...farmaciaData, farmaciaDireccion: e.target.value })}
-                    placeholder="Avda. Ignacio Varela 16, Pontevea"
+                    placeholder="Calle Ejemplo, 3, 28001 Madrid"
                   />
                 </div>
                 <div className="space-y-2 md:col-span-2">
@@ -337,7 +337,7 @@ export default function Configuracion() {
                     id="farmaciaCiudad"
                     value={farmaciaData.farmaciaCiudad}
                     onChange={(e) => setFarmaciaData({ ...farmaciaData, farmaciaCiudad: e.target.value })}
-                    placeholder="15883 Teo, A Coruña"
+                    placeholder="Ciudad y código postal"
                   />
                 </div>
                 <div className="space-y-2">
@@ -347,7 +347,7 @@ export default function Configuracion() {
                     type="email"
                     value={farmaciaData.farmaciaEmail}
                     onChange={(e) => setFarmaciaData({ ...farmaciaData, farmaciaEmail: e.target.value })}
-                    placeholder="farmacia@farmaciapontevea.com"
+                    placeholder="contacto@farmacia.com"
                   />
                 </div>
                 <div className="space-y-2">
@@ -356,7 +356,7 @@ export default function Configuracion() {
                     id="farmaciaWeb"
                     value={farmaciaData.farmaciaWeb}
                     onChange={(e) => setFarmaciaData({ ...farmaciaData, farmaciaWeb: e.target.value })}
-                    placeholder="www.farmaciapontevea.com"
+                    placeholder="www.ejemplo.com"
                   />
                 </div>
                 <div className="space-y-2">
@@ -1934,7 +1934,7 @@ function RgpdTab() {
                 id="rgpdRazonSocial"
                 value={formData.rgpdRazonSocial || ''}
                 onChange={(e) => setFormData({ ...formData, rgpdRazonSocial: e.target.value })}
-                placeholder="Ej: Farmacia Pontevea S.L."
+                placeholder="Ej: Nombre de la farmacia S.L."
               />
             </div>
             <div className="space-y-2">
@@ -1952,7 +1952,7 @@ function RgpdTab() {
                 id="rgpdDireccionFiscal"
                 value={formData.rgpdDireccionFiscal || ''}
                 onChange={(e) => setFormData({ ...formData, rgpdDireccionFiscal: e.target.value })}
-                placeholder="Ej: Avda. Ignacio Varela 16, 15883 Teo, A Coruña"
+                placeholder="Ej: Calle Ejemplo, 3, 28001 Madrid"
               />
             </div>
             <div className="space-y-2">

@@ -7,6 +7,10 @@
 
 import { PrismaClient } from '@prisma/client';
 import bcrypt from 'bcryptjs';
+import {
+  PARAMETROS_BIO_CONFIG_DEFAULT,
+  PARAMETROS_REFERENCIA_DEFAULT,
+} from '../config/parametrosBioDefault.js';
 
 const prisma = new PrismaClient();
 
@@ -128,20 +132,11 @@ async function main() {
         farmaciaEmail: farmacia.email,
         farmaciaWeb: farmacia.web,
         valoracionBioActiva: true,
-        parametrosReferencia: JSON.stringify({
-          glucemia: { normalMin: 70, normalMax: 100, advertenciaMin: 60, advertenciaMax: 125, criticoMin: 50, criticoMax: 180 },
-          cholesterol: { normalMin: 0, normalMax: 200, advertenciaMax: 240, criticoMax: 280 },
-        }),
-        parametrosBioConfig: JSON.stringify([
-          { id: 'glucemia', label: 'Glucemia', unit: 'mg/dL', grupo: 'basicos', activo: true, orden: 1 },
-          { id: 'cholesterol', label: 'Colesterol total', unit: 'mg/dL', grupo: 'basicos', activo: true, orden: 2 },
-          { id: 'cholesterolHDL', label: 'Colesterol HDL', unit: 'mg/dL', grupo: 'basicos', activo: true, orden: 3 },
-          { id: 'cholesterolLDL', label: 'Colesterol LDL', unit: 'mg/dL', grupo: 'basicos', activo: true, orden: 4 },
-          { id: 'triglycerides', label: 'Triglicéridos', unit: 'mg/dL', grupo: 'basicos', activo: true, orden: 5 },
-        ]),
+        parametrosReferencia: JSON.stringify(PARAMETROS_REFERENCIA_DEFAULT),
+        parametrosBioConfig: JSON.stringify(PARAMETROS_BIO_CONFIG_DEFAULT),
       },
     });
-    console.log('✅ Configuración de farmacia creada');
+    console.log('✅ Configuración de farmacia creada (parámetros bio = Pontevea por defecto)');
   } else {
     console.log('ℹ️ Configuración de farmacia ya existe');
   }
