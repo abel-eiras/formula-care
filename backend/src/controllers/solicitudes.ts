@@ -1,4 +1,5 @@
 import { Request, Response } from 'express';
+import { z } from 'zod';
 import { prisma } from '../lib/prisma.js';
 import { verificarDisponibilidad } from '../services/disponibilidadService.js';
 import { getQueryString, getParamString } from '../lib/queryHelpers.js';
@@ -10,6 +11,10 @@ import {
   hashEmail,
   decrypt
 } from '../services/encryptionService.js';
+
+const rechazarSolicitudSchema = z.object({
+  motivo: z.string().max(500).optional(),
+});
 
 /**
  * Obtener todas las solicitudes con filtro opcional por estado
@@ -298,7 +303,7 @@ export async function aprobarSolicitud(req: Request, res: Response) {
     console.error('Error al aprobar solicitud:', error);
     if (error instanceof Error) {
       return res.status(400).json({
-        error: error.message,
+        error: 'Error al aprobar la solicitud',
       });
     }
     res.status(500).json({ error: 'Error al aprobar solicitud' });
@@ -312,7 +317,7 @@ export async function aprobarSolicitud(req: Request, res: Response) {
 export async function rechazarSolicitud(req: Request, res: Response) {
   try {
     const id = getParamString(req.params.id);
-    const { motivo } = req.body; // Opcional: motivo del rechazo
+    const { motivo } = rechazarSolicitudSchema.parse(req.body);
 
     // Obtener la solicitud
     const solicitud = await prisma.solicitudCita.findUnique({
@@ -396,6 +401,9 @@ export async function rechazarSolicitud(req: Request, res: Response) {
       mensaje: 'Solicitud rechazada correctamente',
     });
   } catch (error) {
+    if (error instanceof z.ZodError) {
+      return res.status(400).json({ error: 'Datos inválidos', detalles: error.errors });
+    }
     console.error('Error al rechazar solicitud:', error);
     res.status(500).json({ error: 'Error al rechazar solicitud' });
   }

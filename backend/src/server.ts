@@ -34,7 +34,7 @@ app.use(cors({
   origin: CORS_ORIGINS,
   credentials: true,
 }));
-app.use(express.json());
+app.use(express.json({ limit: '512kb' }));
 
 // Middleware de logging simple
 app.use((req, res, next) => {

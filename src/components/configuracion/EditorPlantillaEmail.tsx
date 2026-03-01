@@ -24,6 +24,7 @@ import {
   Info
 } from 'lucide-react';
 import { toast } from 'sonner';
+import DOMPurify from 'dompurify';
 import type { PlantillaEmail, VariablePlantilla, Configuracion } from '@/types';
 
 interface EditorPlantillaEmailProps {
@@ -74,14 +75,14 @@ export function EditorPlantillaEmail({
     return asunto !== plantilla.asunto || contenidoHtml !== plantilla.contenidoHtml;
   }, [asunto, contenidoHtml, plantilla]);
 
-  // Reemplazar variables en el contenido para el preview
+  // Reemplazar variables en el contenido para el preview y sanitizar para evitar XSS
   const contenidoPreview = useMemo(() => {
     let html = contenidoHtml;
     for (const [key, value] of Object.entries(DATOS_PREVIEW)) {
       const regex = new RegExp(`\\{\\{${key}\\}\\}`, 'g');
       html = html.replace(regex, value);
     }
-    return html;
+    return DOMPurify.sanitize(html, { ALLOWED_TAGS: ['p', 'br', 'strong', 'em', 'u', 'a', 'ul', 'ol', 'li', 'h1', 'h2', 'h3', 'span', 'div', 'table', 'tr', 'td', 'th', 'tbody', 'thead'] });
   }, [contenidoHtml]);
 
   const asuntoPreview = useMemo(() => {

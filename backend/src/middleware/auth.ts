@@ -31,8 +31,14 @@ declare global {
   }
 }
 
-// Clave secreta para JWT (en producción usar variable de entorno)
-const JWT_SECRET = process.env.JWT_SECRET || 'farmacia-pontevea-secret-key-2026';
+// Clave secreta para JWT. En producción es obligatoria.
+const JWT_SECRET = (() => {
+  const secret = process.env.JWT_SECRET;
+  if (process.env.NODE_ENV === 'production' && !secret) {
+    throw new Error('JWT_SECRET es obligatorio en producción. Configure la variable de entorno.');
+  }
+  return secret || 'farmacia-pontevea-secret-key-2026';
+})();
 
 // Tiempo de expiración del token (24 horas)
 const JWT_EXPIRES_IN = '24h';

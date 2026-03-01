@@ -40,3 +40,15 @@ export function getQueryBoolean(value: unknown): boolean | undefined {
   if (str === 'false' || str === '0') return false;
   return undefined;
 }
+
+/**
+ * Extrae y acota un límite de paginación (take) desde query params.
+ * @param value - req.query.limit
+ * @param defaultVal - valor por defecto si no se proporciona o es inválido
+ * @param max - máximo permitido para evitar sobrecarga
+ */
+export function getQueryLimit(value: unknown, defaultVal: number, max: number): number {
+  const num = getQueryNumber(value);
+  if (num === undefined || num < 1) return defaultVal;
+  return Math.min(num, max);
+}

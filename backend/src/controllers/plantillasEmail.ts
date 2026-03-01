@@ -310,7 +310,10 @@ export async function actualizarPlantilla(req: Request, res: Response) {
 
     const validacion = actualizarPlantillaSchema.safeParse(req.body);
     if (!validacion.success) {
-      return res.status(400).json({ error: 'Datos inválidos', detalles: validacion.error.errors });
+      return res.status(400).json({
+        error: 'Datos inválidos',
+        ...(process.env.NODE_ENV === 'development' && { detalles: validacion.error.errors }),
+      });
     }
 
     const plantilla = await prisma.plantillaEmail.update({

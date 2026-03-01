@@ -58,6 +58,38 @@ const rangoParametroSchema = z.object({
 // Esquema de validación para parámetros de referencia
 const parametrosReferenciaSchema = z.record(z.string(), rangoParametroSchema);
 
+// Esquema para actualizar valoración bio
+const valoracionBioSchema = z.object({
+  valoracionBioActiva: z.boolean(),
+});
+
+// Esquema para cada elemento de parametrosBioConfig
+const parametroBioConfigItemSchema = z.object({
+  id: z.string().min(1),
+  label: z.string().min(1),
+  unit: z.string().min(1),
+  grupo: z.enum(['basicos', 'avanzados', 'tension', 'corporales']),
+  activo: z.boolean(),
+  orden: z.number(),
+});
+const parametrosBioConfigSchema = z.array(parametroBioConfigItemSchema);
+
+// Esquema para configuración del calendario (todos los campos opcionales)
+const fechaYYYYMMDD = z.string().regex(/^\d{4}-\d{2}-\d{2}$/, 'Formato YYYY-MM-DD');
+const horaHHmm = z.string().regex(/^([0-1]?[0-9]|2[0-3]):[0-5][0-9]$/, 'Formato HH:mm');
+const configuracionCalendarioSchema = z.object({
+  horariosPorTipo: z.record(z.string(), z.unknown()).optional(),
+  fechasBloqueadas: z.array(fechaYYYYMMDD).optional(),
+  horasBloqueadas: z.record(z.string(), z.array(horaHHmm)).optional(),
+  autoAceptar: z.boolean().optional(),
+  duracionPorTipo: z.record(z.string(), z.number().positive()).optional(),
+});
+
+const bloquearFechaHoraSchema = z.object({
+  fecha: fechaYYYYMMDD,
+  hora: horaHHmm.optional(),
+});
+
 /**
  * Obtener la configuración actual
  */
@@ -222,11 +254,7 @@ export async function actualizarParametrosReferencia(req: Request, res: Response
 export async function actualizarValoracionBio(req: Request, res: Response) {
   try {
     const farmaciaId = obtenerFarmaciaIdRequerido(req);
-    const { valoracionBioActiva } = req.body;
-
-    if (typeof valoracionBioActiva !== 'boolean') {
-      return res.status(400).json({ error: 'valoracionBioActiva debe ser un booleano' });
-    }
+    const { valoracionBioActiva } = valoracionBioSchema.parse(req.body);
 
     // Verificar que existe la configuración
     let config = await prisma.configuracion.findUnique({
@@ -263,34 +291,7 @@ export async function actualizarValoracionBio(req: Request, res: Response) {
 export async function actualizarParametrosBioConfig(req: Request, res: Response) {
   try {
     const farmaciaId = obtenerFarmaciaIdRequerido(req);
-    const parametrosBioConfig = req.body;
-
-    // Validar que sea un array
-    if (!Array.isArray(parametrosBioConfig)) {
-      return res.status(400).json({ error: 'parametrosBioConfig debe ser un array' });
-    }
-
-    // Validar estructura de cada parámetro
-    for (const param of parametrosBioConfig) {
-      if (!param.id || typeof param.id !== 'string') {
-        return res.status(400).json({ error: 'Cada parámetro debe tener un id válido' });
-      }
-      if (!param.label || typeof param.label !== 'string') {
-        return res.status(400).json({ error: 'Cada parámetro debe tener un label válido' });
-      }
-      if (!param.unit || typeof param.unit !== 'string') {
-        return res.status(400).json({ error: 'Cada parámetro debe tener una unidad (unit) válida' });
-      }
-      if (!['basicos', 'avanzados', 'tension', 'corporales'].includes(param.grupo)) {
-        return res.status(400).json({ error: 'El grupo debe ser: basicos, avanzados, tension o corporales' });
-      }
-      if (typeof param.activo !== 'boolean') {
-        return res.status(400).json({ error: 'activo debe ser un booleano' });
-      }
-      if (typeof param.orden !== 'number') {
-        return res.status(400).json({ error: 'orden debe ser un número' });
-      }
-    }
+    const parametrosBioConfig = parametrosBioConfigSchema.parse(req.body);
 
     // Verificar que existe la configuración
     let config = await prisma.configuracion.findUnique({
@@ -318,6 +319,9 @@ export async function actualizarParametrosBioConfig(req: Request, res: Response)
       parametrosBioConfig,
     });
   } catch (error) {
+    if (error instanceof z.ZodError) {
+      return res.status(400).json({ error: 'Datos inválidos', detalles: error.errors });
+    }
     console.error('Error al actualizar parámetros bio config:', error);
     res.status(500).json({ error: 'Error al actualizar configuración de parámetros bioquímicos' });
   }
@@ -386,82 +390,14 @@ export async function obtenerConfiguracionCalendario(req: Request, res: Response
 export async function actualizarConfiguracionCalendario(req: Request, res: Response) {
   try {
     const farmaciaId = obtenerFarmaciaIdRequerido(req);
+    const datos = configuracionCalendarioSchema.parse(req.body);
     const {
       horariosPorTipo,
       fechasBloqueadas,
       horasBloqueadas,
       autoAceptar,
       duracionPorTipo,
-    } = req.body;
-
-    // Validar formato de horariosPorTipo si se proporciona
-    if (horariosPorTipo !== undefined) {
-      if (typeof horariosPorTipo !== 'object' || Array.isArray(horariosPorTipo)) {
-        return res.status(400).json({ error: 'horariosPorTipo debe ser un objeto' });
-      }
-    }
-
-    // Validar formato de fechasBloqueadas si se proporciona
-    if (fechasBloqueadas !== undefined) {
-      if (!Array.isArray(fechasBloqueadas)) {
-        return res.status(400).json({ error: 'fechasBloqueadas debe ser un array' });
-      }
-      // Validar formato de fechas (YYYY-MM-DD)
-      for (const fecha of fechasBloqueadas) {
-        if (!/^\d{4}-\d{2}-\d{2}$/.test(fecha)) {
-          return res.status(400).json({
-            error: `Formato de fecha inválido: ${fecha}. Debe ser YYYY-MM-DD`,
-          });
-        }
-      }
-    }
-
-    // Validar formato de horasBloqueadas si se proporciona
-    if (horasBloqueadas !== undefined) {
-      if (typeof horasBloqueadas !== 'object' || Array.isArray(horasBloqueadas)) {
-        return res.status(400).json({ error: 'horasBloqueadas debe ser un objeto' });
-      }
-      // Validar formato de horas en el objeto
-      for (const [fecha, horas] of Object.entries(horasBloqueadas)) {
-        if (!/^\d{4}-\d{2}-\d{2}$/.test(fecha)) {
-          return res.status(400).json({
-            error: `Formato de fecha inválido: ${fecha}. Debe ser YYYY-MM-DD`,
-          });
-        }
-        if (!Array.isArray(horas)) {
-          return res.status(400).json({
-            error: `horasBloqueadas[${fecha}] debe ser un array`,
-          });
-        }
-        for (const hora of horas) {
-          if (!/^([0-1]?[0-9]|2[0-3]):[0-5][0-9]$/.test(hora)) {
-            return res.status(400).json({
-              error: `Formato de hora inválido: ${hora}. Debe ser HH:mm`,
-            });
-          }
-        }
-      }
-    }
-
-    // Validar autoAceptar si se proporciona
-    if (autoAceptar !== undefined && typeof autoAceptar !== 'boolean') {
-      return res.status(400).json({ error: 'autoAceptar debe ser un booleano' });
-    }
-
-    // Validar formato de duracionPorTipo si se proporciona
-    if (duracionPorTipo !== undefined) {
-      if (typeof duracionPorTipo !== 'object' || Array.isArray(duracionPorTipo)) {
-        return res.status(400).json({ error: 'duracionPorTipo debe ser un objeto' });
-      }
-      // Validar que los valores sean números
-      for (const [tipo, duracion] of Object.entries(duracionPorTipo)) {
-        if (typeof duracion !== 'number' || duracion <= 0) {
-          return res.status(400).json({
-            error: `duracionPorTipo[${tipo}] debe ser un número positivo`,
-          });
-        }
-      }
-    }
+    } = datos;
 
     // Obtener configuración actual
     let config = await prisma.configuracionCalendario.findUnique({
@@ -538,12 +474,15 @@ export async function actualizarConfiguracionCalendario(req: Request, res: Respo
       duracionPorTipo: duracionPorTipoResp,
     });
   } catch (error) {
+    console.error('Error al actualizar configuración del calendario:', error);
+    if (error instanceof z.ZodError) {
+      return res.status(400).json({ error: 'Datos inválidos', detalles: error.errors });
+    }
     if (error instanceof Error) {
       return res.status(400).json({
-        error: error.message,
+        error: 'Error al actualizar la configuración del calendario',
       });
     }
-    console.error('Error al actualizar configuración del calendario:', error);
     res.status(500).json({ error: 'Error al actualizar configuración del calendario' });
   }
 }
@@ -555,25 +494,7 @@ export async function actualizarConfiguracionCalendario(req: Request, res: Respo
 export async function bloquearFechaHora(req: Request, res: Response) {
   try {
     const farmaciaId = obtenerFarmaciaIdRequerido(req);
-    const { fecha, hora } = req.body;
-
-    if (!fecha) {
-      return res.status(400).json({ error: 'La fecha es requerida' });
-    }
-
-    // Validar formato de fecha
-    if (!/^\d{4}-\d{2}-\d{2}$/.test(fecha)) {
-      return res.status(400).json({
-        error: 'Formato de fecha inválido. Debe ser YYYY-MM-DD',
-      });
-    }
-
-    // Validar formato de hora si se proporciona
-    if (hora && !/^([0-1]?[0-9]|2[0-3]):[0-5][0-9]$/.test(hora)) {
-      return res.status(400).json({
-        error: 'Formato de hora inválido. Debe ser HH:mm',
-      });
-    }
+    const { fecha, hora } = bloquearFechaHoraSchema.parse(req.body);
 
     // Obtener configuración actual
     let config = await prisma.configuracionCalendario.findUnique({
@@ -634,6 +555,9 @@ export async function bloquearFechaHora(req: Request, res: Response) {
     });
   } catch (error) {
     console.error('Error al bloquear fecha/hora:', error);
+    if (error instanceof z.ZodError) {
+      return res.status(400).json({ error: 'Datos inválidos', detalles: error.errors });
+    }
     res.status(500).json({ error: 'Error al bloquear fecha/hora' });
   }
 }

@@ -238,7 +238,7 @@ export async function crearPaciente(req: Request, res: Response) {
     }
 
     if (error instanceof Error && error.message.includes('farmacia')) {
-      return res.status(403).json({ error: error.message });
+      return res.status(403).json({ error: 'No tiene permiso para acceder a este recurso' });
     }
 
     console.error('Error al crear paciente:', error);

@@ -135,10 +135,14 @@ export async function crearEvento(req: Request, res: Response) {
       });
     }
     console.error('Error al crear evento:', error);
-    // Incluir más detalles del error para debugging
     const errorMessage = error instanceof Error ? error.message : 'Error desconocido';
     const errorStack = error instanceof Error ? error.stack : undefined;
-    console.error('Detalles del error:', { errorMessage, errorStack, body: req.body });
+    // No loguear req.body en producción (puede contener datos sensibles)
+    if (process.env.NODE_ENV === 'development') {
+      console.error('Detalles del error:', { errorMessage, errorStack, body: req.body });
+    } else {
+      console.error('Detalles del error:', { errorMessage, errorStack });
+    }
     res.status(500).json({ 
       error: 'Error al crear evento',
       detalles: process.env.NODE_ENV === 'development' ? errorMessage : undefined

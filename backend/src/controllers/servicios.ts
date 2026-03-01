@@ -3,7 +3,7 @@ import { prisma } from '../lib/prisma.js';
 import { z } from 'zod';
 import { crearNotificacionRevision } from '../services/notificacionesService.js';
 import type { Prisma } from '@prisma/client';
-import { getQueryString, getParamString, getQueryNumber } from '../lib/queryHelpers.js';
+import { getQueryString, getParamString, getQueryNumber, getQueryLimit } from '../lib/queryHelpers.js';
 import { decryptPacienteData } from '../services/encryptionService.js';
 
 // Esquema de validación para análisis dermocosmético (plantilla completa)
@@ -198,7 +198,7 @@ export async function obtenerTodosAnalisisDermo(req: Request, res: Response) {
     const motivoConsulta = getQueryString(req.query.motivoConsulta);
     const ordenarPor = getQueryString(req.query.ordenarPor) ?? 'fecha';
     const orden = getQueryString(req.query.orden) ?? 'desc';
-    const limit = getQueryNumber(req.query.limit);
+    const limit = getQueryLimit(req.query.limit, 50, 500);
 
     const condiciones: Prisma.AnalisisDermoWhereInput[] = [];
 
@@ -480,7 +480,7 @@ export async function obtenerTodosAnalisisBio(req: Request, res: Response) {
     const fechaHasta = getQueryString(req.query.fechaHasta);
     const ordenarPor = getQueryString(req.query.ordenarPor) ?? 'fecha';
     const orden = getQueryString(req.query.orden) ?? 'desc';
-    const limit = getQueryNumber(req.query.limit);
+    const limit = getQueryLimit(req.query.limit, 50, 500);
 
     const condiciones: Prisma.AnalisisBioWhereInput[] = [];
 

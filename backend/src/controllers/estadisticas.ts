@@ -1,5 +1,6 @@
 import { Request, Response } from 'express';
 import { prisma } from '../lib/prisma.js';
+import { getQueryLimit } from '../lib/queryHelpers.js';
 
 /**
  * Obtener estadísticas generales del dashboard
@@ -159,7 +160,7 @@ export async function obtenerEvolucionAnalisis(req: Request, res: Response) {
  */
 export async function obtenerPacientesRecientes(req: Request, res: Response) {
   try {
-    const limit = parseInt(req.query.limit as string) || 5;
+    const limit = getQueryLimit(req.query.limit, 5, 100);
 
     const pacientes = await prisma.paciente.findMany({
       take: limit,
@@ -191,7 +192,7 @@ export async function obtenerPacientesRecientes(req: Request, res: Response) {
 export async function obtenerProximasRevisiones(req: Request, res: Response) {
   try {
     const hoy = new Date().toISOString().split('T')[0];
-    const limite = parseInt(req.query.limit as string) || 10;
+    const limite = getQueryLimit(req.query.limit, 10, 100);
 
     // Obtener análisis dermocosméticos con próxima revisión
     const analisisConRevision = await prisma.analisisDermo.findMany({

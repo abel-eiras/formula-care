@@ -305,7 +305,7 @@ export async function obtenerDisponibilidadPublica(req: Request, res: Response) 
     console.error('Error al obtener disponibilidad:', error);
     if (error instanceof Error) {
       return res.status(400).json({
-        error: error.message,
+        error: 'Error al obtener disponibilidad',
       });
     }
     res.status(500).json({ error: 'Error al obtener disponibilidad' });
@@ -542,7 +542,7 @@ export async function solicitarCita(req: Request, res: Response) {
 
     if (error instanceof Error) {
       return res.status(400).json({
-        error: error.message,
+        error: 'Error al crear la solicitud de cita',
       });
     }
 

@@ -1,7 +1,7 @@
 import { Request, Response } from 'express';
 import { z } from 'zod';
 import { prisma } from '../lib/prisma.js';
-import { getQueryString, getParamString, getQueryNumber } from '../lib/queryHelpers.js';
+import { getQueryString, getParamString, getQueryNumber, getQueryLimit } from '../lib/queryHelpers.js';
 import { obtenerFarmaciaIdRequerido, obtenerFarmaciaIdOpcional } from '../middleware/tenant.js';
 
 /**
@@ -11,7 +11,7 @@ export async function obtenerNotificaciones(req: Request, res: Response) {
   try {
     const farmaciaId = obtenerFarmaciaIdOpcional(req);
     const leidas = getQueryString(req.query.leidas);
-    const limite = getQueryNumber(req.query.limit) ?? 50;
+    const limite = getQueryLimit(req.query.limit, 50, 200);
 
     const notificaciones = await prisma.notificacion.findMany({
       where: {

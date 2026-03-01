@@ -13,17 +13,20 @@ export interface PDFOptions {
 }
 
 /**
- * Muestra un toast de carga
+ * Muestra un toast de carga.
+ * El mensaje se inserta por textContent para evitar XSS si en el futuro se pasa texto de usuario.
  */
 function showLoadingToast(message: string = 'Generando PDF...'): () => void {
   const toast = document.createElement('div');
   toast.className = 'fixed top-4 right-4 bg-blue-500 text-white px-4 py-2 rounded shadow-lg z-[9999] flex items-center gap-2';
-  toast.innerHTML = `
-    <div class="animate-spin rounded-full h-4 w-4 border-2 border-white border-t-transparent"></div>
-    <span>${message}</span>
-  `;
+  const spinner = document.createElement('div');
+  spinner.className = 'animate-spin rounded-full h-4 w-4 border-2 border-white border-t-transparent';
+  const text = document.createElement('span');
+  text.textContent = message;
+  toast.appendChild(spinner);
+  toast.appendChild(text);
   document.body.appendChild(toast);
-  
+
   return () => {
     if (document.body.contains(toast)) {
       document.body.removeChild(toast);

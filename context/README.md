@@ -11,6 +11,7 @@ Esta carpeta concentra la documentación de referencia para trabajar en el proye
 - **Entender la estructura:** [guias/ESTRUCTURA_PROYECTO.md](guias/ESTRUCTURA_PROYECTO.md).
 - **Despliegue:** [guias/GUIA_DESPLIEGUE.md](guias/GUIA_DESPLIEGUE.md).
 - **API y backend:** [../backend/README.md](../backend/README.md), [../backend/EMAIL_CONFIG.md](../backend/EMAIL_CONFIG.md).
+- **Plantillas de correo y mensajería:** [guias/CONFIGURACION_EMAIL_Y_MENSAJERIA.md](guias/CONFIGURACION_EMAIL_Y_MENSAJERIA.md) (configuración para dejar el sistema de emails funcional).
 - **Integraciones opcionales:** [integraciones/GOOGLE_CALENDAR_SETUP.md](integraciones/GOOGLE_CALENDAR_SETUP.md).
 
 ## Estructura de esta carpeta
@@ -19,7 +20,7 @@ Esta carpeta concentra la documentación de referencia para trabajar en el proye
 |-------------------|-----------|
 | [STACK.md](STACK.md) | Stack tecnológico y convenciones del proyecto |
 | [QUICKSTART.md](QUICKSTART.md) | Inicio rápido: comandos, variables de entorno, verificación |
-| [guias/](guias/) | Guías activas: código limpio, React, estructura, despliegue |
+| [guias/](guias/) | Guías activas: código limpio, React, estructura, despliegue, email y mensajería |
 | [integraciones/](integraciones/) | Guías de integraciones opcionales (ej. Google Calendar) |
 | [old/](old/) | Documentación histórica o ya no usada (propuestas, TODOs completados, etc.) |
 
