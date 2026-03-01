@@ -6,6 +6,7 @@
 import { Request, Response } from 'express';
 import { z } from 'zod';
 import { prisma } from '../lib/prisma.js';
+import { enviarCorreoPruebaPlataforma } from '../services/emailService.js';
 
 const actualizarConfiguracionPlataformaSchema = z.object({
   emailProvider: z.enum(['smtp', 'resend']).optional(),
@@ -17,6 +18,10 @@ const actualizarConfiguracionPlataformaSchema = z.object({
   smtpFrom: z.string().email().optional().or(z.literal('')).nullable(),
   resendApiKey: z.string().optional().nullable(),
   emailNombreRemitente: z.string().optional().nullable(),
+});
+
+const enviarPruebaSchema = z.object({
+  email: z.string().email('Email de destino inválido'),
 });
 
 /**
@@ -119,6 +124,31 @@ export async function actualizarConfiguracionPlataforma(req: Request, res: Respo
       return res.status(400).json({ error: 'Datos inválidos', detalles: error.errors });
     }
     console.error('Error al actualizar configuración plataforma:', error);
+    res.status(500).json({ error: 'Error interno del servidor' });
+  }
+}
+
+/**
+ * POST /api/admin/configuracion-plataforma/enviar-prueba
+ * Envía un correo de prueba a la dirección indicada (superadmin)
+ */
+export async function enviarPruebaEmail(req: Request, res: Response) {
+  try {
+    const { email } = enviarPruebaSchema.parse(req.body);
+    const enviado = await enviarCorreoPruebaPlataforma(email);
+    if (enviado) {
+      return res.json({ mensaje: 'Correo de prueba enviado correctamente', enviado: true });
+    }
+    res.status(500).json({
+      error: 'No se pudo enviar el correo',
+      mensaje: 'Revisa la configuración SMTP y los logs del servidor.',
+      enviado: false,
+    });
+  } catch (error) {
+    if (error instanceof z.ZodError) {
+      return res.status(400).json({ error: 'Email inválido', detalles: error.errors });
+    }
+    console.error('Error al enviar correo de prueba:', error);
     res.status(500).json({ error: 'Error interno del servidor' });
   }
 }

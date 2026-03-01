@@ -107,6 +107,19 @@ export function useActualizarConfiguracionPlataforma() {
 }
 
 /**
+ * Enviar correo de prueba con la configuración SMTP de la plataforma
+ */
+export function useEnviarPruebaEmail() {
+  return useMutation({
+    mutationFn: (email: string) =>
+      api.post<{ mensaje: string; enviado: boolean }>(
+        '/admin/configuracion-plataforma/enviar-prueba',
+        { email }
+      ),
+  });
+}
+
+/**
  * Obtener configuración de una farmacia (superadmin)
  */
 export function useConfiguracionFarmacia(farmaciaId: string | undefined) {

@@ -27,6 +27,7 @@ import {
 import {
   obtenerConfiguracionPlataforma,
   actualizarConfiguracionPlataforma,
+  enviarPruebaEmail,
 } from '../controllers/configuracionPlataforma.js';
 
 const router = Router();
@@ -45,6 +46,7 @@ router.get('/estadisticas', obtenerEstadisticasPlataforma);
 // ==========================================
 router.get('/configuracion-plataforma', obtenerConfiguracionPlataforma);
 router.put('/configuracion-plataforma', actualizarConfiguracionPlataforma);
+router.post('/configuracion-plataforma/enviar-prueba', enviarPruebaEmail);
 
 // ==========================================
 // GESTIÓN DE FARMACIAS

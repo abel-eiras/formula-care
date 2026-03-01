@@ -75,6 +75,28 @@ async function obtenerConfigEmail(farmaciaId: string): Promise<ConfigEmail> {
   };
 }
 
+/**
+ * Obtiene la configuración de email solo de plataforma (sin farmacia)
+ * Para envío de correo de prueba desde el panel superadmin
+ */
+async function obtenerConfigEmailPlataforma(): Promise<ConfigEmail> {
+  const configPlataforma = await prisma.configuracionPlataforma.findFirst({
+    orderBy: { createdAt: 'asc' },
+  });
+
+  return {
+    provider: (configPlataforma?.emailProvider as 'smtp' | 'resend') ?? 'smtp',
+    resendApiKey: configPlataforma?.resendApiKey ?? process.env.RESEND_API_KEY ?? undefined,
+    emailRemitente: configPlataforma?.smtpFrom ?? process.env.SMTP_FROM ?? undefined,
+    nombreRemitente: configPlataforma?.emailNombreRemitente ?? 'Sistema de Gestión',
+    smtpHost: configPlataforma?.smtpHost ?? process.env.SMTP_HOST ?? undefined,
+    smtpPort: configPlataforma?.smtpPort ?? parseInt(process.env.SMTP_PORT || '587', 10),
+    smtpSecure: configPlataforma?.smtpSecure ?? process.env.SMTP_SECURE === 'true',
+    smtpUser: configPlataforma?.smtpUser ?? process.env.SMTP_USER ?? undefined,
+    smtpPass: configPlataforma?.smtpPass ?? process.env.SMTP_PASS ?? undefined,
+  };
+}
+
 // Credenciales de Ethereal para pruebas (se generan una vez)
 let etherealCredentials: { user: string; pass: string } | null = null;
 
@@ -367,6 +389,105 @@ async function enviarConSMTP(
     console.error('❌ Error SMTP:', error);
     return false;
   }
+}
+
+/**
+ * Envía un email SMTP con un transportador temporal (no cachea)
+ * Para correo de prueba sin afectar el transportador global
+ */
+async function enviarConSMTPTemporal(
+  config: ConfigEmail,
+  destinatario: string,
+  asunto: string,
+  html: string,
+  texto?: string
+): Promise<boolean> {
+  if (!config.smtpHost || !config.smtpUser || !config.smtpPass) {
+    console.error('❌ Configuración SMTP incompleta para prueba');
+    return false;
+  }
+  try {
+    const transporter = nodemailer.createTransport({
+      host: config.smtpHost,
+      port: config.smtpPort ?? 587,
+      secure: config.smtpSecure ?? false,
+      auth: { user: config.smtpUser, pass: config.smtpPass },
+    });
+    const from = config.emailRemitente || config.smtpUser || 'noreply@sistema.local';
+    await transporter.sendMail({
+      from: `"${config.nombreRemitente}" <${from}>`,
+      to: destinatario,
+      subject: asunto,
+      text: texto || htmlATexto(html),
+      html,
+    });
+    console.log(`✅ Email de prueba enviado vía SMTP a ${destinatario}`);
+    return true;
+  } catch (error) {
+    console.error('❌ Error SMTP (prueba):', error);
+    return false;
+  }
+}
+
+/**
+ * Envía un email usando una config dada (sin usar el transportador cacheado)
+ * Usado para correo de prueba desde el panel para no afectar el envío normal
+ */
+async function enviarEmailConConfig(
+  config: ConfigEmail,
+  destinatario: string,
+  asunto: string,
+  html: string,
+  texto?: string
+): Promise<boolean> {
+  try {
+    if (config.provider === 'resend' && config.resendApiKey) {
+      const resend = inicializarResend(config);
+      if (!resend) return enviarConSMTPTemporal(config, destinatario, asunto, html, texto);
+      const { error } = await resend.emails.send({
+        from: `${config.nombreRemitente} <${config.emailRemitente || 'noreply@sistema.local'}>`,
+        to: destinatario,
+        subject: asunto,
+        html,
+        text: texto || htmlATexto(html),
+      });
+      if (error) {
+        console.error('❌ Error Resend:', error);
+        return enviarConSMTPTemporal(config, destinatario, asunto, html, texto);
+      }
+      console.log(`✅ Email de prueba enviado vía Resend a ${destinatario}`);
+      return true;
+    }
+    return enviarConSMTPTemporal(config, destinatario, asunto, html, texto);
+  } catch (error) {
+    console.error('❌ Error al enviar email de prueba:', error);
+    return false;
+  }
+}
+
+// ==========================================
+// FUNCIONES PÚBLICAS DE ENVÍO
+// ==========================================
+
+/**
+ * Envía un correo de prueba usando la configuración de plataforma
+ * Usado desde el panel superadmin para verificar SMTP/Resend
+ */
+export async function enviarCorreoPruebaPlataforma(destinatario: string): Promise<boolean> {
+  const config = await obtenerConfigEmailPlataforma();
+  const asunto = 'Correo de prueba - Configuración SMTP';
+  const html = `
+<!DOCTYPE html>
+<html lang="es">
+<head><meta charset="utf-8"><title>Prueba</title></head>
+<body style="font-family: sans-serif; padding: 20px;">
+  <p>Este es un correo de prueba de la configuración SMTP de la plataforma.</p>
+  <p>Si lo recibes, la configuración es correcta.</p>
+  <p><em>Enviado el ${new Date().toLocaleString('es-ES')}</em></p>
+</body>
+</html>`;
+  const texto = 'Correo de prueba de la configuración SMTP. Si lo recibes, la configuración es correcta.';
+  return enviarEmailConConfig(config, destinatario, asunto, html, texto);
 }
 
 // ==========================================

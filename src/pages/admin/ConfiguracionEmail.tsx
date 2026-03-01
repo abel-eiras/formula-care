@@ -18,9 +18,9 @@ import {
   SelectTrigger,
   SelectValue,
 } from '@/components/ui/select';
-import { useConfiguracionPlataforma, useActualizarConfiguracionPlataforma } from '@/hooks/useAdmin';
+import { useConfiguracionPlataforma, useActualizarConfiguracionPlataforma, useEnviarPruebaEmail } from '@/hooks/useAdmin';
 import { toast } from 'sonner';
-import { Mail, Loader2, Save, AlertTriangle } from 'lucide-react';
+import { Mail, Loader2, Save, AlertTriangle, Send } from 'lucide-react';
 import type { ConfiguracionPlataforma, ActualizarConfiguracionPlataformaData } from '@/types';
 
 const defaultForm: ActualizarConfiguracionPlataformaData = {
@@ -38,9 +38,11 @@ const defaultForm: ActualizarConfiguracionPlataformaData = {
 export default function ConfiguracionEmail() {
   const { data: config, isLoading, error } = useConfiguracionPlataforma();
   const actualizarMutation = useActualizarConfiguracionPlataforma();
+  const enviarPruebaMutation = useEnviarPruebaEmail();
   const [form, setForm] = useState<ActualizarConfiguracionPlataformaData>(defaultForm);
   const [passwordOverride, setPasswordOverride] = useState('');
   const [resendApiKeyOverride, setResendApiKeyOverride] = useState('');
+  const [emailPrueba, setEmailPrueba] = useState('');
   const hasResendKeyStored = config?.resendApiKey != null && config.resendApiKey !== '';
 
   useEffect(() => {
@@ -70,6 +72,20 @@ export default function ConfiguracionEmail() {
       setResendApiKeyOverride('');
     } catch {
       toast.error('Error al guardar la configuración');
+    }
+  };
+
+  const handleEnviarPrueba = async () => {
+    const email = emailPrueba.trim();
+    if (!email) {
+      toast.error('Introduce un email de destino');
+      return;
+    }
+    try {
+      await enviarPruebaMutation.mutateAsync(email);
+      toast.success('Correo de prueba enviado. Revisa la bandeja de entrada (y spam).');
+    } catch {
+      toast.error('No se pudo enviar el correo de prueba. Revisa la configuración SMTP.');
     }
   };
 
@@ -229,6 +245,40 @@ export default function ConfiguracionEmail() {
           </CardContent>
         </Card>
       </form>
+
+      <Card>
+        <CardHeader>
+          <CardTitle className="flex items-center gap-2">
+            <Send className="h-5 w-5" />
+            Enviar correo de prueba
+          </CardTitle>
+          <CardDescription>
+            Introduce un email de destino para comprobar que la configuración SMTP funciona correctamente.
+          </CardDescription>
+        </CardHeader>
+        <CardContent className="flex flex-col sm:flex-row gap-3">
+          <Input
+            type="email"
+            placeholder="destino@ejemplo.com"
+            value={emailPrueba}
+            onChange={(e) => setEmailPrueba(e.target.value)}
+            className="sm:max-w-xs"
+          />
+          <Button
+            type="button"
+            variant="secondary"
+            onClick={handleEnviarPrueba}
+            disabled={enviarPruebaMutation.isPending}
+          >
+            {enviarPruebaMutation.isPending ? (
+              <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+            ) : (
+              <Send className="mr-2 h-4 w-4" />
+            )}
+            Enviar correo de prueba
+          </Button>
+        </CardContent>
+      </Card>
     </div>
   );
 }
