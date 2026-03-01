@@ -30,6 +30,19 @@ const cambiarPasswordSchema = z.object({
   passwordNueva: z.string().min(6, 'La nueva contraseña debe tener al menos 6 caracteres'),
 });
 
+// Esquema para establecer contraseña desde invitación
+const establecerContrasenaSchema = z.object({
+  token: z.string().min(1, 'Token requerido'),
+  password: z.string().min(6, 'La contraseña debe tener al menos 6 caracteres'),
+});
+
+// Roles permitidos al actualizar usuario (no se puede asignar superadmin por API)
+const actualizarUsuarioSchema = z.object({
+  nombre: z.string().min(2, 'El nombre debe tener al menos 2 caracteres').optional(),
+  rol: z.enum(['usuario', 'admin', 'farmaceutico']).optional(),
+  activo: z.boolean().optional(),
+});
+
 /**
  * POST /api/auth/login
  * Iniciar sesión con email y contraseña
@@ -259,6 +272,95 @@ export async function cambiarPassword(req: Request, res: Response) {
 }
 
 /**
+ * GET /api/auth/invitacion/:token
+ * Validar token de invitación y devolver datos para mostrar (sin sensibles)
+ */
+export async function obtenerInvitacion(req: Request, res: Response) {
+  try {
+    const token = getParamString(req.params.token);
+
+    const invitacion = await prisma.tokenInvitacionUsuario.findUnique({
+      where: { token },
+      include: { usuario: { select: { email: true, nombre: true } } },
+    });
+
+    if (!invitacion || invitacion.usado || new Date() > invitacion.expiraEn) {
+      return res.status(400).json({
+        error: 'Enlace inválido o expirado',
+        mensaje: 'El enlace de invitación no es válido o ha caducado.',
+      });
+    }
+
+    res.json({
+      email: invitacion.usuario.email,
+      nombre: invitacion.usuario.nombre,
+    });
+  } catch (error) {
+    console.error('Error al validar invitación:', error);
+    res.status(500).json({ error: 'Error interno del servidor' });
+  }
+}
+
+/**
+ * POST /api/auth/establecer-contrasena
+ * Establecer contraseña usando token de invitación (ruta pública)
+ */
+export async function establecerContrasenaInvitacion(req: Request, res: Response) {
+  try {
+    const { token, password } = establecerContrasenaSchema.parse(req.body);
+
+    const invitacion = await prisma.tokenInvitacionUsuario.findUnique({
+      where: { token },
+      include: { usuario: true },
+    });
+
+    if (!invitacion) {
+      return res.status(400).json({
+        error: 'Enlace inválido',
+        mensaje: 'El token de invitación no existe.',
+      });
+    }
+    if (invitacion.usado) {
+      return res.status(400).json({
+        error: 'Enlace ya usado',
+        mensaje: 'Este enlace ya fue utilizado para establecer la contraseña.',
+      });
+    }
+    if (new Date() > invitacion.expiraEn) {
+      return res.status(400).json({
+        error: 'Enlace expirado',
+        mensaje: 'El enlace de invitación ha caducado. Solicita uno nuevo al administrador.',
+      });
+    }
+
+    const salt = await bcrypt.genSalt(10);
+    const passwordHash = await bcrypt.hash(password, salt);
+
+    await prisma.$transaction([
+      prisma.usuario.update({
+        where: { id: invitacion.usuarioId },
+        data: { password: passwordHash },
+      }),
+      prisma.tokenInvitacionUsuario.update({
+        where: { id: invitacion.id },
+        data: { usado: true, usadoEn: new Date() },
+      }),
+    ]);
+
+    res.json({ mensaje: 'Contraseña establecida correctamente. Ya puedes iniciar sesión.' });
+  } catch (error) {
+    if (error instanceof z.ZodError) {
+      return res.status(400).json({
+        error: 'Datos inválidos',
+        detalles: error.errors,
+      });
+    }
+    console.error('Error al establecer contraseña:', error);
+    res.status(500).json({ error: 'Error interno del servidor' });
+  }
+}
+
+/**
  * GET /api/auth/usuarios
  * Listar usuarios (solo admin). Admins ven solo usuarios de su farmacia; superadmin ve todos.
  */
@@ -298,7 +400,7 @@ export async function listarUsuarios(req: Request, res: Response) {
 export async function actualizarUsuario(req: Request, res: Response) {
   try {
     const id = getParamString(req.params.id);
-    const { nombre, rol, activo } = req.body;
+    const datos = actualizarUsuarioSchema.parse(req.body);
     const user = req.usuario || req.user;
 
     const usuario = await prisma.usuario.findUnique({
@@ -315,9 +417,9 @@ export async function actualizarUsuario(req: Request, res: Response) {
     const usuarioActualizado = await prisma.usuario.update({
       where: { id },
       data: {
-        nombre: nombre !== undefined ? nombre : undefined,
-        rol: rol !== undefined ? rol : undefined,
-        activo: activo !== undefined ? activo : undefined,
+        nombre: datos.nombre ?? undefined,
+        rol: datos.rol ?? undefined,
+        activo: datos.activo !== undefined ? datos.activo : undefined,
       },
       select: {
         id: true,
@@ -330,6 +432,9 @@ export async function actualizarUsuario(req: Request, res: Response) {
 
     res.json(usuarioActualizado);
   } catch (error) {
+    if (error instanceof z.ZodError) {
+      return res.status(400).json({ error: 'Datos inválidos', detalles: error.errors });
+    }
     console.error('Error al actualizar usuario:', error);
     res.status(500).json({ error: 'Error interno del servidor' });
   }

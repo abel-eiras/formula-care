@@ -18,10 +18,16 @@ import {
   actualizarUsuarioFarmacia,
   cambiarPasswordUsuario,
   eliminarUsuarioFarmacia,
+  obtenerConfiguracionFarmacia,
+  actualizarConfiguracionFarmacia,
 } from '../controllers/farmacias.js';
 import {
   obtenerEstadisticasPlataforma,
 } from '../controllers/estadisticasAdmin.js';
+import {
+  obtenerConfiguracionPlataforma,
+  actualizarConfiguracionPlataforma,
+} from '../controllers/configuracionPlataforma.js';
 
 const router = Router();
 
@@ -35,6 +41,12 @@ router.use(superadminMiddleware);
 router.get('/estadisticas', obtenerEstadisticasPlataforma);
 
 // ==========================================
+// CONFIGURACIÓN DE PLATAFORMA (SMTP por defecto)
+// ==========================================
+router.get('/configuracion-plataforma', obtenerConfiguracionPlataforma);
+router.put('/configuracion-plataforma', actualizarConfiguracionPlataforma);
+
+// ==========================================
 // GESTIÓN DE FARMACIAS
 // ==========================================
 router.get('/farmacias', listarFarmacias);
@@ -43,6 +55,8 @@ router.get('/farmacias/:id', obtenerFarmacia);
 router.put('/farmacias/:id', actualizarFarmacia);
 router.delete('/farmacias/:id', desactivarFarmacia);
 router.post('/farmacias/:id/activar', activarFarmacia);
+router.get('/farmacias/:id/configuracion', obtenerConfiguracionFarmacia);
+router.put('/farmacias/:id/configuracion', actualizarConfiguracionFarmacia);
 
 // ==========================================
 // GESTIÓN DE USUARIOS POR FARMACIA

@@ -4,7 +4,8 @@
  */
 
 import { useState, useEffect } from 'react';
-import { useNavigate, Link } from 'react-router-dom';
+import { useNavigate, useLocation, Link } from 'react-router-dom';
+import { toast } from 'sonner';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from '@/components/ui/card';
 import { Input } from '@/components/ui/input';
@@ -15,6 +16,7 @@ import { useAuthContext } from '@/contexts/AuthContext';
 
 export default function Login() {
   const navigate = useNavigate();
+  const location = useLocation();
   const { login, isAuthenticated, isLoading: authLoading, error: authError } = useAuthContext();
 
   // Nombre de la aplicación
@@ -24,6 +26,15 @@ export default function Login() {
   const [password, setPassword] = useState('');
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [error, setError] = useState<string | null>(null);
+
+  // Mensaje al llegar desde establecer-contrasena
+  useEffect(() => {
+    const mensaje = (location.state as { mensaje?: string } | null)?.mensaje;
+    if (mensaje) {
+      toast.success(mensaje);
+      navigate(location.pathname, { replace: true, state: {} });
+    }
+  }, [location.state, location.pathname, navigate]);
 
   // Redirigir si ya está autenticado
   useEffect(() => {

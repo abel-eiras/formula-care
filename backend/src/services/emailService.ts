@@ -54,23 +54,24 @@ let resendClient: Resend | null = null;
 // ==========================================
 
 /**
- * Obtiene la configuración de email desde BD por farmacia y variables de entorno
+ * Obtiene la configuración de email: farmacia → ConfiguracionPlataforma → variables de entorno
  */
 async function obtenerConfigEmail(farmaciaId: string): Promise<ConfigEmail> {
-  const config = await prisma.configuracion.findUnique({
-    where: { farmaciaId },
-  });
+  const [config, configPlataforma] = await Promise.all([
+    prisma.configuracion.findUnique({ where: { farmaciaId } }),
+    prisma.configuracionPlataforma.findFirst({ orderBy: { createdAt: 'asc' } }),
+  ]);
 
   return {
-    provider: (config?.emailProvider as 'smtp' | 'resend') || 'smtp',
-    resendApiKey: config?.resendApiKey ?? process.env.RESEND_API_KEY ?? undefined,
-    emailRemitente: config?.emailRemitente ?? process.env.SMTP_FROM ?? config?.farmaciaEmail ?? undefined,
-    nombreRemitente: config?.emailNombreRemitente ?? config?.farmaciaNombre ?? 'Sistema de Gestión',
-    smtpHost: process.env.SMTP_HOST,
-    smtpPort: parseInt(process.env.SMTP_PORT || '587', 10),
-    smtpSecure: process.env.SMTP_SECURE === 'true',
-    smtpUser: process.env.SMTP_USER,
-    smtpPass: process.env.SMTP_PASS,
+    provider: (config?.emailProvider as 'smtp' | 'resend') ?? configPlataforma?.emailProvider ?? 'smtp',
+    resendApiKey: config?.resendApiKey ?? configPlataforma?.resendApiKey ?? process.env.RESEND_API_KEY ?? undefined,
+    emailRemitente: config?.emailRemitente ?? configPlataforma?.smtpFrom ?? process.env.SMTP_FROM ?? config?.farmaciaEmail ?? undefined,
+    nombreRemitente: config?.emailNombreRemitente ?? configPlataforma?.emailNombreRemitente ?? config?.farmaciaNombre ?? 'Sistema de Gestión',
+    smtpHost: config?.smtpHost ?? configPlataforma?.smtpHost ?? process.env.SMTP_HOST ?? undefined,
+    smtpPort: config?.smtpPort ?? configPlataforma?.smtpPort ?? parseInt(process.env.SMTP_PORT || '587', 10),
+    smtpSecure: config?.smtpSecure ?? configPlataforma?.smtpSecure ?? process.env.SMTP_SECURE === 'true',
+    smtpUser: config?.smtpUser ?? configPlataforma?.smtpUser ?? process.env.SMTP_USER ?? undefined,
+    smtpPass: config?.smtpPass ?? configPlataforma?.smtpPass ?? process.env.SMTP_PASS ?? undefined,
   };
 }
 
@@ -609,6 +610,44 @@ export async function enviarRechazoSolicitud(
     motivoRechazo: datosSolicitud.motivo,
     farmaciaId: datosSolicitud.farmaciaId,
   });
+}
+
+/**
+ * Envía email de invitación para que un nuevo usuario establezca su contraseña
+ */
+export async function enviarInvitacionUsuario(
+  emailDestinatario: string,
+  nombreUsuario: string,
+  nombreFarmacia: string,
+  urlEstablecerContrasena: string,
+  farmaciaId: string
+): Promise<boolean> {
+  const asunto = `Crea tu contraseña - ${nombreFarmacia}`;
+  const html = `
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Invitación</title>
+</head>
+<body style="font-family: 'Segoe UI', Arial, sans-serif; line-height: 1.6; color: #333; max-width: 600px; margin: 0 auto; padding: 20px;">
+  <div style="background-color: #79438f; color: white; padding: 24px; text-align: center; border-radius: 8px 8px 0 0;">
+    <h1 style="margin: 0; font-size: 22px;">Invitación a la plataforma</h1>
+  </div>
+  <div style="background-color: white; padding: 24px; border: 1px solid #eee; border-top: none; border-radius: 0 0 8px 8px;">
+    <p>Hola <strong>${nombreUsuario}</strong>,</p>
+    <p>Te han invitado a formar parte del equipo de <strong>${nombreFarmacia}</strong> en la plataforma de gestión.</p>
+    <p>Haz clic en el siguiente enlace para crear tu contraseña y acceder a tu cuenta:</p>
+    <p style="text-align: center; margin: 24px 0;">
+      <a href="${urlEstablecerContrasena}" style="display: inline-block; background-color: #79438f; color: white; padding: 12px 24px; text-decoration: none; border-radius: 6px; font-weight: bold;">Crear mi contraseña</a>
+    </p>
+    <p style="color: #666; font-size: 14px;">Este enlace caduca en 7 días. Si no has solicitado esta invitación, puedes ignorar este correo.</p>
+  </div>
+</body>
+</html>`;
+  const texto = `Hola ${nombreUsuario}, te han invitado a ${nombreFarmacia}. Crea tu contraseña aquí: ${urlEstablecerContrasena}. El enlace caduca en 7 días.`;
+  return enviarEmail(emailDestinatario, asunto, html, farmaciaId, texto);
 }
 
 // ==========================================

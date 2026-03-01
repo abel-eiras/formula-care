@@ -8,6 +8,8 @@ import {
   registro,
   obtenerUsuarioActual,
   cambiarPassword,
+  obtenerInvitacion,
+  establecerContrasenaInvitacion,
   listarUsuarios,
   actualizarUsuario,
   eliminarUsuario,
@@ -18,6 +20,8 @@ export const authRouter = Router();
 
 // Rutas públicas (no requieren autenticación)
 authRouter.post('/login', login);
+authRouter.get('/invitacion/:token', obtenerInvitacion);
+authRouter.post('/establecer-contrasena', establecerContrasenaInvitacion);
 
 // Rutas protegidas (requieren autenticación)
 authRouter.get('/me', verificarToken, obtenerUsuarioActual);

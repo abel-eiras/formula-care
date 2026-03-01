@@ -6,12 +6,14 @@
 import { Request, Response } from 'express';
 import { z } from 'zod';
 import bcrypt from 'bcryptjs';
+import crypto from 'crypto';
 import { prisma } from '../lib/prisma.js';
 import { getParamString } from '../lib/queryHelpers.js';
 import {
   PARAMETROS_BIO_CONFIG_DEFAULT,
   PARAMETROS_REFERENCIA_DEFAULT,
 } from '../config/parametrosBioDefault.js';
+import { enviarInvitacionUsuario } from '../services/emailService.js';
 
 // Función para generar slug a partir del nombre
 function generarSlug(nombre: string): string {
@@ -42,6 +44,26 @@ const crearFarmaciaSchema = z.object({
   adminNombre: z.string().min(2, 'El nombre del admin debe tener al menos 2 caracteres'),
 });
 
+// Roles permitidos al crear/actualizar usuarios de farmacia (superadmin no asignable)
+const rolUsuarioFarmaciaSchema = z.enum(['usuario', 'admin', 'farmaceutico']);
+
+const crearUsuarioFarmaciaSchema = z.object({
+  email: z.string().email('Email inválido'),
+  password: z.string().min(6, 'La contraseña debe tener al menos 6 caracteres').optional(),
+  nombre: z.string().min(2, 'El nombre debe tener al menos 2 caracteres'),
+  rol: rolUsuarioFarmaciaSchema.optional().default('usuario'),
+});
+
+const actualizarUsuarioFarmaciaSchema = z.object({
+  nombre: z.string().min(2).optional(),
+  rol: rolUsuarioFarmaciaSchema.optional(),
+  activo: z.boolean().optional(),
+});
+
+const cambiarPasswordUsuarioSchema = z.object({
+  password: z.string().min(6, 'La contraseña debe tener al menos 6 caracteres'),
+});
+
 // Esquema para actualizar farmacia
 const actualizarFarmaciaSchema = z.object({
   nombre: z.string().min(2).optional(),
@@ -55,6 +77,45 @@ const actualizarFarmaciaSchema = z.object({
   maxUsuarios: z.number().int().min(1).optional(),
   maxPacientes: z.number().int().min(1).optional(),
   fechaExpiracion: z.string().nullable().optional(),
+});
+
+// Esquemas para actualizar configuración de farmacia (superadmin)
+const rangoParametroSchema = z.object({
+  normalMin: z.number(),
+  normalMax: z.number(),
+  advertenciaMin: z.number().optional(),
+  advertenciaMax: z.number().optional(),
+  advertenciaMin2: z.number().optional(),
+  advertenciaMax2: z.number().optional(),
+  criticoMin: z.number().optional(),
+  criticoMax: z.number().optional(),
+  criticoMin2: z.number().optional(),
+  criticoMax2: z.number().optional(),
+});
+const parametrosReferenciaSchema = z.record(z.string(), rangoParametroSchema);
+const parametroBioConfigItemSchema = z.object({
+  id: z.string().min(1),
+  label: z.string().min(1),
+  unit: z.string().min(1),
+  grupo: z.enum(['basicos', 'avanzados', 'tension', 'corporales']),
+  activo: z.boolean(),
+  orden: z.number(),
+});
+const parametrosBioConfigSchema = z.array(parametroBioConfigItemSchema);
+
+const actualizarConfiguracionFarmaciaSchema = z.object({
+  valoracionBioActiva: z.boolean().optional(),
+  parametrosReferencia: parametrosReferenciaSchema.optional(),
+  parametrosBioConfig: parametrosBioConfigSchema.optional(),
+  emailProvider: z.enum(['smtp', 'resend']).optional().nullable(),
+  emailRemitente: z.string().email().optional().or(z.literal('')).nullable(),
+  emailNombreRemitente: z.string().optional().nullable(),
+  resendApiKey: z.string().optional().nullable(),
+  smtpHost: z.string().optional().nullable(),
+  smtpPort: z.number().int().min(1).max(65535).optional().nullable(),
+  smtpSecure: z.boolean().optional(),
+  smtpUser: z.string().optional().nullable(),
+  smtpPass: z.string().optional().nullable(),
 });
 
 /**
@@ -521,19 +582,12 @@ export async function crearUsuarioFarmacia(req: Request, res: Response) {
       });
     }
 
-    const { email, password, nombre, rol } = req.body;
-
-    // Validar datos
-    if (!email || !password || !nombre) {
-      return res.status(400).json({
-        error: 'Datos incompletos',
-        mensaje: 'Email, contraseña y nombre son requeridos',
-      });
-    }
+    const datos = crearUsuarioFarmaciaSchema.parse(req.body);
+    const esInvitacion = !datos.password || datos.password.trim() === '';
 
     // Verificar que el email no exista
     const emailExiste = await prisma.usuario.findUnique({
-      where: { email: email.toLowerCase() },
+      where: { email: datos.email.toLowerCase() },
     });
 
     if (emailExiste) {
@@ -543,16 +597,28 @@ export async function crearUsuarioFarmacia(req: Request, res: Response) {
       });
     }
 
-    // Crear usuario
-    const salt = await bcrypt.genSalt(10);
-    const passwordHash = await bcrypt.hash(password, salt);
+    let passwordHash: string;
+    if (esInvitacion) {
+      const tempPassword = crypto.randomBytes(32).toString('hex');
+      const salt = await bcrypt.genSalt(10);
+      passwordHash = await bcrypt.hash(tempPassword, salt);
+    } else {
+      const salt = await bcrypt.genSalt(10);
+      passwordHash = await bcrypt.hash(datos.password!, salt);
+    }
+
+    const farmacia = await prisma.farmacia.findUnique({
+      where: { id: farmaciaId },
+      select: { nombre: true },
+    });
+    const nombreFarmacia = farmacia?.nombre ?? 'la plataforma';
 
     const usuario = await prisma.usuario.create({
       data: {
-        email: email.toLowerCase(),
+        email: datos.email.toLowerCase(),
         password: passwordHash,
-        nombre,
-        rol: rol || 'usuario',
+        nombre: datos.nombre,
+        rol: datos.rol,
         farmaciaId,
       },
       select: {
@@ -565,11 +631,49 @@ export async function crearUsuarioFarmacia(req: Request, res: Response) {
       },
     });
 
+    if (esInvitacion) {
+      const token = crypto.randomBytes(32).toString('hex');
+      const expiraEn = new Date();
+      expiraEn.setDate(expiraEn.getDate() + 7);
+
+      await prisma.tokenInvitacionUsuario.create({
+        data: {
+          usuarioId: usuario.id,
+          token,
+          expiraEn,
+        },
+      });
+
+      const baseUrl = process.env.FRONTEND_URL || process.env.CORS_ORIGIN?.split(',')[0]?.trim() || 'http://localhost:5173';
+      const urlEstablecerContrasena = `${baseUrl}/establecer-contrasena?token=${token}`;
+
+      const enviado = await enviarInvitacionUsuario(
+        usuario.email,
+        usuario.nombre,
+        nombreFarmacia,
+        urlEstablecerContrasena,
+        farmaciaId
+      );
+
+      if (!enviado) {
+        console.warn('No se pudo enviar el email de invitación al usuario', usuario.email);
+      }
+
+      return res.status(201).json({
+        mensaje: 'Usuario creado. Se ha enviado un correo para que establezca su contraseña.',
+        usuario,
+        invitacionEnviada: enviado,
+      });
+    }
+
     res.status(201).json({
       mensaje: 'Usuario creado correctamente',
       usuario,
     });
   } catch (error) {
+    if (error instanceof z.ZodError) {
+      return res.status(400).json({ error: 'Datos inválidos', detalles: error.errors });
+    }
     console.error('Error al crear usuario:', error);
     res.status(500).json({ error: 'Error interno del servidor' });
   }
@@ -592,14 +696,14 @@ export async function actualizarUsuarioFarmacia(req: Request, res: Response) {
       return res.status(404).json({ error: 'Usuario no encontrado' });
     }
 
-    const { nombre, rol, activo } = req.body;
+    const datos = actualizarUsuarioFarmaciaSchema.parse(req.body);
 
     const usuarioActualizado = await prisma.usuario.update({
       where: { id: usuarioId },
       data: {
-        nombre: nombre || undefined,
-        rol: rol || undefined,
-        activo: activo !== undefined ? activo : undefined,
+        nombre: datos.nombre ?? undefined,
+        rol: datos.rol ?? undefined,
+        activo: datos.activo !== undefined ? datos.activo : undefined,
       },
       select: {
         id: true,
@@ -617,6 +721,9 @@ export async function actualizarUsuarioFarmacia(req: Request, res: Response) {
       usuario: usuarioActualizado,
     });
   } catch (error) {
+    if (error instanceof z.ZodError) {
+      return res.status(400).json({ error: 'Datos inválidos', detalles: error.errors });
+    }
     console.error('Error al actualizar usuario:', error);
     res.status(500).json({ error: 'Error interno del servidor' });
   }
@@ -639,13 +746,7 @@ export async function cambiarPasswordUsuario(req: Request, res: Response) {
       return res.status(404).json({ error: 'Usuario no encontrado' });
     }
 
-    const { password } = req.body;
-
-    if (!password || password.length < 6) {
-      return res.status(400).json({
-        error: 'La contraseña debe tener al menos 6 caracteres',
-      });
-    }
+    const { password } = cambiarPasswordUsuarioSchema.parse(req.body);
 
     const salt = await bcrypt.genSalt(10);
     const passwordHash = await bcrypt.hash(password, salt);
@@ -657,6 +758,9 @@ export async function cambiarPasswordUsuario(req: Request, res: Response) {
 
     res.json({ mensaje: 'Contraseña actualizada correctamente' });
   } catch (error) {
+    if (error instanceof z.ZodError) {
+      return res.status(400).json({ error: 'Datos inválidos', detalles: error.errors });
+    }
     console.error('Error al cambiar contraseña:', error);
     res.status(500).json({ error: 'Error interno del servidor' });
   }
@@ -697,6 +801,150 @@ export async function eliminarUsuarioFarmacia(req: Request, res: Response) {
     res.status(204).send();
   } catch (error) {
     console.error('Error al eliminar usuario:', error);
+    res.status(500).json({ error: 'Error interno del servidor' });
+  }
+}
+
+/**
+ * GET /api/admin/farmacias/:id/configuracion
+ * Obtener configuración completa de una farmacia (superadmin)
+ */
+export async function obtenerConfiguracionFarmacia(req: Request, res: Response) {
+  try {
+    const farmaciaId = getParamString(req.params.id);
+
+    const farmacia = await prisma.farmacia.findUnique({
+      where: { id: farmaciaId },
+    });
+    if (!farmacia) {
+      return res.status(404).json({ error: 'Farmacia no encontrada' });
+    }
+
+    let config = await prisma.configuracion.findUnique({
+      where: { farmaciaId },
+    });
+
+    if (!config) {
+      config = await prisma.configuracion.create({
+        data: {
+          farmaciaId,
+          farmaciaNombre: farmacia.nombre,
+          farmaciaEmail: farmacia.email,
+          parametrosReferencia: JSON.stringify(PARAMETROS_REFERENCIA_DEFAULT),
+          parametrosBioConfig: JSON.stringify(PARAMETROS_BIO_CONFIG_DEFAULT),
+        },
+      });
+    }
+
+    const parametrosReferencia = typeof config.parametrosReferencia === 'string'
+      ? JSON.parse(config.parametrosReferencia) as Record<string, unknown>
+      : config.parametrosReferencia as Record<string, unknown>;
+    const parametrosBioConfig = typeof config.parametrosBioConfig === 'string'
+      ? JSON.parse(config.parametrosBioConfig) as unknown[]
+      : (config.parametrosBioConfig as unknown[] || []);
+
+    res.json({
+      id: config.id,
+      farmaciaId: config.farmaciaId,
+      valoracionBioActiva: config.valoracionBioActiva,
+      parametrosReferencia,
+      parametrosBioConfig,
+      emailProvider: config.emailProvider,
+      emailRemitente: config.emailRemitente,
+      emailNombreRemitente: config.emailNombreRemitente,
+      resendApiKey: config.resendApiKey ? '********' : null,
+      smtpHost: config.smtpHost,
+      smtpPort: config.smtpPort,
+      smtpSecure: config.smtpSecure,
+      smtpUser: config.smtpUser,
+      smtpPass: null,
+      updatedAt: config.updatedAt.toISOString(),
+    });
+  } catch (error) {
+    console.error('Error al obtener configuración farmacia:', error);
+    res.status(500).json({ error: 'Error interno del servidor' });
+  }
+}
+
+/**
+ * PUT /api/admin/farmacias/:id/configuracion
+ * Actualizar configuración de una farmacia (superadmin)
+ */
+export async function actualizarConfiguracionFarmacia(req: Request, res: Response) {
+  try {
+    const farmaciaId = getParamString(req.params.id);
+    const datos = actualizarConfiguracionFarmaciaSchema.parse(req.body);
+
+    const farmacia = await prisma.farmacia.findUnique({
+      where: { id: farmaciaId },
+    });
+    if (!farmacia) {
+      return res.status(404).json({ error: 'Farmacia no encontrada' });
+    }
+
+    let config = await prisma.configuracion.findUnique({
+      where: { farmaciaId },
+    });
+
+    const data: Record<string, unknown> = {};
+    if (datos.valoracionBioActiva !== undefined) data.valoracionBioActiva = datos.valoracionBioActiva;
+    if (datos.parametrosReferencia !== undefined) data.parametrosReferencia = JSON.stringify(datos.parametrosReferencia);
+    if (datos.parametrosBioConfig !== undefined) data.parametrosBioConfig = JSON.stringify(datos.parametrosBioConfig);
+    if (datos.emailProvider !== undefined) data.emailProvider = datos.emailProvider ?? null;
+    if (datos.emailRemitente !== undefined) data.emailRemitente = datos.emailRemitente || null;
+    if (datos.emailNombreRemitente !== undefined) data.emailNombreRemitente = datos.emailNombreRemitente ?? null;
+    if (datos.resendApiKey !== undefined) data.resendApiKey = datos.resendApiKey || null;
+    if (datos.smtpHost !== undefined) data.smtpHost = datos.smtpHost ?? null;
+    if (datos.smtpPort !== undefined) data.smtpPort = datos.smtpPort ?? null;
+    if (datos.smtpSecure !== undefined) data.smtpSecure = datos.smtpSecure;
+    if (datos.smtpUser !== undefined) data.smtpUser = datos.smtpUser ?? null;
+    if (datos.smtpPass !== undefined && datos.smtpPass !== '') data.smtpPass = datos.smtpPass;
+
+    if (!config) {
+      config = await prisma.configuracion.create({
+        data: {
+          farmaciaId,
+          farmaciaNombre: farmacia.nombre,
+          farmaciaEmail: farmacia.email,
+          valoracionBioActiva: (data.valoracionBioActiva as boolean) ?? true,
+          parametrosReferencia: (data.parametrosReferencia as string) ?? JSON.stringify(PARAMETROS_REFERENCIA_DEFAULT),
+          parametrosBioConfig: (data.parametrosBioConfig as string) ?? JSON.stringify(PARAMETROS_BIO_CONFIG_DEFAULT),
+          emailProvider: (data.emailProvider as string) ?? 'smtp',
+          emailRemitente: data.emailRemitente as string | null ?? null,
+          emailNombreRemitente: data.emailNombreRemitente as string | null ?? null,
+          resendApiKey: data.resendApiKey as string | null ?? null,
+          smtpHost: data.smtpHost as string | null ?? null,
+          smtpPort: data.smtpPort as number | null ?? null,
+          smtpSecure: (data.smtpSecure as boolean) ?? false,
+          smtpUser: data.smtpUser as string | null ?? null,
+          smtpPass: data.smtpPass as string | null ?? null,
+        },
+      });
+    } else if (Object.keys(data).length > 0) {
+      config = await prisma.configuracion.update({
+        where: { farmaciaId },
+        data: data as Parameters<typeof prisma.configuracion.update>[0]['data'],
+      });
+    }
+
+    const parametrosReferencia = typeof config.parametrosReferencia === 'string'
+      ? JSON.parse(config.parametrosReferencia) as Record<string, unknown>
+      : config.parametrosReferencia as Record<string, unknown>;
+    const parametrosBioConfig = typeof config.parametrosBioConfig === 'string'
+      ? JSON.parse(config.parametrosBioConfig) as unknown[]
+      : (config.parametrosBioConfig as unknown[] || []);
+
+    res.json({
+      ...config,
+      parametrosReferencia,
+      parametrosBioConfig,
+      smtpPass: null,
+    });
+  } catch (error) {
+    if (error instanceof z.ZodError) {
+      return res.status(400).json({ error: 'Datos inválidos', detalles: error.errors });
+    }
+    console.error('Error al actualizar configuración farmacia:', error);
     res.status(500).json({ error: 'Error interno del servidor' });
   }
 }

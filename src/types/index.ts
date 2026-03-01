@@ -339,6 +339,67 @@ export interface ActualizarFarmaciaData {
   fechaExpiracion?: string | null;
 }
 
+/** Configuración SMTP/email de la plataforma (por defecto para todas las farmacias). smtpPass no se devuelve. */
+export interface ConfiguracionPlataforma {
+  id?: string;
+  emailProvider: 'smtp' | 'resend';
+  smtpHost: string | null;
+  smtpPort: number | null;
+  smtpSecure: boolean;
+  smtpUser: string | null;
+  smtpPass?: string | null; // Solo al enviar; API no devuelve valor real
+  smtpFrom: string | null;
+  resendApiKey: string | null;
+  emailNombreRemitente: string | null;
+  updatedAt?: string;
+}
+
+/** Configuración de una farmacia (vista superadmin para editar) */
+export interface ConfiguracionFarmaciaAdmin {
+  id: string;
+  farmaciaId: string;
+  valoracionBioActiva: boolean;
+  parametrosReferencia: Record<string, ParametroReferencia>;
+  parametrosBioConfig: ParametroBioConfig[];
+  emailProvider: string | null;
+  emailRemitente: string | null;
+  emailNombreRemitente: string | null;
+  resendApiKey: string | null;
+  smtpHost: string | null;
+  smtpPort: number | null;
+  smtpSecure: boolean;
+  smtpUser: string | null;
+  smtpPass?: null;
+  updatedAt?: string;
+}
+
+export interface ActualizarConfiguracionFarmaciaData {
+  valoracionBioActiva?: boolean;
+  parametrosReferencia?: Record<string, ParametroReferencia>;
+  parametrosBioConfig?: ParametroBioConfig[];
+  emailProvider?: 'smtp' | 'resend' | null;
+  emailRemitente?: string | null;
+  emailNombreRemitente?: string | null;
+  resendApiKey?: string | null;
+  smtpHost?: string | null;
+  smtpPort?: number | null;
+  smtpSecure?: boolean;
+  smtpUser?: string | null;
+  smtpPass?: string | null;
+}
+
+export interface ActualizarConfiguracionPlataformaData {
+  emailProvider?: 'smtp' | 'resend';
+  smtpHost?: string | null;
+  smtpPort?: number | null;
+  smtpSecure?: boolean;
+  smtpUser?: string | null;
+  smtpPass?: string | null;
+  smtpFrom?: string | null;
+  resendApiKey?: string | null;
+  emailNombreRemitente?: string | null;
+}
+
 export interface EstadisticasPlataforma {
   // Contadores principales
   totalFarmacias: number;

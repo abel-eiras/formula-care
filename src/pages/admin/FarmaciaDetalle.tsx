@@ -46,6 +46,7 @@ import {
   useCambiarPasswordUsuario,
   useEliminarUsuarioFarmacia,
 } from '@/hooks/useAdmin';
+import { ConfigFarmaciaTab } from './ConfigFarmaciaTab';
 import { toast } from 'sonner';
 import { 
   ArrowLeft, 
@@ -114,12 +115,11 @@ export default function FarmaciaDetalle() {
     maxPacientes: number;
   } | null>(null);
 
-  // Estado para diálogo de nuevo usuario
+  // Estado para diálogo de nuevo usuario (invitación por correo: sin contraseña)
   const [dialogoUsuarioAbierto, setDialogoUsuarioAbierto] = useState(false);
   const [nuevoUsuario, setNuevoUsuario] = useState({
     nombre: '',
     email: '',
-    password: '',
     rol: 'usuario' as 'admin' | 'farmaceutico' | 'usuario',
   });
 
@@ -192,10 +192,10 @@ export default function FarmaciaDetalle() {
     }
   };
 
-  // Crear usuario
+  // Crear usuario (se envía invitación por correo para que cree su contraseña)
   const handleCrearUsuario = async () => {
-    if (!id || !nuevoUsuario.nombre || !nuevoUsuario.email || !nuevoUsuario.password) {
-      toast.error('Todos los campos son requeridos');
+    if (!id || !nuevoUsuario.nombre || !nuevoUsuario.email) {
+      toast.error('Nombre y email son requeridos');
       return;
     }
 
@@ -204,9 +204,9 @@ export default function FarmaciaDetalle() {
         farmaciaId: id,
         datos: nuevoUsuario,
       });
-      toast.success('Usuario creado correctamente');
+      toast.success('Usuario creado. Se ha enviado un correo para que establezca su contraseña.');
       setDialogoUsuarioAbierto(false);
-      setNuevoUsuario({ nombre: '', email: '', password: '', rol: 'usuario' });
+      setNuevoUsuario({ nombre: '', email: '', rol: 'usuario' });
     } catch {
       toast.error('Error al crear el usuario');
     }
@@ -617,7 +617,7 @@ export default function FarmaciaDetalle() {
                   <DialogHeader>
                     <DialogTitle>Crear Usuario</DialogTitle>
                     <DialogDescription>
-                      Crear un nuevo usuario para {farmacia.nombre}
+                      Se enviará un correo al usuario para que cree su contraseña de forma segura.
                     </DialogDescription>
                   </DialogHeader>
                   <div className="space-y-4 py-4">
@@ -636,15 +636,6 @@ export default function FarmaciaDetalle() {
                         value={nuevoUsuario.email}
                         onChange={(e) => setNuevoUsuario({ ...nuevoUsuario, email: e.target.value })}
                         placeholder="usuario@farmacia.com"
-                      />
-                    </div>
-                    <div className="space-y-2">
-                      <Label>Contraseña</Label>
-                      <Input
-                        type="password"
-                        value={nuevoUsuario.password}
-                        onChange={(e) => setNuevoUsuario({ ...nuevoUsuario, password: e.target.value })}
-                        placeholder="••••••••"
                       />
                     </div>
                     <div className="space-y-2">
@@ -871,40 +862,7 @@ export default function FarmaciaDetalle() {
 
         {/* Tab Configuración */}
         <TabsContent value="config">
-          <Card>
-            <CardHeader>
-              <CardTitle>Configuración de la Farmacia</CardTitle>
-              <CardDescription>
-                Estado de la configuración
-              </CardDescription>
-            </CardHeader>
-            <CardContent>
-              <div className="space-y-4">
-                <div className="flex items-center justify-between p-4 border rounded-lg">
-                  <div>
-                    <p className="font-medium">Valoración Bioquímica</p>
-                    <p className="text-sm text-muted-foreground">
-                      Servicio de análisis bioquímico
-                    </p>
-                  </div>
-                  <Badge variant={farmacia.configuracion?.valoracionBioActiva ? 'default' : 'outline'}>
-                    {farmacia.configuracion?.valoracionBioActiva ? 'Activo' : 'Inactivo'}
-                  </Badge>
-                </div>
-                <div className="flex items-center justify-between p-4 border rounded-lg">
-                  <div>
-                    <p className="font-medium">Proveedor de Email</p>
-                    <p className="text-sm text-muted-foreground">
-                      Sistema de envío de correos
-                    </p>
-                  </div>
-                  <Badge variant="outline">
-                    {farmacia.configuracion?.emailProvider || 'Sin configurar'}
-                  </Badge>
-                </div>
-              </div>
-            </CardContent>
-          </Card>
+          {id && <ConfigFarmaciaTab farmaciaId={id} />}
         </TabsContent>
       </Tabs>
     </div>

@@ -11,6 +11,10 @@ import type {
   CrearFarmaciaData,
   ActualizarFarmaciaData,
   EstadisticasPlataforma,
+  ConfiguracionPlataforma,
+  ActualizarConfiguracionPlataformaData,
+  ConfiguracionFarmaciaAdmin,
+  ActualizarConfiguracionFarmaciaData,
   Usuario,
 } from '@/types';
 
@@ -74,6 +78,71 @@ export function useEstadisticasPlataforma() {
     queryKey: ['admin', 'estadisticas'],
     queryFn: () => api.get('/admin/estadisticas'),
     refetchInterval: 5 * 60 * 1000, // Refrescar cada 5 minutos
+  });
+}
+
+/**
+ * Obtener configuración SMTP/email de la plataforma
+ */
+export function useConfiguracionPlataforma() {
+  return useQuery<ConfiguracionPlataforma>({
+    queryKey: ['admin', 'configuracion-plataforma'],
+    queryFn: () => api.get('/admin/configuracion-plataforma'),
+  });
+}
+
+/**
+ * Actualizar configuración SMTP/email de la plataforma
+ */
+export function useActualizarConfiguracionPlataforma() {
+  const queryClient = useQueryClient();
+
+  return useMutation({
+    mutationFn: (datos: ActualizarConfiguracionPlataformaData) =>
+      api.put<ConfiguracionPlataforma>('/admin/configuracion-plataforma', datos),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['admin', 'configuracion-plataforma'] });
+    },
+  });
+}
+
+/**
+ * Obtener configuración de una farmacia (superadmin)
+ */
+export function useConfiguracionFarmacia(farmaciaId: string | undefined) {
+  return useQuery<ConfiguracionFarmaciaAdmin>({
+    queryKey: ['admin', 'farmacia', farmaciaId, 'configuracion'],
+    queryFn: () => api.get(`/admin/farmacias/${farmaciaId}/configuracion`),
+    enabled: !!farmaciaId,
+  });
+}
+
+/**
+ * Actualizar configuración de una farmacia (superadmin)
+ */
+export function useActualizarConfiguracionFarmacia() {
+  const queryClient = useQueryClient();
+
+  return useMutation({
+    mutationFn: ({
+      farmaciaId,
+      datos,
+    }: {
+      farmaciaId: string;
+      datos: ActualizarConfiguracionFarmaciaData;
+    }) =>
+      api.put<ConfiguracionFarmaciaAdmin>(
+        `/admin/farmacias/${farmaciaId}/configuracion`,
+        datos
+      ),
+    onSuccess: (_, variables) => {
+      queryClient.invalidateQueries({
+        queryKey: ['admin', 'farmacia', variables.farmaciaId, 'configuracion'],
+      });
+      queryClient.invalidateQueries({
+        queryKey: ['admin', 'farmacia', variables.farmaciaId],
+      });
+    },
   });
 }
 
@@ -171,7 +240,7 @@ export function useCrearUsuarioFarmacia() {
       farmaciaId: string;
       datos: {
         email: string;
-        password: string;
+        password?: string;
         nombre: string;
         rol?: 'admin' | 'farmaceutico' | 'usuario';
       };

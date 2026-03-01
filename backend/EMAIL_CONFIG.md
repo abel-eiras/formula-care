@@ -2,6 +2,21 @@
 
 El sistema de emails permite enviar confirmaciones, recordatorios y cancelaciones de citas a los pacientes.
 
+Para una guía de puesta en marcha del sistema completo (plantillas, variables de entorno, checklist para producción), ver **[context/guias/CONFIGURACION_EMAIL_Y_MENSAJERIA.md](../context/guias/CONFIGURACION_EMAIL_Y_MENSAJERIA.md)**.
+
+## Configuración SMTP desde el panel (recomendado en producción)
+
+El **superadministrador** puede configurar el SMTP por defecto de toda la plataforma desde el panel, sin tocar el `.env`:
+
+1. Iniciar sesión como superadmin.
+2. Ir a **Configuración SMTP** en el menú de administración.
+3. Rellenar proveedor (SMTP o Resend), host, puerto, usuario, contraseña y email remitente.
+4. Guardar.
+
+Todas las farmacias usarán esta configuración por defecto. Cada farmacia puede definir la suya propia en su detalle (tab Configuración).
+
+**En producción**, configura en el servidor la variable de entorno `FRONTEND_URL` con la URL pública del frontend (ej. `https://tu-app.vercel.app`) para que los enlaces de invitación por email (crear contraseña) apunten correctamente.
+
 ## Modos de Funcionamiento
 
 ### Modo Desarrollo (Sin configuración)

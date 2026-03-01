@@ -29,6 +29,7 @@ const LegalPublico = lazy(() => import("./pages/LegalPublico"));
 const ConfirmarCita = lazy(() => import("./pages/ConfirmarCita"));
 const ModificarCita = lazy(() => import("./pages/ModificarCita"));
 const CancelarCita = lazy(() => import("./pages/CancelarCita"));
+const EstablecerContrasena = lazy(() => import("./pages/EstablecerContrasena"));
 const NotFound = lazy(() => import("./pages/NotFound"));
 
 // Páginas de administración de plataforma (superadmin)
@@ -36,6 +37,7 @@ const AdminDashboard = lazy(() => import("./pages/admin/AdminDashboard"));
 const AdminFarmacias = lazy(() => import("./pages/admin/Farmacias"));
 const NuevaFarmacia = lazy(() => import("./pages/admin/NuevaFarmacia"));
 const FarmaciaDetalle = lazy(() => import("./pages/admin/FarmaciaDetalle"));
+const ConfiguracionEmail = lazy(() => import("./pages/admin/ConfiguracionEmail"));
 
 const queryClient = new QueryClient({
   defaultOptions: {
@@ -115,6 +117,15 @@ const App = () => (
                 </Suspense>
               }
             />
+            {/* Establecer contraseña desde invitación por email (público) */}
+            <Route
+              path="/establecer-contrasena"
+              element={
+                <Suspense fallback={<LoadingSpinner />}>
+                  <EstablecerContrasena />
+                </Suspense>
+              }
+            />
             {/* Rutas de impresión (protegidas, solo usuarios de farmacia) */}
             <Route
               path="/servicios/dermo/print"
@@ -153,6 +164,7 @@ const App = () => (
               <Route path="farmacias" element={<AdminFarmacias />} />
               <Route path="farmacias/nueva" element={<NuevaFarmacia />} />
               <Route path="farmacias/:id" element={<FarmaciaDetalle />} />
+              <Route path="configuracion-email" element={<ConfiguracionEmail />} />
             </Route>
             {/* Rutas protegidas con layout - Solo para usuarios de farmacia (no superadmin) */}
             <Route

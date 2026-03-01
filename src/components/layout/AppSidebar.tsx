@@ -11,6 +11,7 @@ import {
   Building2,
   Shield,
   ClipboardList,
+  Mail,
 } from "lucide-react";
 import { NavLink, useLocation, useNavigate } from "react-router-dom";
 import { cn } from "@/lib/utils";
@@ -65,6 +66,11 @@ const adminNavigationItems = [
     title: "Farmacias",
     url: "/admin/farmacias",
     icon: Building2,
+  },
+  {
+    title: "Configuración SMTP",
+    url: "/admin/configuracion-email",
+    icon: Mail,
   },
 ];
 

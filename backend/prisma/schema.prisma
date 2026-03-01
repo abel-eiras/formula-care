@@ -65,6 +65,7 @@ model Usuario {
 
   // Relación con Farmacia (opcional para superadmin)
   farmacia Farmacia? @relation(fields: [farmaciaId], references: [id], onDelete: Cascade)
+  tokensInvitacion TokenInvitacionUsuario[]
 
   @@index([email])
   @@index([rol])
@@ -260,6 +261,25 @@ model Notificacion {
 }
 
 // ==========================================
+// CONFIGURACIÓN DE PLATAFORMA (singleton, solo superadmin)
+// SMTP/email por defecto para todas las farmacias
+// ==========================================
+model ConfiguracionPlataforma {
+  id                    String   @id @default(cuid())
+  emailProvider         String   @default("smtp") // "smtp" o "resend"
+  smtpHost              String?
+  smtpPort              Int?     // 587, 465, etc.
+  smtpSecure            Boolean  @default(false)
+  smtpUser              String?
+  smtpPass              String?  // No exponer en respuestas API
+  smtpFrom              String?  // Email remitente por defecto
+  resendApiKey          String?
+  emailNombreRemitente  String?
+  createdAt             DateTime @default(now())
+  updatedAt             DateTime @updatedAt
+}
+
+// ==========================================
 // MODELO DE CONFIGURACIÓN (por Farmacia)
 // ==========================================
 model Configuracion {
@@ -313,6 +333,12 @@ model Configuracion {
   resendApiKey          String?  // API Key de Resend (encriptada en producción)
   emailRemitente        String?  // Email del remitente
   emailNombreRemitente  String?  // Nombre del remitente
+  // SMTP por farmacia (opcional; si no se define, se usa ConfiguracionPlataforma o env)
+  smtpHost              String?
+  smtpPort              Int?
+  smtpSecure            Boolean  @default(false)
+  smtpUser              String?
+  smtpPass              String?  // No exponer en respuestas API
 
   createdAt             DateTime @default(now())
   updatedAt             DateTime @updatedAt
@@ -443,5 +469,22 @@ model TokenAccionCita {
 
   @@index([token])
   @@index([citaId])
+  @@index([expiraEn])
+}
+
+// Token de invitación para que un nuevo usuario establezca su contraseña
+model TokenInvitacionUsuario {
+  id        String    @id @default(cuid())
+  usuarioId String
+  token     String    @unique
+  expiraEn  DateTime
+  usado     Boolean   @default(false)
+  usadoEn   DateTime?
+  createdAt DateTime  @default(now())
+
+  usuario Usuario @relation(fields: [usuarioId], references: [id], onDelete: Cascade)
+
+  @@index([token])
+  @@index([usuarioId])
   @@index([expiraEn])
 }
