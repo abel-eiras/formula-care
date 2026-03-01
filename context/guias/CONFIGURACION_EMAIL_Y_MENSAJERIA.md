@@ -172,10 +172,12 @@ Si el backend está en **Render** y usas un **servidor SMTP propio** (p. ej. Rai
      - **Servicio de IP estática:** En planes de pago, Render puede ofrecer IP estática; revisar la documentación actual en [render.com/docs](https://render.com/docs).
 
 2. **Configurar el firewall de Raiola (o del servidor SMTP)**
-   - En el panel o configuración del servidor de correo (Raiola, firewall del VPS, etc.), permite conexiones **entrantes** en el **puerto SMTP** (465 o 587) desde:
-     - La(s) IP obtenida(s) en el paso anterior, o
-     - Un rango si Render lo publicita.
-   - Si no tienes IPs fijas, tendrás que permitir conexiones desde un rango amplio (menos seguro) o usar **Resend** (u otro servicio en la nube) para el envío desde Render y dejar el SMTP propio solo para correo interno.
+   - En el panel o configuración del servidor de correo, permite conexiones **entrantes** en el **puerto SMTP** (465 o 587) desde las IP de Render.
+   - **Raiola Networks:** El panel suele ser cPanel o RaiolaCP. La whitelist de IPs para SMTP puede estar en:
+     - **cPanel:** Security → IP Blocker (o ConfigServer Firewall / CSF si está instalado) — normalmente para *bloquear*; para *permitir solo* ciertas IPs puede haber reglas de firewall o una sección de "Trusted IPs" / IP permitidas.
+     - **RaiolaCP:** Busca secciones de "Seguridad", "Firewall" o "Restricciones SMTP". Si no aparece una opción clara de whitelist por IP, es posible que el control de acceso SMTP se haga a nivel de servidor (Postfix, etc.) y no esté expuesto en el panel.
+     - **Contactar soporte:** Raiola Networks ofrece soporte 24/7 (info@raiolanetworks.es, +34 982 77 60 81). Pregunta cómo permitir conexiones SMTP solo desde las IP de Render.
+   - Si no tienes IPs fijas, tendrás que permitir un rango amplio o usar **Resend** para el envío desde Render.
 
 3. **Alternativa recomendada**
    - Usar **Resend** (o similar) para el envío desde la app en Render: no depende de que el firewall del servidor de correo permita las IPs de Render y evita problemas de timeouts y bloqueos.
