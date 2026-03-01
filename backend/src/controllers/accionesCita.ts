@@ -7,7 +7,8 @@ import type { Request, Response } from 'express';
 import { z } from 'zod';
 import { prisma } from '../lib/prisma.js';
 import { verificarToken, marcarTokenUsado } from '../services/tokenService.js';
-import { enviarCancelacionCita } from '../services/emailService.js';
+import { enviarCancelacionCita, enviarModificacionCita } from '../services/emailService.js';
+import { decryptPacienteData } from '../services/encryptionService.js';
 import { getParamString } from '../lib/queryHelpers.js';
 
 // ==========================================
@@ -259,6 +260,18 @@ export async function modificarCita(req: Request, res: Response) {
 
     // Marcar token como usado
     await marcarTokenUsado(token);
+
+    // Enviar email de modificación al paciente
+    const pacienteDesencriptado = resultado.data.paciente ? decryptPacienteData(resultado.data.paciente) : null;
+    if (pacienteDesencriptado?.email) {
+      enviarModificacionCita(pacienteDesencriptado.email, {
+        citaId: cita.id,
+        tipo: cita.tipo,
+        fecha,
+        hora,
+        nombreCliente: pacienteDesencriptado.name,
+      }).catch((err) => console.error('Error al enviar email de modificación:', err));
+    }
 
     res.json({
       success: true,

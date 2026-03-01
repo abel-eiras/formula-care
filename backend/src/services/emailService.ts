@@ -25,6 +25,13 @@ interface DatosEmail {
   urlConfirmar?: string;
   urlModificar?: string;
   urlCancelar?: string;
+  urlSolicitarCita?: string;
+  urlWhatsapp?: string;
+  urlTelefono?: string;
+  logoFarmacia?: string;
+  colorPrimario?: string;
+  colorSecundario?: string;
+  colorAcento?: string;
   motivoRechazo?: string;
   [key: string]: string | undefined; // Para variables adicionales
 }
@@ -224,7 +231,7 @@ async function obtenerPlantilla(tipo: string, farmaciaId: string) {
 function reemplazarVariables(contenido: string, datos: DatosEmail): string {
   let resultado = contenido;
 
-  // Lista de todas las variables disponibles
+  // Lista de todas las variables disponibles (incluye las de datos + extras)
   const variables: Record<string, string | undefined> = {
     nombrePaciente: datos.nombrePaciente,
     fechaCita: datos.fechaCita,
@@ -238,8 +245,23 @@ function reemplazarVariables(contenido: string, datos: DatosEmail): string {
     urlConfirmar: datos.urlConfirmar,
     urlModificar: datos.urlModificar,
     urlCancelar: datos.urlCancelar,
+    urlSolicitarCita: datos.urlSolicitarCita,
+    urlWhatsapp: datos.urlWhatsapp,
+    urlTelefono: datos.urlTelefono,
+    logoFarmacia: datos.logoFarmacia,
+    bloqueLogo: datos.logoFarmacia && datos.nombreFarmacia
+      ? `<img src="${datos.logoFarmacia}" alt="${(datos.nombreFarmacia || '').replace(/"/g, '&quot;')}" style="max-height: 60px; display: block; margin: 0 auto;" />`
+      : '',
+    bloqueWhatsapp: datos.urlWhatsapp
+      ? ` | <a href="${datos.urlWhatsapp}" style="color: #25d366;">Contactar por WhatsApp</a>`
+      : '',
+    bloqueTelefono: datos.urlTelefono
+      ? ` | <a href="${datos.urlTelefono}">Llamar</a>`
+      : '',
+    colorPrimario: datos.colorPrimario,
+    colorSecundario: datos.colorSecundario,
+    colorAcento: datos.colorAcento,
     motivoRechazo: datos.motivoRechazo,
-    // Añadir año actual para footer
     anioActual: new Date().getFullYear().toString(),
   };
 
@@ -272,21 +294,126 @@ function htmlATexto(html: string): string {
 // DATOS DE FARMACIA
 // ==========================================
 
+/** Colores por defecto cuando no hay tema/colores configurados (alineados con frontend) */
+const COLORES_DEFAULT = {
+  primario: '#79438f',
+  secundario: '#6495a8',
+  acento: '#79438f',
+};
+
+/** Temas preconfigurados (coinciden con src/lib/coloresMarca.ts) */
+const TEMAS_PRECONFIGURADOS: Record<string, { primario: string; secundario: string; acento: string }> = {
+  default: { primario: '#79438f', secundario: '#6495a8', acento: '#79438f' },
+  pontevea: { primario: '#79438f', secundario: '#6495a8', acento: '#79438f' },
+  verde: { primario: '#0d9488', secundario: '#14b8a6', acento: '#0d9488' },
+  azul: { primario: '#2563eb', secundario: '#3b82f6', acento: '#2563eb' },
+};
+
+/**
+ * Obtiene los colores de marca según tema y colores personalizados
+ */
+function obtenerColoresMarca(config: {
+  temaActivo?: string | null;
+  coloresMarca?: string | null;
+} | null): { primario: string; secundario: string; acento: string } {
+  if (!config) return { ...COLORES_DEFAULT };
+  const tema = config.temaActivo || 'default';
+  let colores = config.temaActivo === 'custom' && config.coloresMarca
+    ? ((): Record<string, string> => {
+        try {
+          return typeof config.coloresMarca === 'string'
+            ? (JSON.parse(config.coloresMarca) as Record<string, string>)
+            : (config.coloresMarca as unknown as Record<string, string>) ?? {};
+        } catch {
+          return {};
+        }
+      })()
+    : TEMAS_PRECONFIGURADOS[tema];
+  if (!colores) colores = TEMAS_PRECONFIGURADOS.default;
+  return {
+    primario: colores.primario ?? COLORES_DEFAULT.primario,
+    secundario: colores.secundario ?? COLORES_DEFAULT.secundario,
+    acento: colores.acento ?? colores.primario ?? COLORES_DEFAULT.acento,
+  };
+}
+
+export interface DatosFarmaciaParaEmail {
+  nombre: string;
+  direccion: string;
+  ciudad: string;
+  telefono: string;
+  email: string;
+  web: string;
+  urlSolicitarCita: string;
+  urlWhatsapp: string;
+  urlTelefono: string;
+  logoFarmacia: string;
+  colorPrimario: string;
+  colorSecundario: string;
+  colorAcento: string;
+}
+
 /**
  * Obtiene los datos de la farmacia desde la configuración (por farmaciaId)
+ * Incluye logo, colores de marca, enlaces WhatsApp/teléfono y URL para solicitar cita
  */
-async function obtenerDatosFarmacia(farmaciaId: string) {
-  const config = await prisma.configuracion.findUnique({
-    where: { farmaciaId },
-  });
+async function obtenerDatosFarmacia(farmaciaId: string): Promise<DatosFarmaciaParaEmail> {
+  const [config, farmacia] = await Promise.all([
+    prisma.configuracion.findUnique({ where: { farmaciaId } }),
+    prisma.farmacia.findUnique({
+      where: { id: farmaciaId },
+      select: { slug: true, logo: true },
+    }),
+  ]);
+
+  const baseUrl = process.env.APP_URL || 'http://localhost:5173';
+  const slug = farmacia?.slug || '';
+  const direccion = config?.farmaciaDireccion || '';
+  const ciudad = config?.farmaciaCiudad || '';
+  const telefono = config?.farmaciaTelefono || '';
+  const whatsapp = config?.farmaciaWhatsapp || '';
+  const farmaciaLogo = config?.farmaciaLogo || farmacia?.logo || '';
+
+  // Logo: data: base64 se usa tal cual; ruta relativa se convierte en URL absoluta
+  let logoFarmacia = '';
+  if (farmaciaLogo) {
+    if (farmaciaLogo.startsWith('data:')) {
+      logoFarmacia = farmaciaLogo;
+    } else {
+      const path = farmaciaLogo.startsWith('/') ? farmaciaLogo : `/microcaya/${farmaciaLogo}`;
+      logoFarmacia = `${baseUrl}${path}`;
+    }
+  }
+
+  // URL solicitar cita: /cita/{slug}
+  const urlSolicitarCita = slug ? `${baseUrl}/cita/${slug}` : (config?.farmaciaWeb || '');
+
+  // WhatsApp: https://wa.me/34XXXXXXXXX (sin + ni espacios)
+  const urlWhatsapp = whatsapp
+    ? `https://wa.me/${whatsapp.replace(/\D/g, '')}`
+    : '';
+
+  // Teléfono: tel:+34...
+  const urlTelefono = telefono
+    ? `tel:${telefono.replace(/\s/g, '')}`
+    : '';
+
+  const colores = obtenerColoresMarca(config);
 
   return {
     nombre: config?.farmaciaNombre || 'Tu Farmacia',
-    direccion: config?.farmaciaDireccion || '',
-    ciudad: config?.farmaciaCiudad || '',
-    telefono: config?.farmaciaTelefono || '',
+    direccion,
+    ciudad,
+    telefono,
     email: config?.farmaciaEmail || '',
     web: config?.farmaciaWeb || '',
+    urlSolicitarCita,
+    urlWhatsapp,
+    urlTelefono,
+    logoFarmacia,
+    colorPrimario: colores.primario,
+    colorSecundario: colores.secundario,
+    colorAcento: colores.acento,
   };
 }
 
@@ -315,6 +442,53 @@ function obtenerNombreTipoServicio(tipo: string): string {
     seguimiento: 'Seguimiento',
   };
   return nombres[tipo] || tipo;
+}
+
+/** Datos básicos de cita para construir DatosEmail */
+interface DatosCitaBase {
+  nombreCliente: string;
+  fecha: string;
+  hora: string;
+  tipo: string;
+  motivoRechazo?: string;
+}
+
+/**
+ * Construye DatosEmail completos con logo, colores y enlaces (WhatsApp, teléfono, solicitar cita).
+ * Si se pasan tokens, incluye urlConfirmar, urlModificar, urlCancelar.
+ */
+async function obtenerDatosEmailCompletos(
+  farmaciaId: string,
+  datosCita: DatosCitaBase,
+  tokens?: Record<TipoAccionCita, string>
+): Promise<DatosEmail> {
+  const datosFarmacia = await obtenerDatosFarmacia(farmaciaId);
+  const urls = tokens ? construirUrlsAccion(tokens) : null;
+
+  const direccionCompleta = [datosFarmacia.direccion, datosFarmacia.ciudad].filter(Boolean).join(', ');
+
+  return {
+    nombrePaciente: datosCita.nombreCliente,
+    fechaCita: formatearFecha(datosCita.fecha),
+    horaCita: datosCita.hora,
+    tipoServicio: obtenerNombreTipoServicio(datosCita.tipo),
+    nombreFarmacia: datosFarmacia.nombre,
+    direccionFarmacia: direccionCompleta,
+    telefonoFarmacia: datosFarmacia.telefono,
+    emailFarmacia: datosFarmacia.email,
+    webFarmacia: datosFarmacia.web,
+    urlConfirmar: urls?.confirmar,
+    urlModificar: urls?.modificar,
+    urlCancelar: urls?.cancelar,
+    urlSolicitarCita: datosFarmacia.urlSolicitarCita,
+    urlWhatsapp: datosFarmacia.urlWhatsapp,
+    urlTelefono: datosFarmacia.urlTelefono,
+    logoFarmacia: datosFarmacia.logoFarmacia,
+    colorPrimario: datosFarmacia.colorPrimario,
+    colorSecundario: datosFarmacia.colorSecundario,
+    colorAcento: datosFarmacia.colorAcento,
+    motivoRechazo: datosCita.motivoRechazo,
+  };
 }
 
 // ==========================================
@@ -813,27 +987,11 @@ export async function enviarConfirmacionCita(
       return false;
     }
 
-    const datosFarmacia = await obtenerDatosFarmacia(farmaciaId);
-
     // Generar tokens de acción
     const tokens = await generarTokensAccionCita(datosCita.citaId);
-    const urls = construirUrlsAccion(tokens);
 
-    // Preparar datos para la plantilla
-    const datos: DatosEmail = {
-      nombrePaciente: datosCita.nombreCliente,
-      fechaCita: formatearFecha(datosCita.fecha),
-      horaCita: datosCita.hora,
-      tipoServicio: obtenerNombreTipoServicio(datosCita.tipo),
-      nombreFarmacia: datosFarmacia.nombre,
-      direccionFarmacia: `${datosFarmacia.direccion}, ${datosFarmacia.ciudad}`,
-      telefonoFarmacia: datosFarmacia.telefono,
-      emailFarmacia: datosFarmacia.email,
-      webFarmacia: datosFarmacia.web,
-      urlConfirmar: urls.confirmar,
-      urlModificar: urls.modificar,
-      urlCancelar: urls.cancelar,
-    };
+    // Preparar datos para la plantilla (incluye logo, colores, WhatsApp, teléfono, urlSolicitarCita)
+    const datos = await obtenerDatosEmailCompletos(farmaciaId, datosCita, tokens);
 
     // Obtener plantilla (si hay farmaciaId)
     const plantilla = farmaciaId ? await obtenerPlantilla('confirmacion', farmaciaId) : null;
@@ -892,24 +1050,8 @@ export async function enviarRecordatorioCita(
       return false;
     }
 
-    const datosFarmacia = await obtenerDatosFarmacia(farmaciaId);
     const tokens = await generarTokensAccionCita(datosCita.citaId);
-    const urls = construirUrlsAccion(tokens);
-
-    const datos: DatosEmail = {
-      nombrePaciente: datosCita.nombreCliente,
-      fechaCita: formatearFecha(datosCita.fecha),
-      horaCita: datosCita.hora,
-      tipoServicio: obtenerNombreTipoServicio(datosCita.tipo),
-      nombreFarmacia: datosFarmacia.nombre,
-      direccionFarmacia: `${datosFarmacia.direccion}, ${datosFarmacia.ciudad}`,
-      telefonoFarmacia: datosFarmacia.telefono,
-      emailFarmacia: datosFarmacia.email,
-      webFarmacia: datosFarmacia.web,
-      urlConfirmar: urls.confirmar,
-      urlModificar: urls.modificar,
-      urlCancelar: urls.cancelar,
-    };
+    const datos = await obtenerDatosEmailCompletos(farmaciaId, datosCita, tokens);
 
     const plantilla = farmaciaId ? await obtenerPlantilla('recordatorio', farmaciaId) : null;
 
@@ -970,20 +1112,7 @@ export async function enviarCancelacionCita(
       return false;
     }
 
-    const datosFarmacia = await obtenerDatosFarmacia(farmaciaId);
-
-    const datos: DatosEmail = {
-      nombrePaciente: datosCita.nombreCliente,
-      fechaCita: formatearFecha(datosCita.fecha),
-      horaCita: datosCita.hora,
-      tipoServicio: obtenerNombreTipoServicio(datosCita.tipo),
-      nombreFarmacia: datosFarmacia.nombre,
-      direccionFarmacia: `${datosFarmacia.direccion}, ${datosFarmacia.ciudad}`,
-      telefonoFarmacia: datosFarmacia.telefono,
-      emailFarmacia: datosFarmacia.email,
-      webFarmacia: datosFarmacia.web,
-      motivoRechazo: datosCita.motivoRechazo,
-    };
+    const datos = await obtenerDatosEmailCompletos(farmaciaId, datosCita);
 
     const plantilla = farmaciaId ? await obtenerPlantilla('cancelacion', farmaciaId) : null;
 
@@ -1001,6 +1130,53 @@ export async function enviarCancelacionCita(
     return await enviarEmail(emailDestinatario, asunto, html, farmaciaId);
   } catch (error) {
     console.error('❌ Error al enviar cancelación:', error);
+    return false;
+  }
+}
+
+/**
+ * Envía email de modificación de cita
+ */
+export async function enviarModificacionCita(
+  emailDestinatario: string,
+  datosCita: {
+    citaId: string;
+    tipo: string;
+    fecha: string;
+    hora: string;
+    nombreCliente: string;
+  }
+): Promise<boolean> {
+  try {
+    const cita = await prisma.cita.findUnique({
+      where: { id: datosCita.citaId },
+      select: { farmaciaId: true },
+    });
+    const farmaciaId = cita?.farmaciaId;
+    if (!farmaciaId) {
+      console.warn('❌ No se puede enviar modificación: cita sin farmaciaId');
+      return false;
+    }
+
+    const tokens = await generarTokensAccionCita(datosCita.citaId);
+    const datos = await obtenerDatosEmailCompletos(farmaciaId, datosCita, tokens);
+
+    const plantilla = await obtenerPlantilla('modificacion', farmaciaId);
+
+    let html: string;
+    let asunto: string;
+
+    if (plantilla) {
+      html = reemplazarVariables(plantilla.contenidoHtml, datos);
+      asunto = reemplazarVariables(plantilla.asunto, datos);
+    } else {
+      html = generarPlantillaModificacionDefault(datos);
+      asunto = `Tu cita ha sido modificada - ${datos.tipoServicio}`;
+    }
+
+    return await enviarEmail(emailDestinatario, asunto, html, farmaciaId);
+  } catch (error) {
+    console.error('❌ Error al enviar modificación:', error);
     return false;
   }
 }
@@ -1069,10 +1245,22 @@ export async function enviarInvitacionUsuario(
 // PLANTILLAS POR DEFECTO
 // ==========================================
 
+/** Genera bloque logo y contactos para plantillas default */
+function bloquesDesdeDatos(datos: DatosEmail) {
+  const logo = datos.logoFarmacia && datos.nombreFarmacia
+    ? `<div style="text-align: center; padding: 16px 0;"><img src="${datos.logoFarmacia}" alt="${(datos.nombreFarmacia || '').replace(/"/g, '&quot;')}" style="max-height: 60px; display: block; margin: 0 auto;" /></div>`
+    : '';
+  const whatsapp = datos.urlWhatsapp ? ` | <a href="${datos.urlWhatsapp}" style="color: #25d366;">Contactar por WhatsApp</a>` : '';
+  const telefono = datos.urlTelefono ? ` | <a href="${datos.urlTelefono}">Llamar</a>` : '';
+  const color = datos.colorPrimario || '#79438f';
+  return { logo, whatsapp, telefono, color };
+}
+
 /**
  * Genera plantilla HTML de confirmación por defecto
  */
 function generarPlantillaConfirmacionDefault(datos: DatosEmail): string {
+  const { logo, whatsapp, telefono, color } = bloquesDesdeDatos(datos);
   return `
 <!DOCTYPE html>
 <html lang="es">
@@ -1082,7 +1270,8 @@ function generarPlantillaConfirmacionDefault(datos: DatosEmail): string {
   <title>Confirmación de Cita</title>
 </head>
 <body style="font-family: 'Segoe UI', Arial, sans-serif; line-height: 1.6; color: #333; max-width: 600px; margin: 0 auto; padding: 20px; background-color: #f5f5f5;">
-  <div style="background-color: #79438f; color: white; padding: 30px 20px; text-align: center; border-radius: 10px 10px 0 0;">
+  ${logo}
+  <div style="background-color: ${color}; color: white; padding: 30px 20px; text-align: center; border-radius: 10px 10px 0 0;">
     <h1 style="margin: 0; font-size: 24px;">✅ Cita Confirmada</h1>
   </div>
   
@@ -1091,7 +1280,7 @@ function generarPlantillaConfirmacionDefault(datos: DatosEmail): string {
     
     <p>Tu cita ha sido confirmada correctamente. Aquí tienes los detalles:</p>
     
-    <div style="background-color: #f8f4fa; padding: 20px; margin: 20px 0; border-left: 4px solid #79438f; border-radius: 0 8px 8px 0;">
+    <div style="background-color: #f8f4fa; padding: 20px; margin: 20px 0; border-left: 4px solid ${color}; border-radius: 0 8px 8px 0;">
       <p style="margin: 5px 0;"><strong>📅 Fecha:</strong> ${datos.fechaCita}</p>
       <p style="margin: 5px 0;"><strong>🕐 Hora:</strong> ${datos.horaCita}</p>
       <p style="margin: 5px 0;"><strong>💊 Servicio:</strong> ${datos.tipoServicio}</p>
@@ -1099,7 +1288,6 @@ function generarPlantillaConfirmacionDefault(datos: DatosEmail): string {
     
     <p>Por favor, llegue con unos minutos de antelación.</p>
     
-    <!-- Botones de acción -->
     <div style="text-align: center; margin: 30px 0;">
       <a href="${datos.urlConfirmar}" style="display: inline-block; background-color: #22c55e; color: white; padding: 12px 24px; text-decoration: none; border-radius: 6px; margin: 5px; font-weight: bold;">✓ Confirmar asistencia</a>
       <a href="${datos.urlModificar}" style="display: inline-block; background-color: #3b82f6; color: white; padding: 12px 24px; text-decoration: none; border-radius: 6px; margin: 5px; font-weight: bold;">✎ Modificar cita</a>
@@ -1111,8 +1299,8 @@ function generarPlantillaConfirmacionDefault(datos: DatosEmail): string {
     <div style="color: #666; font-size: 14px;">
       <p><strong>${datos.nombreFarmacia}</strong></p>
       <p style="margin: 3px 0;">${datos.direccionFarmacia}</p>
-      <p style="margin: 3px 0;">📞 ${datos.telefonoFarmacia}</p>
-      <p style="margin: 3px 0;">✉️ ${datos.emailFarmacia}</p>
+      <p style="margin: 3px 0;">📞 ${datos.telefonoFarmacia || ''}${whatsapp}${telefono}</p>
+      <p style="margin: 3px 0;">✉️ ${datos.emailFarmacia || ''}</p>
     </div>
   </div>
   
@@ -1127,6 +1315,7 @@ function generarPlantillaConfirmacionDefault(datos: DatosEmail): string {
  * Genera plantilla HTML de recordatorio por defecto
  */
 function generarPlantillaRecordatorioDefault(datos: DatosEmail): string {
+  const { logo, whatsapp, telefono } = bloquesDesdeDatos(datos);
   return `
 <!DOCTYPE html>
 <html lang="es">
@@ -1136,6 +1325,7 @@ function generarPlantillaRecordatorioDefault(datos: DatosEmail): string {
   <title>Recordatorio de Cita</title>
 </head>
 <body style="font-family: 'Segoe UI', Arial, sans-serif; line-height: 1.6; color: #333; max-width: 600px; margin: 0 auto; padding: 20px; background-color: #f5f5f5;">
+  ${logo}
   <div style="background-color: #f59e0b; color: white; padding: 30px 20px; text-align: center; border-radius: 10px 10px 0 0;">
     <h1 style="margin: 0; font-size: 24px;">⏰ Recordatorio de Cita</h1>
   </div>
@@ -1153,7 +1343,6 @@ function generarPlantillaRecordatorioDefault(datos: DatosEmail): string {
     
     <p>Por favor, llegue con unos minutos de antelación. Si no puedes asistir, te agradecemos que nos lo comuniques.</p>
     
-    <!-- Botones de acción -->
     <div style="text-align: center; margin: 30px 0;">
       <a href="${datos.urlConfirmar}" style="display: inline-block; background-color: #22c55e; color: white; padding: 12px 24px; text-decoration: none; border-radius: 6px; margin: 5px; font-weight: bold;">✓ Confirmar asistencia</a>
       <a href="${datos.urlModificar}" style="display: inline-block; background-color: #3b82f6; color: white; padding: 12px 24px; text-decoration: none; border-radius: 6px; margin: 5px; font-weight: bold;">✎ Modificar cita</a>
@@ -1165,7 +1354,8 @@ function generarPlantillaRecordatorioDefault(datos: DatosEmail): string {
     <div style="color: #666; font-size: 14px;">
       <p><strong>${datos.nombreFarmacia}</strong></p>
       <p style="margin: 3px 0;">${datos.direccionFarmacia}</p>
-      <p style="margin: 3px 0;">📞 ${datos.telefonoFarmacia}</p>
+      <p style="margin: 3px 0;">📞 ${datos.telefonoFarmacia || ''}${whatsapp}${telefono}</p>
+      <p style="margin: 3px 0;">✉️ ${datos.emailFarmacia || ''}</p>
     </div>
   </div>
   
@@ -1180,6 +1370,8 @@ function generarPlantillaRecordatorioDefault(datos: DatosEmail): string {
  * Genera plantilla HTML de cancelación por defecto
  */
 function generarPlantillaCancelacionDefault(datos: DatosEmail): string {
+  const { logo, whatsapp, telefono, color } = bloquesDesdeDatos(datos);
+  const urlSolicitar = datos.urlSolicitarCita || datos.webFarmacia || '#';
   return `
 <!DOCTYPE html>
 <html lang="es">
@@ -1189,6 +1381,7 @@ function generarPlantillaCancelacionDefault(datos: DatosEmail): string {
   <title>Cita Cancelada</title>
 </head>
 <body style="font-family: 'Segoe UI', Arial, sans-serif; line-height: 1.6; color: #333; max-width: 600px; margin: 0 auto; padding: 20px; background-color: #f5f5f5;">
+  ${logo}
   <div style="background-color: #ef4444; color: white; padding: 30px 20px; text-align: center; border-radius: 10px 10px 0 0;">
     <h1 style="margin: 0; font-size: 24px;">❌ Cita Cancelada</h1>
   </div>
@@ -1208,7 +1401,7 @@ function generarPlantillaCancelacionDefault(datos: DatosEmail): string {
     <p>Si deseas reagendar tu cita, puedes contactarnos o visitar nuestra página de solicitud de citas.</p>
     
     <div style="text-align: center; margin: 30px 0;">
-      <a href="${datos.webFarmacia || '#'}" style="display: inline-block; background-color: #79438f; color: white; padding: 12px 24px; text-decoration: none; border-radius: 6px; font-weight: bold;">Solicitar nueva cita</a>
+      <a href="${urlSolicitar}" style="display: inline-block; background-color: ${color}; color: white; padding: 12px 24px; text-decoration: none; border-radius: 6px; font-weight: bold;">Solicitar nueva cita</a>
     </div>
     
     <hr style="border: none; border-top: 1px solid #eee; margin: 30px 0;">
@@ -1216,8 +1409,64 @@ function generarPlantillaCancelacionDefault(datos: DatosEmail): string {
     <div style="color: #666; font-size: 14px;">
       <p><strong>${datos.nombreFarmacia}</strong></p>
       <p style="margin: 3px 0;">${datos.direccionFarmacia}</p>
-      <p style="margin: 3px 0;">📞 ${datos.telefonoFarmacia}</p>
-      <p style="margin: 3px 0;">✉️ ${datos.emailFarmacia}</p>
+      <p style="margin: 3px 0;">📞 ${datos.telefonoFarmacia || ''}${whatsapp}${telefono}</p>
+      <p style="margin: 3px 0;">✉️ ${datos.emailFarmacia || ''}</p>
+    </div>
+  </div>
+  
+  <p style="text-align: center; color: #999; font-size: 12px; margin-top: 20px;">
+    © ${new Date().getFullYear()} ${datos.nombreFarmacia}
+  </p>
+</body>
+</html>`;
+}
+
+/**
+ * Genera plantilla HTML de modificación por defecto
+ */
+function generarPlantillaModificacionDefault(datos: DatosEmail): string {
+  const { logo, whatsapp, telefono } = bloquesDesdeDatos(datos);
+  const colorSec = datos.colorSecundario || '#6495a8';
+  return `
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Cita Modificada</title>
+</head>
+<body style="font-family: 'Segoe UI', Arial, sans-serif; line-height: 1.6; color: #333; max-width: 600px; margin: 0 auto; padding: 20px; background-color: #f5f5f5;">
+  ${logo}
+  <div style="background-color: ${colorSec}; color: white; padding: 30px 20px; text-align: center; border-radius: 10px 10px 0 0;">
+    <h1 style="margin: 0; font-size: 24px;">📝 Cita Modificada</h1>
+  </div>
+  
+  <div style="background-color: white; padding: 30px; border-radius: 0 0 10px 10px; box-shadow: 0 2px 10px rgba(0,0,0,0.1);">
+    <p style="font-size: 16px;">Hola <strong>${datos.nombrePaciente}</strong>,</p>
+    
+    <p>Tu cita ha sido modificada. Aquí tienes los nuevos detalles:</p>
+    
+    <div style="background-color: #eff6ff; padding: 20px; margin: 20px 0; border-left: 4px solid ${colorSec}; border-radius: 0 8px 8px 0;">
+      <p style="margin: 5px 0;"><strong>📅 Nueva fecha:</strong> ${datos.fechaCita}</p>
+      <p style="margin: 5px 0;"><strong>🕐 Nueva hora:</strong> ${datos.horaCita}</p>
+      <p style="margin: 5px 0;"><strong>💊 Servicio:</strong> ${datos.tipoServicio}</p>
+    </div>
+    
+    <p>Por favor, llegue con unos minutos de antelación.</p>
+    
+    <div style="text-align: center; margin: 30px 0;">
+      <a href="${datos.urlConfirmar}" style="display: inline-block; background-color: #22c55e; color: white; padding: 12px 24px; text-decoration: none; border-radius: 6px; margin: 5px; font-weight: bold;">✓ Confirmar asistencia</a>
+      <a href="${datos.urlModificar}" style="display: inline-block; background-color: #3b82f6; color: white; padding: 12px 24px; text-decoration: none; border-radius: 6px; margin: 5px; font-weight: bold;">✎ Modificar cita</a>
+      <a href="${datos.urlCancelar}" style="display: inline-block; background-color: #ef4444; color: white; padding: 12px 24px; text-decoration: none; border-radius: 6px; margin: 5px; font-weight: bold;">✕ Cancelar cita</a>
+    </div>
+    
+    <hr style="border: none; border-top: 1px solid #eee; margin: 30px 0;">
+    
+    <div style="color: #666; font-size: 14px;">
+      <p><strong>${datos.nombreFarmacia}</strong></p>
+      <p style="margin: 3px 0;">${datos.direccionFarmacia}</p>
+      <p style="margin: 3px 0;">📞 ${datos.telefonoFarmacia || ''}${whatsapp}${telefono}</p>
+      <p style="margin: 3px 0;">✉️ ${datos.emailFarmacia || ''}</p>
     </div>
   </div>
   

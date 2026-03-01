@@ -3,7 +3,7 @@ import { prisma } from '../lib/prisma.js';
 import { z } from 'zod';
 import { getQueryString, getParamString } from '../lib/queryHelpers.js';
 import { obtenerFarmaciaIdRequerido, obtenerFarmaciaIdOpcional } from '../middleware/tenant.js';
-import { enviarConfirmacionCita } from '../services/emailService.js';
+import { enviarConfirmacionCita, enviarModificacionCita } from '../services/emailService.js';
 import { decryptPacienteData } from '../services/encryptionService.js';
 
 // Esquema de validación para crear cita
@@ -221,15 +221,31 @@ export async function actualizarCita(req: Request, res: Response) {
             id: true,
             name: true,
             phone: true,
+            email: true,
           },
         },
       },
     });
 
     // Desencriptar datos del paciente
+    const pacienteDesencriptado = cita.paciente ? decryptPacienteData(cita.paciente) : null;
+
+    // Si se modificó fecha u hora, enviar email de modificación
+    const fechaCambio = datos.fecha !== undefined && datos.fecha !== citaAnterior.fecha;
+    const horaCambio = datos.hora !== undefined && datos.hora !== citaAnterior.hora;
+    if ((fechaCambio || horaCambio) && pacienteDesencriptado?.email) {
+      enviarModificacionCita(pacienteDesencriptado.email, {
+        citaId: cita.id,
+        tipo: cita.tipo,
+        fecha: cita.fecha,
+        hora: cita.hora,
+        nombreCliente: pacienteDesencriptado.name,
+      }).catch((err) => console.error('Error al enviar email de modificación:', err));
+    }
+
     const citaDesencriptada = {
       ...cita,
-      paciente: cita.paciente ? decryptPacienteData(cita.paciente) : null,
+      paciente: pacienteDesencriptado,
     };
 
     res.json(citaDesencriptada);

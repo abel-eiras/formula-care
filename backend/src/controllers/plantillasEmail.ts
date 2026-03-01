@@ -25,7 +25,8 @@ const PLANTILLAS_DEFAULT = {
   <title>Confirmación de Cita</title>
 </head>
 <body style="font-family: 'Segoe UI', Arial, sans-serif; line-height: 1.6; color: #333; max-width: 600px; margin: 0 auto; padding: 20px; background-color: #f5f5f5;">
-  <div style="background-color: #79438f; color: white; padding: 30px 20px; text-align: center; border-radius: 10px 10px 0 0;">
+  {{bloqueLogo}}
+  <div style="background-color: {{colorPrimario}}; color: white; padding: 30px 20px; text-align: center; border-radius: 10px 10px 0 0;">
     <h1 style="margin: 0; font-size: 24px;">✅ Cita Confirmada</h1>
   </div>
   
@@ -34,7 +35,7 @@ const PLANTILLAS_DEFAULT = {
     
     <p>Tu cita ha sido confirmada correctamente. Aquí tienes los detalles:</p>
     
-    <div style="background-color: #f8f4fa; padding: 20px; margin: 20px 0; border-left: 4px solid #79438f; border-radius: 0 8px 8px 0;">
+    <div style="background-color: #f8f4fa; padding: 20px; margin: 20px 0; border-left: 4px solid {{colorPrimario}}; border-radius: 0 8px 8px 0;">
       <p style="margin: 5px 0;"><strong>📅 Fecha:</strong> {{fechaCita}}</p>
       <p style="margin: 5px 0;"><strong>🕐 Hora:</strong> {{horaCita}}</p>
       <p style="margin: 5px 0;"><strong>💊 Servicio:</strong> {{tipoServicio}}</p>
@@ -42,7 +43,6 @@ const PLANTILLAS_DEFAULT = {
     
     <p>Por favor, llegue con unos minutos de antelación.</p>
     
-    <!-- Botones de acción -->
     <div style="text-align: center; margin: 30px 0;">
       <a href="{{urlConfirmar}}" style="display: inline-block; background-color: #22c55e; color: white; padding: 12px 24px; text-decoration: none; border-radius: 6px; margin: 5px; font-weight: bold;">✓ Confirmar asistencia</a>
       <a href="{{urlModificar}}" style="display: inline-block; background-color: #3b82f6; color: white; padding: 12px 24px; text-decoration: none; border-radius: 6px; margin: 5px; font-weight: bold;">✎ Modificar cita</a>
@@ -54,7 +54,7 @@ const PLANTILLAS_DEFAULT = {
     <div style="color: #666; font-size: 14px;">
       <p><strong>{{nombreFarmacia}}</strong></p>
       <p style="margin: 3px 0;">{{direccionFarmacia}}</p>
-      <p style="margin: 3px 0;">📞 {{telefonoFarmacia}}</p>
+      <p style="margin: 3px 0;">📞 {{telefonoFarmacia}}{{bloqueWhatsapp}}{{bloqueTelefono}}</p>
       <p style="margin: 3px 0;">✉️ {{emailFarmacia}}</p>
     </div>
   </div>
@@ -76,6 +76,7 @@ const PLANTILLAS_DEFAULT = {
   <title>Recordatorio de Cita</title>
 </head>
 <body style="font-family: 'Segoe UI', Arial, sans-serif; line-height: 1.6; color: #333; max-width: 600px; margin: 0 auto; padding: 20px; background-color: #f5f5f5;">
+  {{bloqueLogo}}
   <div style="background-color: #f59e0b; color: white; padding: 30px 20px; text-align: center; border-radius: 10px 10px 0 0;">
     <h1 style="margin: 0; font-size: 24px;">⏰ Recordatorio de Cita</h1>
   </div>
@@ -93,7 +94,6 @@ const PLANTILLAS_DEFAULT = {
     
     <p>Por favor, llegue con unos minutos de antelación. Si no puedes asistir, te agradecemos que nos lo comuniques.</p>
     
-    <!-- Botones de acción -->
     <div style="text-align: center; margin: 30px 0;">
       <a href="{{urlConfirmar}}" style="display: inline-block; background-color: #22c55e; color: white; padding: 12px 24px; text-decoration: none; border-radius: 6px; margin: 5px; font-weight: bold;">✓ Confirmar asistencia</a>
       <a href="{{urlModificar}}" style="display: inline-block; background-color: #3b82f6; color: white; padding: 12px 24px; text-decoration: none; border-radius: 6px; margin: 5px; font-weight: bold;">✎ Modificar cita</a>
@@ -105,7 +105,8 @@ const PLANTILLAS_DEFAULT = {
     <div style="color: #666; font-size: 14px;">
       <p><strong>{{nombreFarmacia}}</strong></p>
       <p style="margin: 3px 0;">{{direccionFarmacia}}</p>
-      <p style="margin: 3px 0;">📞 {{telefonoFarmacia}}</p>
+      <p style="margin: 3px 0;">📞 {{telefonoFarmacia}}{{bloqueWhatsapp}}{{bloqueTelefono}}</p>
+      <p style="margin: 3px 0;">✉️ {{emailFarmacia}}</p>
     </div>
   </div>
   
@@ -126,6 +127,7 @@ const PLANTILLAS_DEFAULT = {
   <title>Cita Cancelada</title>
 </head>
 <body style="font-family: 'Segoe UI', Arial, sans-serif; line-height: 1.6; color: #333; max-width: 600px; margin: 0 auto; padding: 20px; background-color: #f5f5f5;">
+  {{bloqueLogo}}
   <div style="background-color: #ef4444; color: white; padding: 30px 20px; text-align: center; border-radius: 10px 10px 0 0;">
     <h1 style="margin: 0; font-size: 24px;">❌ Cita Cancelada</h1>
   </div>
@@ -144,7 +146,7 @@ const PLANTILLAS_DEFAULT = {
     <p>Si deseas reagendar tu cita, puedes contactarnos o visitar nuestra página de solicitud de citas.</p>
     
     <div style="text-align: center; margin: 30px 0;">
-      <a href="{{webFarmacia}}" style="display: inline-block; background-color: #79438f; color: white; padding: 12px 24px; text-decoration: none; border-radius: 6px; font-weight: bold;">Solicitar nueva cita</a>
+      <a href="{{urlSolicitarCita}}" style="display: inline-block; background-color: {{colorPrimario}}; color: white; padding: 12px 24px; text-decoration: none; border-radius: 6px; font-weight: bold;">Solicitar nueva cita</a>
     </div>
     
     <hr style="border: none; border-top: 1px solid #eee; margin: 30px 0;">
@@ -152,7 +154,7 @@ const PLANTILLAS_DEFAULT = {
     <div style="color: #666; font-size: 14px;">
       <p><strong>{{nombreFarmacia}}</strong></p>
       <p style="margin: 3px 0;">{{direccionFarmacia}}</p>
-      <p style="margin: 3px 0;">📞 {{telefonoFarmacia}}</p>
+      <p style="margin: 3px 0;">📞 {{telefonoFarmacia}}{{bloqueWhatsapp}}{{bloqueTelefono}}</p>
       <p style="margin: 3px 0;">✉️ {{emailFarmacia}}</p>
     </div>
   </div>
@@ -174,7 +176,8 @@ const PLANTILLAS_DEFAULT = {
   <title>Cita Modificada</title>
 </head>
 <body style="font-family: 'Segoe UI', Arial, sans-serif; line-height: 1.6; color: #333; max-width: 600px; margin: 0 auto; padding: 20px; background-color: #f5f5f5;">
-  <div style="background-color: #3b82f6; color: white; padding: 30px 20px; text-align: center; border-radius: 10px 10px 0 0;">
+  {{bloqueLogo}}
+  <div style="background-color: {{colorSecundario}}; color: white; padding: 30px 20px; text-align: center; border-radius: 10px 10px 0 0;">
     <h1 style="margin: 0; font-size: 24px;">📝 Cita Modificada</h1>
   </div>
   
@@ -183,7 +186,7 @@ const PLANTILLAS_DEFAULT = {
     
     <p>Tu cita ha sido modificada. Aquí tienes los nuevos detalles:</p>
     
-    <div style="background-color: #eff6ff; padding: 20px; margin: 20px 0; border-left: 4px solid #3b82f6; border-radius: 0 8px 8px 0;">
+    <div style="background-color: #eff6ff; padding: 20px; margin: 20px 0; border-left: 4px solid {{colorSecundario}}; border-radius: 0 8px 8px 0;">
       <p style="margin: 5px 0;"><strong>📅 Nueva fecha:</strong> {{fechaCita}}</p>
       <p style="margin: 5px 0;"><strong>🕐 Nueva hora:</strong> {{horaCita}}</p>
       <p style="margin: 5px 0;"><strong>💊 Servicio:</strong> {{tipoServicio}}</p>
@@ -191,9 +194,9 @@ const PLANTILLAS_DEFAULT = {
     
     <p>Por favor, llegue con unos minutos de antelación.</p>
     
-    <!-- Botones de acción -->
     <div style="text-align: center; margin: 30px 0;">
       <a href="{{urlConfirmar}}" style="display: inline-block; background-color: #22c55e; color: white; padding: 12px 24px; text-decoration: none; border-radius: 6px; margin: 5px; font-weight: bold;">✓ Confirmar asistencia</a>
+      <a href="{{urlModificar}}" style="display: inline-block; background-color: #3b82f6; color: white; padding: 12px 24px; text-decoration: none; border-radius: 6px; margin: 5px; font-weight: bold;">✎ Modificar cita</a>
       <a href="{{urlCancelar}}" style="display: inline-block; background-color: #ef4444; color: white; padding: 12px 24px; text-decoration: none; border-radius: 6px; margin: 5px; font-weight: bold;">✕ Cancelar cita</a>
     </div>
     
@@ -202,7 +205,8 @@ const PLANTILLAS_DEFAULT = {
     <div style="color: #666; font-size: 14px;">
       <p><strong>{{nombreFarmacia}}</strong></p>
       <p style="margin: 3px 0;">{{direccionFarmacia}}</p>
-      <p style="margin: 3px 0;">📞 {{telefonoFarmacia}}</p>
+      <p style="margin: 3px 0;">📞 {{telefonoFarmacia}}{{bloqueWhatsapp}}{{bloqueTelefono}}</p>
+      <p style="margin: 3px 0;">✉️ {{emailFarmacia}}</p>
     </div>
   </div>
   
@@ -228,6 +232,16 @@ export const VARIABLES_DISPONIBLES = [
   { nombre: 'urlConfirmar', descripcion: 'Enlace para confirmar la cita' },
   { nombre: 'urlModificar', descripcion: 'Enlace para modificar la cita' },
   { nombre: 'urlCancelar', descripcion: 'Enlace para cancelar la cita' },
+  { nombre: 'urlSolicitarCita', descripcion: 'URL para solicitar nueva cita en la farmacia' },
+  { nombre: 'urlWhatsapp', descripcion: 'Enlace WhatsApp (si configurado)' },
+  { nombre: 'urlTelefono', descripcion: 'Enlace tel: para llamar (si configurado)' },
+  { nombre: 'logoFarmacia', descripcion: 'URL del logo (para img src)' },
+  { nombre: 'bloqueLogo', descripcion: 'Bloque HTML con logo (vacío si no hay logo)' },
+  { nombre: 'bloqueWhatsapp', descripcion: 'Enlace WhatsApp o vacío (para pie de contacto)' },
+  { nombre: 'bloqueTelefono', descripcion: 'Enlace llamar o vacío (para pie de contacto)' },
+  { nombre: 'colorPrimario', descripcion: 'Color primario del tema de la farmacia' },
+  { nombre: 'colorSecundario', descripcion: 'Color secundario del tema' },
+  { nombre: 'colorAcento', descripcion: 'Color de acento' },
   { nombre: 'anioActual', descripcion: 'Año actual (para copyright)' },
 ];
 
