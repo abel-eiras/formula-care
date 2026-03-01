@@ -91,12 +91,24 @@ const bloquearFechaHoraSchema = z.object({
 });
 
 /**
- * Obtener la configuración actual
+ * Obtener la configuración actual (requiere farmaciaId: por token en usuarios normales o ?farmaciaId= en superadmin)
  */
 export async function obtenerConfiguracion(req: Request, res: Response) {
   try {
-    const farmaciaId = obtenerFarmaciaIdRequerido(req);
-    
+    let farmaciaId: string;
+    try {
+      farmaciaId = obtenerFarmaciaIdRequerido(req);
+    } catch (err) {
+      const msg = err instanceof Error ? err.message : String(err);
+      if (msg === 'Superadmin debe especificar farmaciaId') {
+        return res.status(400).json({
+          error: 'Superadmin debe especificar farmaciaId',
+          mensaje: 'La configuración de farmacia requiere ?farmaciaId=<id>. En el panel admin usa la configuración de cada farmacia.',
+        });
+      }
+      throw err;
+    }
+
     let config = await prisma.configuracion.findUnique({
       where: { farmaciaId },
     });

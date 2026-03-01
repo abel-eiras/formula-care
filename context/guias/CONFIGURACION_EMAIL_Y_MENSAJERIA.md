@@ -159,6 +159,29 @@ Usar esta lista para dejar el sistema de mensajería operativo.
 
 - **Los enlaces del email llevan a localhost:** comprobar que en el servidor donde corre el backend `APP_URL` está definida y es la URL pública del frontend (sin barra final).
 - **No llega ningún email:** revisar consola del backend (errores de SMTP/Resend), credenciales y, en Gmail, uso de "Contraseña de aplicación". Ver [backend/EMAIL_CONFIG.md](../../backend/EMAIL_CONFIG.md).
+
+### 8.1 SMTP propio (Raiola, etc.) con backend en Render: IPs y firewall
+
+Si el backend está en **Render** y usas un **servidor SMTP propio** (p. ej. Raiola en `mail.tudominio.com`), el servidor de correo puede estar rechazando o no respondiendo a las conexiones que vienen desde las IPs de Render. Para permitir solo el tráfico del backend:
+
+1. **Conocer las IPs de salida de Render**
+   - Render **no publica un listado fijo de IPs** para el plan Free. Las IPs de salida pueden cambiar.
+   - Opciones:
+     - **Documentación:** En [Render – Outbound IPs](https://render.com/docs/outbound-ip-addresses) indican si ofrecen IPs estáticas (suele ser en planes de pago o con add-ons).
+     - **Comprobación manual:** Desde el **Shell** del servicio en el dashboard de Render, ejecutar `curl -s ifconfig.me` o `curl -s icanhazip.com` y anotar la IP. Es la IP de salida actual; puede cambiar en otro deploy o reinicio.
+     - **Servicio de IP estática:** En planes de pago, Render puede ofrecer IP estática; revisar la documentación actual en [render.com/docs](https://render.com/docs).
+
+2. **Configurar el firewall de Raiola (o del servidor SMTP)**
+   - En el panel o configuración del servidor de correo (Raiola, firewall del VPS, etc.), permite conexiones **entrantes** en el **puerto SMTP** (465 o 587) desde:
+     - La(s) IP obtenida(s) en el paso anterior, o
+     - Un rango si Render lo publicita.
+   - Si no tienes IPs fijas, tendrás que permitir conexiones desde un rango amplio (menos seguro) o usar **Resend** (u otro servicio en la nube) para el envío desde Render y dejar el SMTP propio solo para correo interno.
+
+3. **Alternativa recomendada**
+   - Usar **Resend** (o similar) para el envío desde la app en Render: no depende de que el firewall del servidor de correo permita las IPs de Render y evita problemas de timeouts y bloqueos.
+
+---
+
 - **"Este enlace ya ha sido utilizado":** es esperado tras confirmar o cancelar; el token es de un solo uso.
 - **"Este enlace ha expirado":** el token tiene caducidad; el paciente debe solicitar una nueva cita o la farmacia debe reenviar/crear nuevo enlace si el sistema lo permite.
 - **Variables en blanco en el email:** asegurar que la configuración de la farmacia (nombre, dirección, teléfono, email, web) está guardada y que las variables usadas en la plantilla existen (ver tabla de variables arriba).
