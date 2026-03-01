@@ -96,11 +96,10 @@ export default function ConfiguracionEmail() {
         (err instanceof Error && err.name === 'AbortError') ||
         (err instanceof Error && /tiempo|504|timeout/i.test(err.message));
       const mensaje = isTimeout
-        ? 'El servidor tardó demasiado en responder.'
-        : 'No se pudo enviar el correo de prueba.';
-      const sugerencia = isTimeout
-        ? 'Comprueba la conexión a internet y la configuración del servidor SMTP. Vuelve a intentarlo.'
-        : 'Revisa la configuración SMTP y los pasos del diagnóstico debajo.';
+        ? 'El servidor de correo no respondió a tiempo.'
+        : 'No se pudo completar la prueba (error de red o servidor).';
+      const sugerencia =
+        'Comprueba primero el host y el puerto del servidor SMTP. Si la conexión es correcta, revisa el usuario y la contraseña.';
       toast.error(isTimeout ? 'El servidor tarda demasiado. Comprueba la conexión o inténtalo más tarde.' : mensaje);
       setLastDiagnostico({
         mensaje,
@@ -303,57 +302,40 @@ export default function ConfiguracionEmail() {
         </CardContent>
       </Card>
 
-      <Card>
-        <CardHeader>
-          <CardTitle>Diagnóstico del envío</CardTitle>
-          <CardDescription>
-            {lastDiagnostico
-              ? 'Pasos que se realizan al enviar el correo de prueba. Si algo falla, aquí verás qué ha fallado y qué revisar.'
-              : 'Haz clic en "Enviar correo de prueba" para ver los pasos que se realizan y, en caso de error, el motivo y la sugerencia de corrección.'}
-          </CardDescription>
-        </CardHeader>
-        <CardContent>
-          {!lastDiagnostico ? (
-            <p className="text-muted-foreground text-sm">Aún no se ha realizado ninguna prueba. Envía un correo de prueba para ver el diagnóstico.</p>
-          ) : (
-            <div className="space-y-4">
-              <ul className="space-y-2">
-                {lastDiagnostico.pasos.map((p, i) => (
-                  <li key={i} className="flex items-start gap-3">
-                    {p.ok ? (
-                      <CheckCircle2 className="h-5 w-5 text-green-600 shrink-0 mt-0.5" />
-                    ) : (
-                      <XCircle className="h-5 w-5 text-destructive shrink-0 mt-0.5" />
+      {lastDiagnostico && (
+        <Card>
+          <CardHeader>
+            <CardTitle>Diagnóstico del envío</CardTitle>
+            <CardDescription>
+              Pasos realizados al enviar el correo de prueba. Si algo ha fallado, el mensaje y la sugerencia indican qué revisar.
+            </CardDescription>
+          </CardHeader>
+          <CardContent>
+            <ul className="space-y-2">
+              {lastDiagnostico.pasos.map((p, i) => (
+                <li key={i} className="flex items-start gap-3">
+                  {p.ok ? (
+                    <CheckCircle2 className="h-5 w-5 text-green-600 shrink-0 mt-0.5" />
+                  ) : (
+                    <XCircle className="h-5 w-5 text-destructive shrink-0 mt-0.5" />
+                  )}
+                  <div className="min-w-0">
+                    <span className="font-medium">{p.paso}</span>
+                    {!p.ok && p.mensaje && (
+                      <p className="text-destructive text-sm mt-1">{p.mensaje}</p>
                     )}
-                    <div className="min-w-0">
-                      <span className="font-medium">{p.paso}</span>
-                      {!p.ok && p.mensaje && (
-                        <p className="text-destructive text-sm mt-1">{p.mensaje}</p>
-                      )}
-                      {!p.ok && p.sugerencia && (
-                        <p className="text-muted-foreground text-sm mt-1">
-                          <strong>Sugerencia:</strong> {p.sugerencia}
-                        </p>
-                      )}
-                    </div>
-                  </li>
-                ))}
-              </ul>
-              {!lastDiagnostico.enviado && (lastDiagnostico.mensajeError || lastDiagnostico.sugerencia) && (
-                <Alert variant="destructive">
-                  <AlertTriangle className="h-4 w-4" />
-                  <AlertDescription>
-                    <p className="font-medium">{lastDiagnostico.mensajeError}</p>
-                    {lastDiagnostico.sugerencia && (
-                      <p className="mt-2">{lastDiagnostico.sugerencia}</p>
+                    {!p.ok && p.sugerencia && (
+                      <p className="text-muted-foreground text-sm mt-1">
+                        <strong>Sugerencia:</strong> {p.sugerencia}
+                      </p>
                     )}
-                  </AlertDescription>
-                </Alert>
-              )}
-            </div>
-          )}
-        </CardContent>
-      </Card>
+                  </div>
+                </li>
+              ))}
+            </ul>
+          </CardContent>
+        </Card>
+      )}
     </div>
   );
 }

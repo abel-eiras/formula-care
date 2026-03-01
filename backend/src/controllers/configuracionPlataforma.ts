@@ -6,7 +6,10 @@
 import { Request, Response } from 'express';
 import { z } from 'zod';
 import { prisma } from '../lib/prisma.js';
-import { enviarCorreoPruebaPlataformaConDiagnostico } from '../services/emailService.js';
+import {
+  enviarCorreoPruebaPlataformaConDiagnostico,
+  type ResultadoDiagnosticoEmail,
+} from '../services/emailService.js';
 
 const actualizarConfiguracionPlataformaSchema = z.object({
   emailProvider: z.enum(['smtp', 'resend']).optional(),
@@ -131,17 +134,35 @@ export async function actualizarConfiguracionPlataforma(req: Request, res: Respo
 /** Timeout en ms para el envío del correo de prueba (evita que la petición cuelgue) */
 const TIMEOUT_ENVIO_PRUEBA_MS = 15_000;
 
+/** Resultado de diagnóstico cuando hay timeout: el cliente recibe 200 y puede mostrar el mensaje concreto */
+const resultadoTimeout: ResultadoDiagnosticoEmail = {
+  enviado: false,
+  pasos: [
+    {
+      paso: 'Conectar y enviar correo',
+      ok: false,
+      mensaje: 'El servidor de correo no respondió a tiempo.',
+      sugerencia:
+        'Comprueba primero el host y el puerto (que el servidor sea accesible). Si la conexión es correcta, revisa el usuario y la contraseña SMTP.',
+    },
+  ],
+  mensajeError: 'El servidor de correo no respondió a tiempo.',
+  sugerencia:
+    'Comprueba primero el host y el puerto. Si ya conecta, revisa el usuario y la contraseña.',
+};
+
 /**
  * POST /api/admin/configuracion-plataforma/enviar-prueba
  * Envía un correo de prueba a la dirección indicada (superadmin)
+ * Siempre responde 200 con diagnóstico (pasos, mensaje, sugerencia) para que el cliente no pierda el detalle
  */
 export async function enviarPruebaEmail(req: Request, res: Response) {
   try {
     const { email } = enviarPruebaSchema.parse(req.body);
     const resultado = await Promise.race([
       enviarCorreoPruebaPlataformaConDiagnostico(email),
-      new Promise<never>((_, reject) =>
-        setTimeout(() => reject(new Error('TIMEOUT_ENVIO_PRUEBA')), TIMEOUT_ENVIO_PRUEBA_MS)
+      new Promise<ResultadoDiagnosticoEmail>((resolve) =>
+        setTimeout(() => resolve(resultadoTimeout), TIMEOUT_ENVIO_PRUEBA_MS)
       ),
     ]);
     if (resultado.enviado) {
@@ -151,7 +172,6 @@ export async function enviarPruebaEmail(req: Request, res: Response) {
         pasos: resultado.pasos,
       });
     }
-    // 200 con enviado: false para que el cliente reciba siempre el diagnóstico y pueda mostrarlo
     return res.json({
       mensaje: resultado.mensajeError ?? 'No se pudo enviar el correo',
       enviado: false,
@@ -163,35 +183,28 @@ export async function enviarPruebaEmail(req: Request, res: Response) {
     if (error instanceof z.ZodError) {
       return res.status(400).json({ error: 'Email inválido', detalles: error.errors });
     }
-    if (error instanceof Error && error.message === 'TIMEOUT_ENVIO_PRUEBA') {
-      console.error('Timeout al enviar correo de prueba (SMTP/resend tardó demasiado)');
-      return res.status(504).json({
-        error: 'Tiempo de espera agotado',
-        mensaje: 'El envío tardó demasiado. Comprueba la configuración SMTP o la conexión.',
-        sugerencia: 'Verifica host, puerto y conexión a internet. Si el servidor tarda en responder, inténtalo de nuevo.',
-        enviado: false,
-        pasos: [
-          {
-            paso: 'Enviar correo',
-            ok: false,
-            mensaje: 'El servidor tardó demasiado en responder.',
-            sugerencia: 'Comprueba la conexión y la configuración del servidor SMTP. Vuelve a intentarlo.',
-          },
-        ],
-      });
-    }
     console.error('Error al enviar correo de prueba:', error);
-    return res.status(500).json({
-      error: 'Error interno del servidor',
+    const resultadoError: ResultadoDiagnosticoEmail = {
       enviado: false,
       pasos: [
         {
           paso: 'Envío',
           ok: false,
           mensaje: 'Error inesperado del servidor.',
-          sugerencia: 'Vuelve a intentarlo. Si el problema continúa, revisa los logs del servidor.',
+          sugerencia:
+            'Comprueba primero los datos del servidor (host y puerto). Si ya conecta, revisa el usuario y la contraseña. Si el problema continúa, revisa los logs del servidor.',
         },
       ],
+      mensajeError: 'Error inesperado del servidor.',
+      sugerencia:
+        'Comprueba los datos del servidor (host, puerto) y, si la conexión es correcta, el usuario y la contraseña.',
+    };
+    return res.json({
+      mensaje: resultadoError.mensajeError,
+      enviado: false,
+      pasos: resultadoError.pasos,
+      mensajeError: resultadoError.mensajeError,
+      sugerencia: resultadoError.sugerencia,
     });
   }
 }
