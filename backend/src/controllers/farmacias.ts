@@ -607,11 +607,7 @@ export async function crearUsuarioFarmacia(req: Request, res: Response) {
       passwordHash = await bcrypt.hash(datos.password!, salt);
     }
 
-    const farmacia = await prisma.farmacia.findUnique({
-      where: { id: farmaciaId },
-      select: { nombre: true },
-    });
-    const nombreFarmacia = farmacia?.nombre ?? 'la plataforma';
+    const nombreFarmacia = farmacia.nombre ?? 'la plataforma';
 
     const usuario = await prisma.usuario.create({
       data: {
