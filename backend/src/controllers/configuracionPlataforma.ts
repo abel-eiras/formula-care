@@ -6,7 +6,7 @@
 import { Request, Response } from 'express';
 import { z } from 'zod';
 import { prisma } from '../lib/prisma.js';
-import { enviarCorreoPruebaPlataforma } from '../services/emailService.js';
+import { enviarCorreoPruebaPlataformaConDiagnostico } from '../services/emailService.js';
 
 const actualizarConfiguracionPlataformaSchema = z.object({
   emailProvider: z.enum(['smtp', 'resend']).optional(),
@@ -128,6 +128,9 @@ export async function actualizarConfiguracionPlataforma(req: Request, res: Respo
   }
 }
 
+/** Timeout en ms para el envío del correo de prueba (evita que la petición cuelgue) */
+const TIMEOUT_ENVIO_PRUEBA_MS = 15_000;
+
 /**
  * POST /api/admin/configuracion-plataforma/enviar-prueba
  * Envía un correo de prueba a la dirección indicada (superadmin)
@@ -135,20 +138,60 @@ export async function actualizarConfiguracionPlataforma(req: Request, res: Respo
 export async function enviarPruebaEmail(req: Request, res: Response) {
   try {
     const { email } = enviarPruebaSchema.parse(req.body);
-    const enviado = await enviarCorreoPruebaPlataforma(email);
-    if (enviado) {
-      return res.json({ mensaje: 'Correo de prueba enviado correctamente', enviado: true });
+    const resultado = await Promise.race([
+      enviarCorreoPruebaPlataformaConDiagnostico(email),
+      new Promise<never>((_, reject) =>
+        setTimeout(() => reject(new Error('TIMEOUT_ENVIO_PRUEBA')), TIMEOUT_ENVIO_PRUEBA_MS)
+      ),
+    ]);
+    if (resultado.enviado) {
+      return res.json({
+        mensaje: 'Correo de prueba enviado correctamente',
+        enviado: true,
+        pasos: resultado.pasos,
+      });
     }
-    res.status(500).json({
-      error: 'No se pudo enviar el correo',
-      mensaje: 'Revisa la configuración SMTP y los logs del servidor.',
+    // 200 con enviado: false para que el cliente reciba siempre el diagnóstico y pueda mostrarlo
+    return res.json({
+      mensaje: resultado.mensajeError ?? 'No se pudo enviar el correo',
       enviado: false,
+      pasos: resultado.pasos,
+      mensajeError: resultado.mensajeError,
+      sugerencia: resultado.sugerencia,
     });
   } catch (error) {
     if (error instanceof z.ZodError) {
       return res.status(400).json({ error: 'Email inválido', detalles: error.errors });
     }
+    if (error instanceof Error && error.message === 'TIMEOUT_ENVIO_PRUEBA') {
+      console.error('Timeout al enviar correo de prueba (SMTP/resend tardó demasiado)');
+      return res.status(504).json({
+        error: 'Tiempo de espera agotado',
+        mensaje: 'El envío tardó demasiado. Comprueba la configuración SMTP o la conexión.',
+        sugerencia: 'Verifica host, puerto y conexión a internet. Si el servidor tarda en responder, inténtalo de nuevo.',
+        enviado: false,
+        pasos: [
+          {
+            paso: 'Enviar correo',
+            ok: false,
+            mensaje: 'El servidor tardó demasiado en responder.',
+            sugerencia: 'Comprueba la conexión y la configuración del servidor SMTP. Vuelve a intentarlo.',
+          },
+        ],
+      });
+    }
     console.error('Error al enviar correo de prueba:', error);
-    res.status(500).json({ error: 'Error interno del servidor' });
+    return res.status(500).json({
+      error: 'Error interno del servidor',
+      enviado: false,
+      pasos: [
+        {
+          paso: 'Envío',
+          ok: false,
+          mensaje: 'Error inesperado del servidor.',
+          sugerencia: 'Vuelve a intentarlo. Si el problema continúa, revisa los logs del servidor.',
+        },
+      ],
+    });
   }
 }

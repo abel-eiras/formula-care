@@ -20,8 +20,8 @@ import {
 } from '@/components/ui/select';
 import { useConfiguracionPlataforma, useActualizarConfiguracionPlataforma, useEnviarPruebaEmail } from '@/hooks/useAdmin';
 import { toast } from 'sonner';
-import { Mail, Loader2, Save, AlertTriangle, Send } from 'lucide-react';
-import type { ConfiguracionPlataforma, ActualizarConfiguracionPlataformaData } from '@/types';
+import { Mail, Loader2, Save, AlertTriangle, Send, CheckCircle2, XCircle } from 'lucide-react';
+import type { ActualizarConfiguracionPlataformaData, ResultadoEnvioPruebaEmail } from '@/types';
 
 const defaultForm: ActualizarConfiguracionPlataformaData = {
   emailProvider: 'smtp',
@@ -43,6 +43,7 @@ export default function ConfiguracionEmail() {
   const [passwordOverride, setPasswordOverride] = useState('');
   const [resendApiKeyOverride, setResendApiKeyOverride] = useState('');
   const [emailPrueba, setEmailPrueba] = useState('');
+  const [lastDiagnostico, setLastDiagnostico] = useState<ResultadoEnvioPruebaEmail | null>(null);
   const hasResendKeyStored = config?.resendApiKey != null && config.resendApiKey !== '';
 
   useEffect(() => {
@@ -81,11 +82,33 @@ export default function ConfiguracionEmail() {
       toast.error('Introduce un email de destino');
       return;
     }
+    setLastDiagnostico(null);
     try {
-      await enviarPruebaMutation.mutateAsync(email);
-      toast.success('Correo de prueba enviado. Revisa la bandeja de entrada (y spam).');
-    } catch {
-      toast.error('No se pudo enviar el correo de prueba. Revisa la configuración SMTP.');
+      const result = await enviarPruebaMutation.mutateAsync(email);
+      setLastDiagnostico(result);
+      if (result.enviado) {
+        toast.success('Correo de prueba enviado. Revisa la bandeja de entrada (y spam).');
+      } else {
+        toast.error(result.mensajeError ?? result.mensaje);
+      }
+    } catch (err) {
+      const isTimeout =
+        (err instanceof Error && err.name === 'AbortError') ||
+        (err instanceof Error && /tiempo|504|timeout/i.test(err.message));
+      const mensaje = isTimeout
+        ? 'El servidor tardó demasiado en responder.'
+        : 'No se pudo enviar el correo de prueba.';
+      const sugerencia = isTimeout
+        ? 'Comprueba la conexión a internet y la configuración del servidor SMTP. Vuelve a intentarlo.'
+        : 'Revisa la configuración SMTP y los pasos del diagnóstico debajo.';
+      toast.error(isTimeout ? 'El servidor tarda demasiado. Comprueba la conexión o inténtalo más tarde.' : mensaje);
+      setLastDiagnostico({
+        mensaje,
+        enviado: false,
+        pasos: [{ paso: 'Envío', ok: false, mensaje, sugerencia }],
+        mensajeError: mensaje,
+        sugerencia,
+      });
     }
   };
 
@@ -277,6 +300,58 @@ export default function ConfiguracionEmail() {
             )}
             Enviar correo de prueba
           </Button>
+        </CardContent>
+      </Card>
+
+      <Card>
+        <CardHeader>
+          <CardTitle>Diagnóstico del envío</CardTitle>
+          <CardDescription>
+            {lastDiagnostico
+              ? 'Pasos que se realizan al enviar el correo de prueba. Si algo falla, aquí verás qué ha fallado y qué revisar.'
+              : 'Haz clic en "Enviar correo de prueba" para ver los pasos que se realizan y, en caso de error, el motivo y la sugerencia de corrección.'}
+          </CardDescription>
+        </CardHeader>
+        <CardContent>
+          {!lastDiagnostico ? (
+            <p className="text-muted-foreground text-sm">Aún no se ha realizado ninguna prueba. Envía un correo de prueba para ver el diagnóstico.</p>
+          ) : (
+            <div className="space-y-4">
+              <ul className="space-y-2">
+                {lastDiagnostico.pasos.map((p, i) => (
+                  <li key={i} className="flex items-start gap-3">
+                    {p.ok ? (
+                      <CheckCircle2 className="h-5 w-5 text-green-600 shrink-0 mt-0.5" />
+                    ) : (
+                      <XCircle className="h-5 w-5 text-destructive shrink-0 mt-0.5" />
+                    )}
+                    <div className="min-w-0">
+                      <span className="font-medium">{p.paso}</span>
+                      {!p.ok && p.mensaje && (
+                        <p className="text-destructive text-sm mt-1">{p.mensaje}</p>
+                      )}
+                      {!p.ok && p.sugerencia && (
+                        <p className="text-muted-foreground text-sm mt-1">
+                          <strong>Sugerencia:</strong> {p.sugerencia}
+                        </p>
+                      )}
+                    </div>
+                  </li>
+                ))}
+              </ul>
+              {!lastDiagnostico.enviado && (lastDiagnostico.mensajeError || lastDiagnostico.sugerencia) && (
+                <Alert variant="destructive">
+                  <AlertTriangle className="h-4 w-4" />
+                  <AlertDescription>
+                    <p className="font-medium">{lastDiagnostico.mensajeError}</p>
+                    {lastDiagnostico.sugerencia && (
+                      <p className="mt-2">{lastDiagnostico.sugerencia}</p>
+                    )}
+                  </AlertDescription>
+                </Alert>
+              )}
+            </div>
+          )}
         </CardContent>
       </Card>
     </div>

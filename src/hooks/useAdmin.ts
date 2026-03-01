@@ -106,16 +106,28 @@ export function useActualizarConfiguracionPlataforma() {
   });
 }
 
+/** Timeout en ms para la petición de envío de correo de prueba (evita botón cargando indefinido) */
+const TIMEOUT_ENVIAR_PRUEBA_MS = 25_000;
+
 /**
  * Enviar correo de prueba con la configuración SMTP de la plataforma
+ * Usa AbortController para timeout; si el servidor tarda demasiado el botón deja de cargar
  */
 export function useEnviarPruebaEmail() {
   return useMutation({
-    mutationFn: (email: string) =>
-      api.post<{ mensaje: string; enviado: boolean }>(
-        '/admin/configuracion-plataforma/enviar-prueba',
-        { email }
-      ),
+    mutationFn: async (email: string) => {
+      const controller = new AbortController();
+      const id = setTimeout(() => controller.abort(), TIMEOUT_ENVIAR_PRUEBA_MS);
+      try {
+        return await api.post<import('@/types').ResultadoEnvioPruebaEmail>(
+          '/admin/configuracion-plataforma/enviar-prueba',
+          { email },
+          { signal: controller.signal }
+        );
+      } finally {
+        clearTimeout(id);
+      }
+    },
   });
 }
 

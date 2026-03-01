@@ -400,6 +400,23 @@ export interface ActualizarConfiguracionPlataformaData {
   emailNombreRemitente?: string | null;
 }
 
+/** Un paso del diagnóstico de envío de correo (para mostrar al usuario) */
+export interface PasoDiagnosticoEmail {
+  paso: string;
+  ok: boolean;
+  mensaje?: string;
+  sugerencia?: string;
+}
+
+/** Resultado del envío de prueba con diagnóstico (respuesta API) */
+export interface ResultadoEnvioPruebaEmail {
+  mensaje: string;
+  enviado: boolean;
+  pasos: PasoDiagnosticoEmail[];
+  mensajeError?: string;
+  sugerencia?: string;
+}
+
 export interface EstadisticasPlataforma {
   // Contadores principales
   totalFarmacias: number;

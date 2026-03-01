@@ -124,12 +124,14 @@ class ApiClient {
 
   /**
    * Realiza una petición POST
+   * @param options.signal - Opcional: AbortSignal para cancelar la petición (p. ej. timeout)
    */
-  async post<T>(endpoint: string, data: unknown): Promise<T> {
+  async post<T>(endpoint: string, data: unknown, options?: { signal?: AbortSignal }): Promise<T> {
     const response = await fetch(`${this.baseURL}${endpoint}`, {
       method: 'POST',
       headers: this.getHeaders(),
       body: JSON.stringify(data),
+      signal: options?.signal,
     });
 
     if (!response.ok) {

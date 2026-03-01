@@ -42,6 +42,22 @@ interface ConfigEmail {
   smtpPass?: string;
 }
 
+/** Un paso del diagnóstico de envío de correo (para mostrar al usuario) */
+export interface PasoDiagnosticoEmail {
+  paso: string;
+  ok: boolean;
+  mensaje?: string;
+  sugerencia?: string;
+}
+
+/** Resultado del envío de prueba con diagnóstico paso a paso */
+export interface ResultadoDiagnosticoEmail {
+  enviado: boolean;
+  pasos: PasoDiagnosticoEmail[];
+  mensajeError?: string;
+  sugerencia?: string;
+}
+
 // ==========================================
 // VARIABLES GLOBALES
 // ==========================================
@@ -426,6 +442,210 @@ async function enviarConSMTPTemporal(
   } catch (error) {
     console.error('❌ Error SMTP (prueba):', error);
     return false;
+  }
+}
+
+/**
+ * Convierte un error de nodemailer/Node a mensaje y sugerencia en lenguaje claro
+ */
+function mapearErrorSMTP(error: unknown): { mensaje: string; sugerencia: string } {
+  const err = error as NodeJS.ErrnoException & { code?: string; response?: string; responseCode?: number };
+  const code = err?.code ?? '';
+  const msg = (err?.message ?? '').toLowerCase();
+
+  switch (code) {
+    case 'ECONNREFUSED':
+      return {
+        mensaje: 'No se puede conectar con el servidor de correo.',
+        sugerencia: 'Comprueba el host y el puerto (p. ej. smtp.gmail.com y 587). Asegúrate de que el servidor esté accesible y no bloqueado por un firewall.',
+      };
+    case 'ETIMEDOUT':
+      return {
+        mensaje: 'El servidor de correo no responde a tiempo.',
+        sugerencia: 'Comprueba host y puerto. Si usas Gmail u Outlook, verifica que tengas una contraseña de aplicación o el acceso para aplicaciones permitido.',
+      };
+    case 'EAUTH':
+    case 'EENVELOPE':
+      return {
+        mensaje: 'Usuario o contraseña incorrectos.',
+        sugerencia: 'Comprueba el usuario y la contraseña SMTP. En Gmail/Outlook suele ser necesario usar una contraseña de aplicación, no la contraseña de tu cuenta.',
+      };
+    case 'ESOCKET':
+      return {
+        mensaje: 'Error de conexión con el servidor.',
+        sugerencia: 'Revisa el host, el puerto (587 para TLS, 465 para SSL) y que el servidor SMTP esté activo. Prueba con "Seguro (TLS)" activado o desactivado según tu proveedor.',
+      };
+    default:
+      if (msg.includes('invalid login') || msg.includes('authentication') || (err?.responseCode === 535)) {
+        return {
+          mensaje: 'Usuario o contraseña incorrectos.',
+          sugerencia: 'Comprueba el usuario y la contraseña SMTP. Si usas Gmail, genera una contraseña de aplicación en la cuenta de Google.',
+        };
+      }
+      if (msg.includes('timeout') || msg.includes('timed out')) {
+        return {
+          mensaje: 'El servidor tardó demasiado en responder.',
+          sugerencia: 'Comprueba la conexión a internet y que el host/puerto del servidor SMTP sean correctos.',
+        };
+      }
+      return {
+        mensaje: 'Error al conectar o enviar el correo.',
+        sugerencia: 'Revisa la configuración SMTP (host, puerto, usuario, contraseña) y los logs del servidor si tienes acceso.',
+      };
+  }
+}
+
+/**
+ * Convierte un error de Resend a mensaje y sugerencia en lenguaje claro
+ */
+function mapearErrorResend(error: { message?: string; name?: string }): { mensaje: string; sugerencia: string } {
+  const msg = (error?.message ?? '').toLowerCase();
+  if (msg.includes('invalid') && (msg.includes('api') || msg.includes('key'))) {
+    return {
+      mensaje: 'Clave API de Resend incorrecta o no válida.',
+      sugerencia: 'Comprueba que la clave API en Resend sea la correcta y que no esté revocada. Genera una nueva en el panel de Resend si es necesario.',
+    };
+  }
+  if (msg.includes('domain') || msg.includes('sender')) {
+    return {
+      mensaje: 'El remitente o dominio no está autorizado.',
+      sugerencia: 'En Resend, verifica que el dominio esté verificado o usa el dominio de prueba. Comprueba el email remitente configurado.',
+    };
+  }
+  if (msg.includes('rate') || msg.includes('limit')) {
+    return {
+      mensaje: 'Límite de envíos alcanzado.',
+      sugerencia: 'Resend tiene límites por plan. Espera un momento o revisa el uso en tu cuenta de Resend.',
+    };
+  }
+  return {
+    mensaje: 'Error al enviar con Resend.',
+    sugerencia: 'Revisa la clave API y la configuración del remitente en Resend.',
+  };
+}
+
+/**
+ * Envía un correo de prueba y devuelve un diagnóstico paso a paso para mostrar al usuario
+ */
+export async function enviarCorreoPruebaPlataformaConDiagnostico(destinatario: string): Promise<ResultadoDiagnosticoEmail> {
+  const pasos: PasoDiagnosticoEmail[] = [];
+
+  // Paso 1: Obtener configuración
+  let config: ConfigEmail;
+  try {
+    config = await obtenerConfigEmailPlataforma();
+    pasos.push({ paso: 'Obtener configuración de correo', ok: true });
+  } catch (e) {
+    pasos.push({
+      paso: 'Obtener configuración de correo',
+      ok: false,
+      mensaje: 'No se pudo cargar la configuración.',
+      sugerencia: 'Guarda primero la configuración SMTP o Resend en esta página.',
+    });
+    return { enviado: false, pasos, mensajeError: 'No se pudo cargar la configuración.', sugerencia: 'Guarda primero la configuración en esta página.' };
+  }
+
+  // Paso 2: Comprobar datos según proveedor
+  if (config.provider === 'resend') {
+    const tieneResend = !!(config.resendApiKey && config.resendApiKey !== '********');
+    if (!tieneResend) {
+      pasos.push(
+        { paso: 'Comprobar datos de conexión', ok: true },
+        {
+          paso: 'Enviar correo con Resend',
+          ok: false,
+          mensaje: 'Falta la clave API de Resend.',
+          sugerencia: 'Introduce tu clave API de Resend en el campo correspondiente y guarda la configuración.',
+        }
+      );
+      return {
+        enviado: false,
+        pasos,
+        mensajeError: 'Falta la clave API de Resend.',
+        sugerencia: 'Introduce tu clave API de Resend y guarda la configuración.',
+      };
+    }
+    pasos.push({ paso: 'Comprobar datos de conexión (Resend)', ok: true });
+  } else {
+    const tieneSMTP = !!(config.smtpHost && config.smtpUser && config.smtpPass);
+    if (!tieneSMTP) {
+      pasos.push(
+        { paso: 'Comprobar datos de conexión', ok: false, mensaje: 'Faltan datos SMTP.', sugerencia: 'Completa al menos servidor (host), usuario y contraseña SMTP.' }
+      );
+      return {
+        enviado: false,
+        pasos,
+        mensajeError: 'Faltan datos SMTP (servidor, usuario o contraseña).',
+        sugerencia: 'Completa todos los campos SMTP y guarda la configuración.',
+      };
+    }
+    pasos.push({ paso: 'Comprobar datos de conexión (SMTP)', ok: true });
+  }
+
+  const asunto = 'Correo de prueba - Configuración SMTP';
+  const html = `
+<!DOCTYPE html>
+<html lang="es">
+<head><meta charset="utf-8"><title>Prueba</title></head>
+<body style="font-family: sans-serif; padding: 20px;">
+  <p>Este es un correo de prueba de la configuración SMTP de la plataforma.</p>
+  <p>Si lo recibes, la configuración es correcta.</p>
+  <p><em>Enviado el ${new Date().toLocaleString('es-ES')}</em></p>
+</body>
+</html>`;
+  const texto = 'Correo de prueba de la configuración SMTP. Si lo recibes, la configuración es correcta.';
+
+  // Paso 3: Enviar
+  if (config.provider === 'resend' && config.resendApiKey && config.resendApiKey !== '********') {
+    const resend = inicializarResend(config);
+    if (!resend) {
+      pasos.push({
+        paso: 'Enviar correo con Resend',
+        ok: false,
+        mensaje: 'No se pudo inicializar Resend.',
+        sugerencia: 'Comprueba que la clave API sea válida.',
+      });
+      return { enviado: false, pasos, mensajeError: 'No se pudo inicializar Resend.', sugerencia: 'Comprueba la clave API.' };
+    }
+    const { error } = await resend.emails.send({
+      from: `${config.nombreRemitente} <${config.emailRemitente || 'noreply@sistema.local'}>`,
+      to: destinatario,
+      subject: asunto,
+      html,
+      text: texto,
+    });
+    if (error) {
+      const { mensaje, sugerencia } = mapearErrorResend(error);
+      pasos.push({ paso: 'Enviar correo con Resend', ok: false, mensaje, sugerencia });
+      return { enviado: false, pasos, mensajeError: mensaje, sugerencia };
+    }
+    pasos.push({ paso: 'Enviar correo con Resend', ok: true });
+    return { enviado: true, pasos };
+  }
+
+  // SMTP
+  try {
+    const transporter = nodemailer.createTransport({
+      host: config.smtpHost,
+      port: config.smtpPort ?? 587,
+      secure: config.smtpSecure ?? false,
+      auth: { user: config.smtpUser, pass: config.smtpPass },
+    });
+    const from = config.emailRemitente || config.smtpUser || 'noreply@sistema.local';
+    await transporter.sendMail({
+      from: `"${config.nombreRemitente}" <${from}>`,
+      to: destinatario,
+      subject: asunto,
+      text: texto,
+      html,
+    });
+    pasos.push({ paso: 'Conectar y enviar correo (SMTP)', ok: true });
+    console.log(`✅ Email de prueba enviado vía SMTP a ${destinatario}`);
+    return { enviado: true, pasos };
+  } catch (error) {
+    const { mensaje, sugerencia } = mapearErrorSMTP(error);
+    pasos.push({ paso: 'Conectar y enviar correo (SMTP)', ok: false, mensaje, sugerencia });
+    return { enviado: false, pasos, mensajeError: mensaje, sugerencia };
   }
 }
 
