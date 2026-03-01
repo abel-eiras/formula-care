@@ -66,6 +66,7 @@ export default function ConfiguracionEmail() {
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     const payload: ActualizarConfiguracionPlataformaData = { ...form };
+    payload.smtpAcceptSelfSigned = form.smtpAcceptSelfSigned ?? false;
     if (passwordOverride.trim()) payload.smtpPass = passwordOverride;
     if (form.emailProvider === 'resend' && resendApiKeyOverride.trim()) payload.resendApiKey = resendApiKeyOverride;
     try {

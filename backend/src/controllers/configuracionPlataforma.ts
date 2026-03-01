@@ -86,7 +86,7 @@ export async function actualizarConfiguracionPlataforma(req: Request, res: Respo
     if (datos.smtpHost !== undefined) data.smtpHost = datos.smtpHost || null;
     if (datos.smtpPort !== undefined) data.smtpPort = datos.smtpPort ?? null;
     if (datos.smtpSecure !== undefined) data.smtpSecure = datos.smtpSecure;
-    if (datos.smtpAcceptSelfSigned !== undefined) data.smtpAcceptSelfSigned = datos.smtpAcceptSelfSigned;
+    data.smtpAcceptSelfSigned = datos.smtpAcceptSelfSigned ?? false;
     if (datos.smtpUser !== undefined) data.smtpUser = datos.smtpUser || null;
     if (datos.smtpPass !== undefined && datos.smtpPass !== '') data.smtpPass = datos.smtpPass;
     if (datos.smtpFrom !== undefined) data.smtpFrom = datos.smtpFrom || null;
@@ -136,8 +136,8 @@ export async function actualizarConfiguracionPlataforma(req: Request, res: Respo
   }
 }
 
-/** Timeout en ms para el envío del correo de prueba (evita que la petición cuelgue) */
-const TIMEOUT_ENVIO_PRUEBA_MS = 15_000;
+/** Timeout en ms para el envío del correo de prueba (conexión TLS + verify + send puede tardar en servidores lentos) */
+const TIMEOUT_ENVIO_PRUEBA_MS = 30_000;
 
 /** Resultado de diagnóstico cuando hay timeout: el cliente recibe 200 y puede mostrar el mensaje concreto */
 const resultadoTimeout: ResultadoDiagnosticoEmail = {

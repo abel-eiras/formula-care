@@ -480,22 +480,22 @@ npx tsx src/prisma/seed.ts
 ### Opción B: Render
 
 1. Crea nuevo "Web Service"
-2. Conecta repositorio y selecciona `/backend`
+2. Conecta repositorio y selecciona `/backend` (o raíz si el build usa subcarpeta)
 3. Configura:
-   - Build Command: `npm install && npx prisma generate`
-   - Start Command: `npm start`
-4. Añade variables de entorno
+   - **Build Command:** `npm install && npm run build`  
+     (el script `build` en `package.json` ejecuta `prisma generate`, **`prisma migrate deploy`** y `tsc`; así las migraciones se aplican en cada deploy)
+   - **Start Command:** `npm start`
+4. Añade variables de entorno (incluida `DATABASE_URL` para que las migraciones funcionen en el build)
 
-### Configurar script de producción
+### Script de producción en backend
 
-Asegúrate de que `backend/package.json` tiene:
+El `backend/package.json` debe incluir migraciones en el build para que en Render la BD esté al día:
 
 ```json
 {
   "scripts": {
     "start": "node dist/server.js",
-    "build": "tsc",
-    "postinstall": "prisma generate"
+    "build": "prisma generate && prisma migrate deploy && tsc"
   }
 }
 ```

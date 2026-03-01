@@ -653,12 +653,18 @@ export async function enviarCorreoPruebaPlataformaConDiagnostico(destinatario: s
   }
 
   // SMTP: primero verify() para distinguir fallo de conexión (host/puerto) de fallo de autenticación (usuario/contraseña)
+  const acceptSelfSigned = config.smtpAcceptSelfSigned === true;
+  if (config.smtpHost) {
+    console.log('[SMTP prueba] host:', config.smtpHost, '| aceptar certificado autofirmado:', acceptSelfSigned);
+  }
   const transporter = nodemailer.createTransport({
     host: config.smtpHost,
     port: config.smtpPort ?? 587,
     secure: config.smtpSecure ?? false,
     auth: { user: config.smtpUser, pass: config.smtpPass },
-    tls: { rejectUnauthorized: !config.smtpAcceptSelfSigned },
+    tls: { rejectUnauthorized: !acceptSelfSigned },
+    connectionTimeout: 15_000,
+    greetingTimeout: 10_000,
   });
 
   try {
