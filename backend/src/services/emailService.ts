@@ -479,7 +479,8 @@ function mapearErrorSMTP(error: unknown): { mensaje: string; sugerencia: string 
     case 'ETIMEDOUT':
       return {
         mensaje: 'El servidor de correo no responde a tiempo.',
-        sugerencia: 'Comprueba host y puerto. Si usas Gmail u Outlook, verifica que tengas una contraseña de aplicación o el acceso para aplicaciones permitido.',
+        sugerencia:
+          'Si la app está en un hosting (p. ej. Render), el servidor SMTP puede no aceptar conexiones desde sus IPs o el puerto 465 puede estar bloqueado. Prueba usar Resend en producción o configura el firewall del servidor de correo para permitir conexiones desde el hosting.',
       };
     case 'EAUTH':
     case 'EENVELOPE':

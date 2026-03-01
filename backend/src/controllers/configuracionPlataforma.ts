@@ -53,13 +53,14 @@ export async function obtenerConfiguracionPlataforma(req: Request, res: Response
       });
     }
 
+    const safeConfig = config as Record<string, unknown>;
     res.json({
       id: config.id,
       emailProvider: config.emailProvider,
       smtpHost: config.smtpHost,
       smtpPort: config.smtpPort,
       smtpSecure: config.smtpSecure,
-      smtpAcceptSelfSigned: config.smtpAcceptSelfSigned,
+      smtpAcceptSelfSigned: safeConfig.smtpAcceptSelfSigned === true,
       smtpUser: config.smtpUser,
       smtpPass: null, // No exponer en API
       smtpFrom: config.smtpFrom,
@@ -69,7 +70,10 @@ export async function obtenerConfiguracionPlataforma(req: Request, res: Response
     });
   } catch (error) {
     console.error('Error al obtener configuración plataforma:', error);
-    res.status(500).json({ error: 'Error interno del servidor' });
+    res.status(500).json({
+      error: 'Error interno del servidor',
+      mensaje: 'No se pudo cargar la configuración. Comprueba que las migraciones de la BD se hayan aplicado en el deploy.',
+    });
   }
 }
 
