@@ -64,6 +64,7 @@ export function ConfigFarmaciaTab({ farmaciaId }: ConfigFarmaciaTabProps) {
   const [smtpHost, setSmtpHost] = useState('');
   const [smtpPort, setSmtpPort] = useState<number | null>(587);
   const [smtpSecure, setSmtpSecure] = useState(false);
+  const [smtpAcceptSelfSigned, setSmtpAcceptSelfSigned] = useState(false);
   const [smtpUser, setSmtpUser] = useState('');
   const [smtpPassOverride, setSmtpPassOverride] = useState('');
 
@@ -84,6 +85,7 @@ export function ConfigFarmaciaTab({ farmaciaId }: ConfigFarmaciaTabProps) {
       setSmtpHost(config.smtpHost ?? '');
       setSmtpPort(config.smtpPort ?? 587);
       setSmtpSecure(config.smtpSecure ?? false);
+      setSmtpAcceptSelfSigned(config.smtpAcceptSelfSigned ?? false);
       setSmtpUser(config.smtpUser ?? '');
     }
   }, [config]);
@@ -101,12 +103,14 @@ export function ConfigFarmaciaTab({ farmaciaId }: ConfigFarmaciaTabProps) {
       datos.smtpHost = null;
       datos.smtpPort = null;
       datos.smtpSecure = false;
+      datos.smtpAcceptSelfSigned = false;
       datos.smtpUser = null;
       datos.smtpPass = null;
     } else {
       datos.smtpHost = smtpHost || null;
       datos.smtpPort = smtpPort;
       datos.smtpSecure = smtpSecure;
+      datos.smtpAcceptSelfSigned = smtpAcceptSelfSigned;
       datos.smtpUser = smtpUser || null;
       if (smtpPassOverride.trim()) datos.smtpPass = smtpPassOverride;
     }
@@ -417,6 +421,10 @@ export function ConfigFarmaciaTab({ farmaciaId }: ConfigFarmaciaTabProps) {
                   <div className="flex items-center space-x-2">
                     <Switch id="smtpSecure" checked={smtpSecure} onCheckedChange={setSmtpSecure} />
                     <Label htmlFor="smtpSecure">Conexión segura (SSL)</Label>
+                  </div>
+                  <div className="flex items-center space-x-2">
+                    <Switch id="smtpAcceptSelfSigned" checked={smtpAcceptSelfSigned} onCheckedChange={setSmtpAcceptSelfSigned} />
+                    <Label htmlFor="smtpAcceptSelfSigned">Aceptar certificado autofirmado</Label>
                   </div>
                   <div className="space-y-2">
                     <Label>Usuario SMTP</Label>

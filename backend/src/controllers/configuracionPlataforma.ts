@@ -16,6 +16,7 @@ const actualizarConfiguracionPlataformaSchema = z.object({
   smtpHost: z.string().optional().nullable(),
   smtpPort: z.number().int().min(1).max(65535).optional().nullable(),
   smtpSecure: z.boolean().optional(),
+  smtpAcceptSelfSigned: z.boolean().optional(),
   smtpUser: z.string().optional().nullable(),
   smtpPass: z.string().optional().nullable(), // Solo se envía al guardar; no se devuelve
   smtpFrom: z.string().email().optional().or(z.literal('')).nullable(),
@@ -43,6 +44,7 @@ export async function obtenerConfiguracionPlataforma(req: Request, res: Response
         smtpHost: null,
         smtpPort: null,
         smtpSecure: false,
+        smtpAcceptSelfSigned: false,
         smtpUser: null,
         smtpPass: null, // Nunca devolver contraseña
         smtpFrom: null,
@@ -57,6 +59,7 @@ export async function obtenerConfiguracionPlataforma(req: Request, res: Response
       smtpHost: config.smtpHost,
       smtpPort: config.smtpPort,
       smtpSecure: config.smtpSecure,
+      smtpAcceptSelfSigned: config.smtpAcceptSelfSigned,
       smtpUser: config.smtpUser,
       smtpPass: null, // No exponer en API
       smtpFrom: config.smtpFrom,
@@ -83,6 +86,7 @@ export async function actualizarConfiguracionPlataforma(req: Request, res: Respo
     if (datos.smtpHost !== undefined) data.smtpHost = datos.smtpHost || null;
     if (datos.smtpPort !== undefined) data.smtpPort = datos.smtpPort ?? null;
     if (datos.smtpSecure !== undefined) data.smtpSecure = datos.smtpSecure;
+    if (datos.smtpAcceptSelfSigned !== undefined) data.smtpAcceptSelfSigned = datos.smtpAcceptSelfSigned;
     if (datos.smtpUser !== undefined) data.smtpUser = datos.smtpUser || null;
     if (datos.smtpPass !== undefined && datos.smtpPass !== '') data.smtpPass = datos.smtpPass;
     if (datos.smtpFrom !== undefined) data.smtpFrom = datos.smtpFrom || null;
@@ -106,6 +110,7 @@ export async function actualizarConfiguracionPlataforma(req: Request, res: Respo
           smtpHost: datos.smtpHost ?? null,
           smtpPort: datos.smtpPort ?? null,
           smtpSecure: datos.smtpSecure ?? false,
+          smtpAcceptSelfSigned: datos.smtpAcceptSelfSigned ?? false,
           smtpUser: datos.smtpUser ?? null,
           smtpPass: datos.smtpPass ?? null,
           smtpFrom: datos.smtpFrom ?? null,

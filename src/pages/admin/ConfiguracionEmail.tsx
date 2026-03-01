@@ -28,6 +28,7 @@ const defaultForm: ActualizarConfiguracionPlataformaData = {
   smtpHost: null,
   smtpPort: 587,
   smtpSecure: false,
+  smtpAcceptSelfSigned: false,
   smtpUser: null,
   smtpPass: null,
   smtpFrom: null,
@@ -53,6 +54,7 @@ export default function ConfiguracionEmail() {
         smtpHost: config.smtpHost ?? null,
         smtpPort: config.smtpPort ?? 587,
         smtpSecure: config.smtpSecure ?? false,
+        smtpAcceptSelfSigned: config.smtpAcceptSelfSigned ?? false,
         smtpUser: config.smtpUser ?? null,
         smtpFrom: config.smtpFrom ?? null,
         resendApiKey: config.resendApiKey === '********' ? undefined : (config.resendApiKey ?? null),
@@ -206,6 +208,14 @@ export default function ConfiguracionEmail() {
                     onCheckedChange={(v) => setForm({ ...form, smtpSecure: v })}
                   />
                   <Label htmlFor="smtpSecure">Conexión segura (SSL/TLS, puerto 465)</Label>
+                </div>
+                <div className="flex items-center space-x-2">
+                  <Switch
+                    id="smtpAcceptSelfSigned"
+                    checked={form.smtpAcceptSelfSigned ?? false}
+                    onCheckedChange={(v) => setForm({ ...form, smtpAcceptSelfSigned: v })}
+                  />
+                  <Label htmlFor="smtpAcceptSelfSigned">Aceptar certificado autofirmado (servidores propios, p. ej. Raiola)</Label>
                 </div>
                 <div className="grid gap-4 sm:grid-cols-2">
                   <div className="space-y-2">

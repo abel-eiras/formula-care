@@ -38,6 +38,7 @@ interface ConfigEmail {
   smtpHost?: string;
   smtpPort?: number;
   smtpSecure?: boolean;
+  smtpAcceptSelfSigned?: boolean; // Para servidores con certificado autofirmado (p. ej. Raiola)
   smtpUser?: string;
   smtpPass?: string;
 }
@@ -86,6 +87,7 @@ async function obtenerConfigEmail(farmaciaId: string): Promise<ConfigEmail> {
     smtpHost: config?.smtpHost ?? configPlataforma?.smtpHost ?? process.env.SMTP_HOST ?? undefined,
     smtpPort: config?.smtpPort ?? configPlataforma?.smtpPort ?? parseInt(process.env.SMTP_PORT || '587', 10),
     smtpSecure: config?.smtpSecure ?? configPlataforma?.smtpSecure ?? process.env.SMTP_SECURE === 'true',
+    smtpAcceptSelfSigned: config?.smtpAcceptSelfSigned ?? configPlataforma?.smtpAcceptSelfSigned ?? false,
     smtpUser: config?.smtpUser ?? configPlataforma?.smtpUser ?? process.env.SMTP_USER ?? undefined,
     smtpPass: config?.smtpPass ?? configPlataforma?.smtpPass ?? process.env.SMTP_PASS ?? undefined,
   };
@@ -108,6 +110,7 @@ async function obtenerConfigEmailPlataforma(): Promise<ConfigEmail> {
     smtpHost: configPlataforma?.smtpHost ?? process.env.SMTP_HOST ?? undefined,
     smtpPort: configPlataforma?.smtpPort ?? parseInt(process.env.SMTP_PORT || '587', 10),
     smtpSecure: configPlataforma?.smtpSecure ?? process.env.SMTP_SECURE === 'true',
+    smtpAcceptSelfSigned: configPlataforma?.smtpAcceptSelfSigned ?? false,
     smtpUser: configPlataforma?.smtpUser ?? process.env.SMTP_USER ?? undefined,
     smtpPass: configPlataforma?.smtpPass ?? process.env.SMTP_PASS ?? undefined,
   };
@@ -164,6 +167,7 @@ async function inicializarSMTP(config: ConfigEmail): Promise<nodemailer.Transpor
     port: config.smtpPort,
     secure: config.smtpSecure,
     auth: { user: config.smtpUser, pass: config.smtpPass },
+    tls: { rejectUnauthorized: !config.smtpAcceptSelfSigned },
   });
 
   try {
@@ -428,6 +432,7 @@ async function enviarConSMTPTemporal(
       port: config.smtpPort ?? 587,
       secure: config.smtpSecure ?? false,
       auth: { user: config.smtpUser, pass: config.smtpPass },
+      tls: { rejectUnauthorized: !config.smtpAcceptSelfSigned },
     });
     const from = config.emailRemitente || config.smtpUser || 'noreply@sistema.local';
     await transporter.sendMail({
@@ -443,6 +448,18 @@ async function enviarConSMTPTemporal(
     console.error('❌ Error SMTP (prueba):', error);
     return false;
   }
+}
+
+/**
+ * Clasifica un error SMTP para saber si falló la conexión (host/puerto) o la autenticación (usuario/contraseña)
+ */
+function clasificarErrorSMTP(error: unknown): 'conexion' | 'autenticacion' | 'otro' {
+  const err = error as NodeJS.ErrnoException & { responseCode?: number };
+  const code = err?.code ?? '';
+  const msg = (err?.message ?? '').toLowerCase();
+  if (['ECONNREFUSED', 'ETIMEDOUT', 'ENOTFOUND', 'ECONNRESET', 'ESOCKET'].includes(code)) return 'conexion';
+  if (code === 'EAUTH' || err?.responseCode === 535 || msg.includes('invalid login') || msg.includes('authentication failed')) return 'autenticacion';
+  return 'otro';
 }
 
 /**
@@ -471,11 +488,23 @@ function mapearErrorSMTP(error: unknown): { mensaje: string; sugerencia: string 
         sugerencia: 'Comprueba el usuario y la contraseña SMTP. En Gmail/Outlook suele ser necesario usar una contraseña de aplicación, no la contraseña de tu cuenta.',
       };
     case 'ESOCKET':
+      if (msg.includes('self-signed') || msg.includes('certificate')) {
+        return {
+          mensaje: 'El servidor usa un certificado SSL autofirmado o no verificado.',
+          sugerencia: 'Activa la opción "Aceptar certificado autofirmado" en la configuración SMTP para servidores como Raiola o correo propio.',
+        };
+      }
       return {
         mensaje: 'Error de conexión con el servidor.',
         sugerencia: 'Revisa el host, el puerto (587 para TLS, 465 para SSL) y que el servidor SMTP esté activo. Prueba con "Seguro (TLS)" activado o desactivado según tu proveedor.',
       };
     default:
+      if (msg.includes('self-signed') || msg.includes('certificate')) {
+        return {
+          mensaje: 'El servidor usa un certificado SSL autofirmado o no verificado.',
+          sugerencia: 'Activa la opción "Aceptar certificado autofirmado" en la configuración SMTP.',
+        };
+      }
       if (msg.includes('invalid login') || msg.includes('authentication') || (err?.responseCode === 535)) {
         return {
           mensaje: 'Usuario o contraseña incorrectos.',
@@ -623,14 +652,52 @@ export async function enviarCorreoPruebaPlataformaConDiagnostico(destinatario: s
     return { enviado: true, pasos };
   }
 
-  // SMTP
+  // SMTP: primero verify() para distinguir fallo de conexión (host/puerto) de fallo de autenticación (usuario/contraseña)
+  const transporter = nodemailer.createTransport({
+    host: config.smtpHost,
+    port: config.smtpPort ?? 587,
+    secure: config.smtpSecure ?? false,
+    auth: { user: config.smtpUser, pass: config.smtpPass },
+    tls: { rejectUnauthorized: !config.smtpAcceptSelfSigned },
+  });
+
   try {
-    const transporter = nodemailer.createTransport({
-      host: config.smtpHost,
-      port: config.smtpPort ?? 587,
-      secure: config.smtpSecure ?? false,
-      auth: { user: config.smtpUser, pass: config.smtpPass },
+    await transporter.verify();
+  } catch (error) {
+    const tipo = clasificarErrorSMTP(error);
+    const { mensaje, sugerencia } = mapearErrorSMTP(error);
+    if (tipo === 'conexion') {
+      pasos.push({
+        paso: 'Conectar con el servidor (host y puerto)',
+        ok: false,
+        mensaje,
+        sugerencia,
+      });
+      return { enviado: false, pasos, mensajeError: mensaje, sugerencia };
+    }
+    if (tipo === 'autenticacion') {
+      pasos.push({ paso: 'Conectar con el servidor (host y puerto)', ok: true });
+      pasos.push({
+        paso: 'Autenticación (usuario y contraseña)',
+        ok: false,
+        mensaje,
+        sugerencia,
+      });
+      return { enviado: false, pasos, mensajeError: mensaje, sugerencia };
+    }
+    pasos.push({
+      paso: 'Conectar con el servidor (host y puerto)',
+      ok: false,
+      mensaje,
+      sugerencia,
     });
+    return { enviado: false, pasos, mensajeError: mensaje, sugerencia };
+  }
+
+  pasos.push({ paso: 'Conectar con el servidor (host y puerto)', ok: true });
+  pasos.push({ paso: 'Autenticación (usuario y contraseña)', ok: true });
+
+  try {
     const from = config.emailRemitente || config.smtpUser || 'noreply@sistema.local';
     await transporter.sendMail({
       from: `"${config.nombreRemitente}" <${from}>`,
@@ -639,12 +706,12 @@ export async function enviarCorreoPruebaPlataformaConDiagnostico(destinatario: s
       text: texto,
       html,
     });
-    pasos.push({ paso: 'Conectar y enviar correo (SMTP)', ok: true });
+    pasos.push({ paso: 'Enviar correo', ok: true });
     console.log(`✅ Email de prueba enviado vía SMTP a ${destinatario}`);
     return { enviado: true, pasos };
   } catch (error) {
     const { mensaje, sugerencia } = mapearErrorSMTP(error);
-    pasos.push({ paso: 'Conectar y enviar correo (SMTP)', ok: false, mensaje, sugerencia });
+    pasos.push({ paso: 'Enviar correo', ok: false, mensaje, sugerencia });
     return { enviado: false, pasos, mensajeError: mensaje, sugerencia };
   }
 }

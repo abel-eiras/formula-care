@@ -114,6 +114,7 @@ const actualizarConfiguracionFarmaciaSchema = z.object({
   smtpHost: z.string().optional().nullable(),
   smtpPort: z.number().int().min(1).max(65535).optional().nullable(),
   smtpSecure: z.boolean().optional(),
+  smtpAcceptSelfSigned: z.boolean().optional(),
   smtpUser: z.string().optional().nullable(),
   smtpPass: z.string().optional().nullable(),
 });
@@ -852,6 +853,7 @@ export async function obtenerConfiguracionFarmacia(req: Request, res: Response) 
       smtpHost: config.smtpHost,
       smtpPort: config.smtpPort,
       smtpSecure: config.smtpSecure,
+      smtpAcceptSelfSigned: config.smtpAcceptSelfSigned,
       smtpUser: config.smtpUser,
       smtpPass: null,
       updatedAt: config.updatedAt.toISOString(),
@@ -893,6 +895,7 @@ export async function actualizarConfiguracionFarmacia(req: Request, res: Respons
     if (datos.smtpHost !== undefined) data.smtpHost = datos.smtpHost ?? null;
     if (datos.smtpPort !== undefined) data.smtpPort = datos.smtpPort ?? null;
     if (datos.smtpSecure !== undefined) data.smtpSecure = datos.smtpSecure;
+    if (datos.smtpAcceptSelfSigned !== undefined) data.smtpAcceptSelfSigned = datos.smtpAcceptSelfSigned;
     if (datos.smtpUser !== undefined) data.smtpUser = datos.smtpUser ?? null;
     if (datos.smtpPass !== undefined && datos.smtpPass !== '') data.smtpPass = datos.smtpPass;
 
@@ -912,6 +915,7 @@ export async function actualizarConfiguracionFarmacia(req: Request, res: Respons
           smtpHost: data.smtpHost as string | null ?? null,
           smtpPort: data.smtpPort as number | null ?? null,
           smtpSecure: (data.smtpSecure as boolean) ?? false,
+          smtpAcceptSelfSigned: (data.smtpAcceptSelfSigned as boolean) ?? false,
           smtpUser: data.smtpUser as string | null ?? null,
           smtpPass: data.smtpPass as string | null ?? null,
         },

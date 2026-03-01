@@ -346,6 +346,7 @@ export interface ConfiguracionPlataforma {
   smtpHost: string | null;
   smtpPort: number | null;
   smtpSecure: boolean;
+  smtpAcceptSelfSigned?: boolean;
   smtpUser: string | null;
   smtpPass?: string | null; // Solo al enviar; API no devuelve valor real
   smtpFrom: string | null;
@@ -368,6 +369,7 @@ export interface ConfiguracionFarmaciaAdmin {
   smtpHost: string | null;
   smtpPort: number | null;
   smtpSecure: boolean;
+  smtpAcceptSelfSigned?: boolean;
   smtpUser: string | null;
   smtpPass?: null;
   updatedAt?: string;
@@ -384,6 +386,7 @@ export interface ActualizarConfiguracionFarmaciaData {
   smtpHost?: string | null;
   smtpPort?: number | null;
   smtpSecure?: boolean;
+  smtpAcceptSelfSigned?: boolean;
   smtpUser?: string | null;
   smtpPass?: string | null;
 }
@@ -393,6 +396,7 @@ export interface ActualizarConfiguracionPlataformaData {
   smtpHost?: string | null;
   smtpPort?: number | null;
   smtpSecure?: boolean;
+  smtpAcceptSelfSigned?: boolean;
   smtpUser?: string | null;
   smtpPass?: string | null;
   smtpFrom?: string | null;

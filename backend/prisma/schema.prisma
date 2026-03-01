@@ -270,6 +270,7 @@ model ConfiguracionPlataforma {
   smtpHost              String?
   smtpPort              Int?     // 587, 465, etc.
   smtpSecure            Boolean  @default(false)
+  smtpAcceptSelfSigned  Boolean  @default(false) // Para servidores con certificado autofirmado (p. ej. Raiola)
   smtpUser              String?
   smtpPass              String?  // No exponer en respuestas API
   smtpFrom              String?  // Email remitente por defecto
@@ -337,6 +338,7 @@ model Configuracion {
   smtpHost              String?
   smtpPort              Int?
   smtpSecure            Boolean  @default(false)
+  smtpAcceptSelfSigned  Boolean  @default(false)
   smtpUser              String?
   smtpPass              String?  // No exponer en respuestas API
 
