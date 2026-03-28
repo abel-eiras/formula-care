@@ -6,6 +6,7 @@
 import nodemailer from 'nodemailer';
 import { Resend } from 'resend';
 import { prisma } from '../lib/prisma.js';
+import { decrypt } from './encryptionService.js';
 import { generarTokensAccionCita, construirUrlsAccion, type TipoAccionCita } from './tokenService.js';
 
 // ==========================================
@@ -96,7 +97,10 @@ async function obtenerConfigEmail(farmaciaId: string): Promise<ConfigEmail> {
     smtpSecure: config?.smtpSecure ?? configPlataforma?.smtpSecure ?? process.env.SMTP_SECURE === 'true',
     smtpAcceptSelfSigned: config?.smtpAcceptSelfSigned ?? configPlataforma?.smtpAcceptSelfSigned ?? false,
     smtpUser: config?.smtpUser ?? configPlataforma?.smtpUser ?? process.env.SMTP_USER ?? undefined,
-    smtpPass: config?.smtpPass ?? configPlataforma?.smtpPass ?? process.env.SMTP_PASS ?? undefined,
+    smtpPass: (() => {
+      const raw = config?.smtpPass ?? configPlataforma?.smtpPass ?? process.env.SMTP_PASS ?? undefined;
+      return raw ? decrypt(raw) : undefined;
+    })(),
   };
 }
 
@@ -119,7 +123,10 @@ async function obtenerConfigEmailPlataforma(): Promise<ConfigEmail> {
     smtpSecure: configPlataforma?.smtpSecure ?? process.env.SMTP_SECURE === 'true',
     smtpAcceptSelfSigned: configPlataforma?.smtpAcceptSelfSigned ?? false,
     smtpUser: configPlataforma?.smtpUser ?? process.env.SMTP_USER ?? undefined,
-    smtpPass: configPlataforma?.smtpPass ?? process.env.SMTP_PASS ?? undefined,
+    smtpPass: (() => {
+      const raw = configPlataforma?.smtpPass ?? process.env.SMTP_PASS ?? undefined;
+      return raw ? decrypt(raw) : undefined;
+    })(),
   };
 }
 

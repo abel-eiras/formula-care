@@ -1,6 +1,8 @@
 /**
  * Hook de autenticación
- * Gestiona login, logout y estado del usuario
+ * Gestiona login, logout y estado del usuario.
+ * El token JWT viaja en una cookie HttpOnly gestionada por el servidor;
+ * el frontend nunca accede al token directamente.
  */
 
 import { useState, useEffect, useCallback } from 'react';
@@ -16,12 +18,10 @@ export interface Usuario {
 }
 
 interface LoginResponse {
-  token: string;
   usuario: Usuario;
 }
 
-// Clave para localStorage
-const TOKEN_KEY = 'auth_token';
+// Clave para persistir datos no sensibles del usuario en sessionStorage
 const USER_KEY = 'auth_user';
 
 /**
@@ -33,25 +33,35 @@ export function useAuth() {
   const [error, setError] = useState<string | null>(null);
   const queryClient = useQueryClient();
 
-  // Cargar usuario desde localStorage al iniciar
+  // Al montar: restaurar usuario de sessionStorage y verificar sesión activa en el servidor
   useEffect(() => {
-    const token = localStorage.getItem(TOKEN_KEY);
-    const userStr = localStorage.getItem(USER_KEY);
-
-    if (token && userStr) {
+    const userStr = sessionStorage.getItem(USER_KEY);
+    if (userStr) {
       try {
-        const user = JSON.parse(userStr) as Usuario;
-        setUsuario(user);
-        // Configurar token en las peticiones API
-        api.setAuthToken(token);
+        setUsuario(JSON.parse(userStr) as Usuario);
       } catch {
-        // Token o usuario inválido, limpiar
-        localStorage.removeItem(TOKEN_KEY);
-        localStorage.removeItem(USER_KEY);
+        sessionStorage.removeItem(USER_KEY);
       }
     }
 
-    setIsLoading(false);
+    // Verificar que la cookie sigue siendo válida
+    api.get<{ id: string; email: string; nombre: string; rol: string }>('/auth/me')
+      .then((data) => {
+        const user: Usuario = {
+          id: data.id,
+          email: data.email,
+          nombre: data.nombre,
+          rol: data.rol as Usuario['rol'],
+        };
+        setUsuario(user);
+        sessionStorage.setItem(USER_KEY, JSON.stringify(user));
+      })
+      .catch(() => {
+        // Cookie inválida o expirada
+        setUsuario(null);
+        sessionStorage.removeItem(USER_KEY);
+      })
+      .finally(() => setIsLoading(false));
   }, []);
 
   /**
@@ -64,14 +74,8 @@ export function useAuth() {
     try {
       const response = await api.post<LoginResponse>('/auth/login', { email, password });
 
-      // Guardar token y usuario
-      localStorage.setItem(TOKEN_KEY, response.token);
-      localStorage.setItem(USER_KEY, JSON.stringify(response.usuario));
-
-      // Configurar token para futuras peticiones
-      api.setAuthToken(response.token);
-
-      // Actualizar estado
+      // El token llega como cookie HttpOnly — el frontend solo guarda los datos públicos del usuario
+      sessionStorage.setItem(USER_KEY, JSON.stringify(response.usuario));
       setUsuario(response.usuario);
       setIsLoading(false);
 
@@ -85,20 +89,17 @@ export function useAuth() {
   }, []);
 
   /**
-   * Cerrar sesión
+   * Cerrar sesión: el servidor elimina la cookie
    */
-  const logout = useCallback(() => {
-    // Limpiar localStorage
-    localStorage.removeItem(TOKEN_KEY);
-    localStorage.removeItem(USER_KEY);
+  const logout = useCallback(async () => {
+    try {
+      await api.post('/auth/logout', {});
+    } catch {
+      // Continuar aunque falle la petición
+    }
 
-    // Limpiar token de API
-    api.setAuthToken(null);
-
-    // Limpiar estado
+    sessionStorage.removeItem(USER_KEY);
     setUsuario(null);
-
-    // Invalidar todas las queries cacheadas
     queryClient.clear();
   }, [queryClient]);
 
@@ -110,13 +111,6 @@ export function useAuth() {
     return roles.includes(usuario.rol);
   }, [usuario]);
 
-  /**
-   * Obtener el token actual
-   */
-  const getToken = useCallback((): string | null => {
-    return localStorage.getItem(TOKEN_KEY);
-  }, []);
-
   return {
     usuario,
     isLoading,
@@ -126,7 +120,6 @@ export function useAuth() {
     login,
     logout,
     tieneRol,
-    getToken,
   };
 }
 

@@ -1,6 +1,8 @@
 import express from 'express';
 import cors from 'cors';
+import cookieParser from 'cookie-parser';
 import dotenv from 'dotenv';
+import rateLimit from 'express-rate-limit';
 import { pacientesRouter } from './routes/pacientes.js';
 import { citasRouter } from './routes/citas.js';
 import { serviciosRouter } from './routes/servicios.js';
@@ -21,12 +23,9 @@ dotenv.config();
 const app = express();
 const PORT = process.env.PORT || 3000;
 
-// Determinar si estamos en modo desarrollo (sin autenticación obligatoria)
-const SKIP_AUTH = process.env.SKIP_AUTH === 'true';
-
-// Orígenes permitidos para CORS (desarrollo)
-const CORS_ORIGINS = process.env.CORS_ORIGIN 
-  ? process.env.CORS_ORIGIN.split(',') 
+// Orígenes permitidos para CORS
+const CORS_ORIGINS = process.env.CORS_ORIGIN
+  ? process.env.CORS_ORIGIN.split(',')
   : ['http://localhost:5173', 'http://localhost:5174'];
 
 // Middleware
@@ -35,6 +34,7 @@ app.use(cors({
   credentials: true,
 }));
 app.use(express.json({ limit: '512kb' }));
+app.use(cookieParser());
 
 // Middleware de logging simple
 app.use((req, res, next) => {
@@ -42,28 +42,40 @@ app.use((req, res, next) => {
   next();
 });
 
-// Rutas de autenticación (siempre disponibles)
-app.use('/api/auth', authRouter);
+// Rate limiting para rutas de autenticación (login)
+const authRateLimit = rateLimit({
+  windowMs: 15 * 60 * 1000, // 15 minutos
+  max: 20,
+  standardHeaders: true,
+  legacyHeaders: false,
+  message: { error: 'Demasiados intentos', mensaje: 'Por favor espera 15 minutos antes de intentarlo de nuevo.' },
+});
 
-// Rutas públicas (sin autenticación)
-app.use('/api/public', publicRouter);
+// Rate limiting para rutas públicas (formulario de solicitudes)
+const publicRateLimit = rateLimit({
+  windowMs: 60 * 1000, // 1 minuto
+  max: 30,
+  standardHeaders: true,
+  legacyHeaders: false,
+  message: { error: 'Demasiadas peticiones', mensaje: 'Por favor espera un momento antes de continuar.' },
+});
 
-// Middleware de autenticación para rutas protegidas
-// En desarrollo (SKIP_AUTH=true), permite acceso sin token
-const authMiddleware = SKIP_AUTH 
-  ? (req: express.Request, res: express.Response, next: express.NextFunction) => next()
-  : verificarToken;
+// Rutas de autenticación (siempre disponibles, con rate limit en login)
+app.use('/api/auth', authRateLimit, authRouter);
 
-// Rutas protegidas de la API (requieren autenticación en producción)
-app.use('/api/pacientes', authMiddleware, pacientesRouter);
-app.use('/api/citas', authMiddleware, citasRouter);
-app.use('/api/servicios', authMiddleware, serviciosRouter);
-app.use('/api/configuracion', authMiddleware, configuracionRouter);
-app.use('/api/estadisticas', authMiddleware, estadisticasRouter);
-app.use('/api/notificaciones', authMiddleware, notificacionesRouter);
-app.use('/api/solicitudes', authMiddleware, solicitudesRouter);
-app.use('/api/eventos', authMiddleware, eventosRouter);
-app.use('/api/plantillas-email', authMiddleware, plantillasEmailRouter);
+// Rutas públicas (sin autenticación, con rate limit)
+app.use('/api/public', publicRateLimit, publicRouter);
+
+// Rutas protegidas de la API (requieren autenticación)
+app.use('/api/pacientes', verificarToken, pacientesRouter);
+app.use('/api/citas', verificarToken, citasRouter);
+app.use('/api/servicios', verificarToken, serviciosRouter);
+app.use('/api/configuracion', verificarToken, configuracionRouter);
+app.use('/api/estadisticas', verificarToken, estadisticasRouter);
+app.use('/api/notificaciones', verificarToken, notificacionesRouter);
+app.use('/api/solicitudes', verificarToken, solicitudesRouter);
+app.use('/api/eventos', verificarToken, eventosRouter);
+app.use('/api/plantillas-email', verificarToken, plantillasEmailRouter);
 
 // Rutas de administración de plataforma (superadmin)
 // Nota: el router ya incluye verificarToken + superadminMiddleware

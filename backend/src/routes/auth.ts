@@ -5,6 +5,7 @@
 import { Router } from 'express';
 import {
   login,
+  logout,
   registro,
   obtenerUsuarioActual,
   cambiarPassword,
@@ -20,6 +21,7 @@ export const authRouter = Router();
 
 // Rutas públicas (no requieren autenticación)
 authRouter.post('/login', login);
+authRouter.post('/logout', logout);
 authRouter.get('/invitacion/:token', obtenerInvitacion);
 authRouter.post('/establecer-contrasena', establecerContrasenaInvitacion);
 

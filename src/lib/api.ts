@@ -1,23 +1,20 @@
 /**
  * Cliente HTTP para la API
- * Preparado para cuando se implemente el backend
+ * La autenticación se gestiona mediante cookies HttpOnly — el cliente
+ * no necesita manejar tokens manualmente.
  */
 
 // Validar y construir la URL base del API
 function getApiBaseUrl(): string {
   const envUrl = import.meta.env.VITE_API_URL;
-  
-  // Debug: mostrar qué valor tiene la variable de entorno
+
   if (import.meta.env.DEV) {
     console.log('[API] VITE_API_URL from env:', envUrl);
   }
-  
-  // Si está definida y es válida, usarla
+
   if (envUrl && typeof envUrl === 'string' && envUrl.trim() !== '') {
     const trimmed = envUrl.trim();
-    // Validar que tenga protocolo y host
     if (trimmed.startsWith('http://') || trimmed.startsWith('https://')) {
-      // Asegurar que no termine con / para evitar doble slash
       const cleanUrl = trimmed.endsWith('/') ? trimmed.slice(0, -1) : trimmed;
       if (import.meta.env.DEV) {
         console.log('[API] Using API URL:', cleanUrl);
@@ -25,8 +22,7 @@ function getApiBaseUrl(): string {
       return cleanUrl;
     }
   }
-  
-  // Fallback por defecto
+
   const defaultUrl = 'http://localhost:3000/api';
   console.warn('[API] VITE_API_URL no está configurada correctamente, usando:', defaultUrl);
   return defaultUrl;
@@ -34,70 +30,48 @@ function getApiBaseUrl(): string {
 
 const API_BASE_URL = getApiBaseUrl();
 
-// Log final en desarrollo
 if (import.meta.env.DEV) {
   console.log('[API] Base URL configured:', API_BASE_URL);
 }
 
 /**
- * Cliente HTTP simple para hacer peticiones a la API
- * Incluye soporte para autenticación JWT
+ * Cliente HTTP que envía cookies en todas las peticiones (credentials: 'include').
+ * El token JWT viaja en la cookie HttpOnly y nunca es accesible desde JavaScript.
  */
 class ApiClient {
   private baseURL: string;
-  private authToken: string | null = null;
 
   constructor(baseURL: string) {
     this.baseURL = baseURL;
-    // Cargar token de localStorage al iniciar
-    if (typeof window !== 'undefined') {
-      this.authToken = localStorage.getItem('auth_token');
-    }
   }
 
   /**
-   * Configura el token de autenticación
-   */
-  setAuthToken(token: string | null) {
-    this.authToken = token;
-  }
-
-  /**
-   * Obtiene los headers comunes incluyendo autenticación si existe
+   * Headers comunes para todas las peticiones
    */
   private getHeaders(): HeadersInit {
-    const headers: HeadersInit = {
+    return {
       'Content-Type': 'application/json',
     };
-
-    if (this.authToken) {
-      headers['Authorization'] = `Bearer ${this.authToken}`;
-    }
-
-    return headers;
   }
 
   /**
-   * Maneja errores de respuesta, incluyendo 401 (token expirado)
+   * Maneja errores de respuesta, incluyendo 401 (sesión expirada)
    */
   private async handleResponseError(response: Response): Promise<never> {
     let errorMessage = `${response.status}: ${response.statusText}`;
-    
+
     try {
       const errorData = await response.json();
       if (errorData.error) {
         errorMessage = errorData.mensaje || errorData.error;
       }
     } catch {
-      // Si no se puede parsear el JSON, usar el mensaje por defecto
+      // No se puede parsear el JSON — usar mensaje por defecto
     }
 
-    // Si es 401, limpiar la sesión
+    // Si es 401 (sesión expirada o inválida), redirigir a login
     if (response.status === 401 && typeof window !== 'undefined') {
-      localStorage.removeItem('auth_token');
-      localStorage.removeItem('auth_user');
-      this.authToken = null;
-      // Redirigir a login solo si no estamos ya en login
+      sessionStorage.removeItem('auth_user');
       if (!window.location.pathname.startsWith('/login')) {
         window.location.href = '/login';
       }
@@ -107,12 +81,13 @@ class ApiClient {
   }
 
   /**
-   * Realiza una petición GET
+   * GET
    */
   async get<T>(endpoint: string): Promise<T> {
     const response = await fetch(`${this.baseURL}${endpoint}`, {
       method: 'GET',
       headers: this.getHeaders(),
+      credentials: 'include',
     });
 
     if (!response.ok) {
@@ -123,7 +98,7 @@ class ApiClient {
   }
 
   /**
-   * Realiza una petición POST
+   * POST
    * @param options.signal - Opcional: AbortSignal para cancelar la petición (p. ej. timeout)
    */
   async post<T>(endpoint: string, data: unknown, options?: { signal?: AbortSignal }): Promise<T> {
@@ -131,6 +106,7 @@ class ApiClient {
       method: 'POST',
       headers: this.getHeaders(),
       body: JSON.stringify(data),
+      credentials: 'include',
       signal: options?.signal,
     });
 
@@ -142,13 +118,14 @@ class ApiClient {
   }
 
   /**
-   * Realiza una petición PUT
+   * PUT
    */
   async put<T>(endpoint: string, data: unknown): Promise<T> {
     const response = await fetch(`${this.baseURL}${endpoint}`, {
       method: 'PUT',
       headers: this.getHeaders(),
       body: JSON.stringify(data),
+      credentials: 'include',
     });
 
     if (!response.ok) {
@@ -159,12 +136,13 @@ class ApiClient {
   }
 
   /**
-   * Realiza una petición DELETE
+   * DELETE
    */
   async delete<T>(endpoint: string): Promise<T> {
     const response = await fetch(`${this.baseURL}${endpoint}`, {
       method: 'DELETE',
       headers: this.getHeaders(),
+      credentials: 'include',
     });
 
     if (!response.ok) {
