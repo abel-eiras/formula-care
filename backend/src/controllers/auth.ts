@@ -7,7 +7,7 @@ import { Request, Response } from 'express';
 import bcrypt from 'bcryptjs';
 import { z } from 'zod';
 import { prisma } from '../lib/prisma.js';
-import { generarToken } from '../middleware/auth.js';
+import { generarToken, getAuthCookieOptions } from '../middleware/auth.js';
 import { getParamString } from '../lib/queryHelpers.js';
 
 // Esquema de validación para login
@@ -96,8 +96,10 @@ export async function login(req: Request, res: Response) {
       farmaciaId: usuario.farmaciaId,
     });
 
+    // Enviar token como cookie HttpOnly (no accesible desde JS)
+    res.cookie('auth_token', token, getAuthCookieOptions());
+
     res.json({
-      token,
       usuario: {
         id: usuario.id,
         email: usuario.email,
@@ -269,6 +271,20 @@ export async function cambiarPassword(req: Request, res: Response) {
     console.error('Error al cambiar contraseña:', error);
     res.status(500).json({ error: 'Error interno del servidor' });
   }
+}
+
+/**
+ * POST /api/auth/logout
+ * Cerrar sesión: elimina la cookie de autenticación
+ */
+export function logout(req: Request, res: Response) {
+  res.clearCookie('auth_token', {
+    httpOnly: true,
+    secure: process.env.NODE_ENV === 'production',
+    sameSite: process.env.NODE_ENV === 'production' ? 'none' : 'lax',
+    path: '/',
+  });
+  res.json({ mensaje: 'Sesión cerrada correctamente' });
 }
 
 /**

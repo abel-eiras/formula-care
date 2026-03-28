@@ -6,6 +6,7 @@
 import { Request, Response } from 'express';
 import { z } from 'zod';
 import { prisma } from '../lib/prisma.js';
+import { encrypt, decrypt } from '../services/encryptionService.js';
 import {
   enviarCorreoPruebaPlataformaConDiagnostico,
   type ResultadoDiagnosticoEmail,
@@ -92,7 +93,7 @@ export async function actualizarConfiguracionPlataforma(req: Request, res: Respo
     if (datos.smtpSecure !== undefined) data.smtpSecure = datos.smtpSecure;
     data.smtpAcceptSelfSigned = datos.smtpAcceptSelfSigned ?? false;
     if (datos.smtpUser !== undefined) data.smtpUser = datos.smtpUser || null;
-    if (datos.smtpPass !== undefined && datos.smtpPass !== '') data.smtpPass = datos.smtpPass;
+    if (datos.smtpPass !== undefined && datos.smtpPass !== '') data.smtpPass = encrypt(datos.smtpPass);
     if (datos.smtpFrom !== undefined) data.smtpFrom = datos.smtpFrom || null;
     if (datos.resendApiKey !== undefined) data.resendApiKey = datos.resendApiKey || null;
     if (datos.emailNombreRemitente !== undefined) data.emailNombreRemitente = datos.emailNombreRemitente || null;
@@ -116,7 +117,7 @@ export async function actualizarConfiguracionPlataforma(req: Request, res: Respo
           smtpSecure: datos.smtpSecure ?? false,
           smtpAcceptSelfSigned: datos.smtpAcceptSelfSigned ?? false,
           smtpUser: datos.smtpUser ?? null,
-          smtpPass: datos.smtpPass ?? null,
+          smtpPass: datos.smtpPass ? encrypt(datos.smtpPass) : null,
           smtpFrom: datos.smtpFrom ?? null,
           resendApiKey: datos.resendApiKey ?? null,
           emailNombreRemitente: datos.emailNombreRemitente ?? null,

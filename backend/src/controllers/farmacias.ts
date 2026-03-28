@@ -9,6 +9,7 @@ import bcrypt from 'bcryptjs';
 import crypto from 'crypto';
 import { prisma } from '../lib/prisma.js';
 import { getParamString } from '../lib/queryHelpers.js';
+import { encrypt } from '../services/encryptionService.js';
 import {
   PARAMETROS_BIO_CONFIG_DEFAULT,
   PARAMETROS_REFERENCIA_DEFAULT,
@@ -897,7 +898,7 @@ export async function actualizarConfiguracionFarmacia(req: Request, res: Respons
     if (datos.smtpSecure !== undefined) data.smtpSecure = datos.smtpSecure;
     if (datos.smtpAcceptSelfSigned !== undefined) data.smtpAcceptSelfSigned = datos.smtpAcceptSelfSigned;
     if (datos.smtpUser !== undefined) data.smtpUser = datos.smtpUser ?? null;
-    if (datos.smtpPass !== undefined && datos.smtpPass !== '') data.smtpPass = datos.smtpPass;
+    if (datos.smtpPass !== undefined && datos.smtpPass !== '') data.smtpPass = encrypt(datos.smtpPass);
 
     if (!config) {
       config = await prisma.configuracion.create({
@@ -917,7 +918,7 @@ export async function actualizarConfiguracionFarmacia(req: Request, res: Respons
           smtpSecure: (data.smtpSecure as boolean) ?? false,
           smtpAcceptSelfSigned: (data.smtpAcceptSelfSigned as boolean) ?? false,
           smtpUser: data.smtpUser as string | null ?? null,
-          smtpPass: data.smtpPass as string | null ?? null,
+          smtpPass: data.smtpPass as string | null ?? null, // Already encrypted above if provided
         },
       });
     } else if (Object.keys(data).length > 0) {
