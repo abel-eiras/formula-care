@@ -6,7 +6,7 @@
  * (útil para clientes que aún no hayan migrado).
  */
 
-import { Request, Response, NextFunction } from 'express';
+import { Request, Response, NextFunction, CookieOptions } from 'express';
 import jwt from 'jsonwebtoken';
 import { prisma } from '../lib/prisma.js';
 
@@ -77,7 +77,7 @@ export function generarToken(usuario: { id: string; email: string; nombre: strin
 /**
  * Opciones de la cookie de autenticación
  */
-export function getAuthCookieOptions(): Parameters<Response['cookie']>[2] {
+export function getAuthCookieOptions(): CookieOptions {
   const isProduction = process.env.NODE_ENV === 'production';
   return {
     httpOnly: true,

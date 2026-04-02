@@ -898,7 +898,7 @@ export async function actualizarConfiguracionFarmacia(req: Request, res: Respons
     if (datos.smtpSecure !== undefined) data.smtpSecure = datos.smtpSecure;
     if (datos.smtpAcceptSelfSigned !== undefined) data.smtpAcceptSelfSigned = datos.smtpAcceptSelfSigned;
     if (datos.smtpUser !== undefined) data.smtpUser = datos.smtpUser ?? null;
-    if (datos.smtpPass !== undefined && datos.smtpPass !== '') data.smtpPass = encrypt(datos.smtpPass);
+    if (datos.smtpPass !== undefined && datos.smtpPass !== null && datos.smtpPass !== '') data.smtpPass = encrypt(datos.smtpPass);
 
     if (!config) {
       config = await prisma.configuracion.create({
