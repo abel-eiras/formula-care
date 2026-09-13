@@ -1,17 +1,17 @@
-# Estructura del Proyecto - Farmacia Pontevea
+# Estructura del Proyecto - Formula Care
 
 ## 📂 Organización de Carpetas
 
 ```
-farmaciapontevea_servicios/
+formula-care/
 │
 ├── 📄 README.md                    # Documentación principal del proyecto
 ├── 📄 AGENTS.md                   # Guía para agentes de IA
-├── 📄 package.json                 # Dependencias del proyecto (frontend)
-├── 📄 .env.example                 # Variables de entorno de ejemplo
+├── 📄 LICENSE                      # Licencia MIT
+├── 📄 package.json                 # Dependencias del proyecto (frontend + scripts de Tauri)
 ├── 📄 .gitignore                   # Archivos a ignorar en git
 │
-├── 📁 src/                         # Frontend React (en raíz)
+├── 📁 src/                         # Frontend React (empaquetado en la app de escritorio)
 │   ├── 📄 main.tsx                # Punto de entrada
 │   ├── 📄 App.tsx                 # Componente raíz con routing
 │   ├── 📁 pages/                  # Páginas
@@ -24,9 +24,9 @@ farmaciapontevea_servicios/
 ├── 📁 context/                    # Documentación para agentes y referencia
 │   ├── guias/                     # Guías activas (código limpio, React, despliegue)
 │   ├── integraciones/             # Guías de integraciones opcionales
-│   └── old/                       # Documentación histórica
+│   └── old/                       # Documentación histórica (incluida la del SaaS anterior)
 │
-├── 📁 backend/                    # API Node.js
+├── 📁 backend/                    # API Node.js (embebida en la app de escritorio)
 │   ├── 📁 src/
 │   │   ├── server.ts
 │   │   ├── routes/
@@ -34,8 +34,15 @@ farmaciapontevea_servicios/
 │   │   ├── middleware/
 │   │   ├── services/
 │   │   └── lib/
-│   ├── 📁 prisma/
+│   ├── 📁 prisma/                 # schema.prisma (SQLite) y migraciones
 │   └── package.json
+│
+├── 📁 src-tauri/                  # Empaquetado de escritorio (Tauri, Rust)
+│   ├── 📁 src/                    # lib.rs: arranca/detiene el backend embebido
+│   └── tauri.conf.json
+│
+├── 📁 booking-web/                # Servicio OPCIONAL y aparte: reserva pública de citas
+│                                  # (proyecto independiente, sin sincronizar con la app de escritorio)
 │
 └── 📁 .cursor/skills/             # Skills de proyecto para agentes
 ```

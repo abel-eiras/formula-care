@@ -4,18 +4,24 @@ El sistema de emails permite enviar confirmaciones, recordatorios y cancelacione
 
 Para una guía de puesta en marcha del sistema completo (plantillas, variables de entorno, checklist para producción), ver **[context/guias/CONFIGURACION_EMAIL_Y_MENSAJERIA.md](../context/guias/CONFIGURACION_EMAIL_Y_MENSAJERIA.md)**.
 
-## Configuración SMTP desde el panel (recomendado en producción)
+## Configuración SMTP desde la app (recomendado)
 
-El **superadministrador** puede configurar el SMTP por defecto de toda la plataforma desde el panel, sin tocar el `.env`:
+Cualquier usuario con rol `admin` puede configurar el SMTP (o Resend) de su
+instalación desde **Configuración → Email**, sin tocar el `.env`:
 
-1. Iniciar sesión como superadmin.
-2. Ir a **Configuración SMTP** en el menú de administración.
+1. Iniciar sesión como admin.
+2. Ir a **Configuración → Email**.
 3. Rellenar proveedor (SMTP o Resend), host, puerto, usuario, contraseña y email remitente.
 4. Guardar.
 
-Todas las farmacias usarán esta configuración por defecto. Cada farmacia puede definir la suya propia en su detalle (tab Configuración).
+Estos valores se guardan en la fila única de `Configuracion` de la base de
+datos local de esta instalación (no hay configuración "de plataforma": cada
+instalación de escritorio es independiente).
 
-**En producción**, configura en el servidor la variable de entorno `FRONTEND_URL` con la URL pública del frontend (ej. `https://tu-app.vercel.app`) para que los enlaces de invitación por email (crear contraseña) apunten correctamente.
+Si en algún momento el backend se ejecuta fuera de la app de escritorio (por
+ejemplo, para desarrollo), la variable de entorno `FRONTEND_URL` sigue
+determinando la URL a la que apuntan los enlaces de invitación por email
+(crear contraseña).
 
 ## Modos de Funcionamiento
 

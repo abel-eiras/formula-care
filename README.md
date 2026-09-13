@@ -1,10 +1,17 @@
-# Farmacia Pontevea - Sistema de Gestión de Servicios
+# Formula Care
 
-Sistema de gestión para servicios asistenciales de farmacia, incluyendo análisis dermocosmético y bioquímico, gestión de pacientes y calendario de citas.
+Aplicación de escritorio, libre y de código abierto, para la gestión de servicios asistenciales de farmacia: análisis dermocosmético y bioquímico, gestión de pacientes y calendario de citas.
+
+Formula Care corre **de forma local en tu ordenador**: los datos de tus pacientes se guardan en una base de datos SQLite en tu propio equipo, sin depender de ningún servidor en la nube ni de conexión a internet para funcionar.
 
 ## 📋 Estado del Proyecto
 
 ### ✅ Completado
+- **App de escritorio (Tauri)**
+  - Backend Node.js/Express embebido, arranca y se cierra junto con la app
+  - Base de datos SQLite local, una instalación = una farmacia
+  - Asistente de primer arranque para crear la cuenta de administrador
+
 - **Frontend React con TypeScript**
   - UI moderna con shadcn/ui y Tailwind CSS
   - Dashboard con estadísticas en tiempo real
@@ -17,97 +24,114 @@ Sistema de gestión para servicios asistenciales de farmacia, incluyendo anális
 
 - **Backend API con Node.js + Express**
   - API RESTful completa
-  - Base de datos con Prisma ORM (SQLite/PostgreSQL)
+  - Base de datos con Prisma ORM (SQLite)
   - Controladores para pacientes, citas, análisis, notificaciones
   - Servicio de disponibilidad de calendario
-  - Sistema de eventos para citas públicas
-  - Configuración centralizada por farmacia
-  - Tipos TypeScript estrictos (sin errores de compilación)
+  - Sistema de eventos personalizados
 
 - **Sistema de Autenticación**
-  - Login con JWT
-  - Roles: superadmin, admin, farmaceutico, usuario
+  - Login con JWT (cookie HttpOnly)
+  - Roles: admin, farmaceutico, usuario
   - Protección de rutas por rol
-  - Sesiones persistentes con localStorage
-
-- **Sistema Multi-Tenant**
-  - Modelo `Farmacia` para múltiples farmacias
-  - Aislamiento de datos por farmacia
-  - Panel de administración para superadmin
-  - Gestión de farmacias, usuarios y planes
-
-- **Sistema de Calendario**
-  - Página pública de solicitud de citas
-  - Configuración de horarios por servicio
-  - Gestión de eventos con fechas y horarios
-  - Aprobación/rechazo de solicitudes
 
 - **Sistema de Correos**
   - Plantillas editables (HTML)
   - Soporte para Nodemailer y Resend
-  - Enlaces de confirmación/cancelación de citas
-  - Tokens únicos con expiración
 
 - **RGPD y Legal**
   - Configuración de textos legales
   - Política de privacidad, cookies, términos
-  - Solo en páginas públicas (no en panel admin)
+
+- **Reserva pública de citas (opcional, servicio aparte)**
+  - Ver [booking-web/](booking-web/): un servicio web independiente y autohospedable para quien quiera ofrecer reserva de citas online, desacoplado de la app de escritorio.
 
 ### 🚧 En Desarrollo
 - Mejoras de rendimiento
 - Tests automatizados
+- Instaladores firmados de Windows/macOS (por ahora, cada plataforma necesita compilar su propio paquete; ver [Compilar la app de escritorio](#-compilar-la-app-de-escritorio))
 
 ### 📝 Planificado
 Ver la carpeta [context/](context/) para documentación (guías activas e histórica).
 
 ---
 
-## 🚀 Inicio Rápido
+## 🚀 Inicio Rápido (desarrollo)
 
 ### Requisitos Previos
 - Node.js 18+ y npm
-- (Opcional) Git para clonar el repositorio
+- [Rust y las dependencias nativas de Tauri](https://v2.tauri.app/start/prerequisites/) (solo si vas a ejecutar/compilar la app de escritorio; no hacen falta para trabajar solo en el frontend o el backend web)
+- Git
 
 ### Instalación
 
 ```bash
-# 1. Clonar el repositorio (si aún no lo has hecho)
-git clone https://github.com/abel-eiras/farmaciapontevea_servicios.git
-cd farmaciapontevea_servicios
+# 1. Clonar el repositorio
+git clone https://github.com/abel-eiras/formula-care.git
+cd formula-care
 
-# 2. Instalar dependencias del frontend
+# 2. Instalar dependencias del frontend (raíz del repo)
 npm install
 
 # 3. Instalar dependencias del backend
-cd backend && npm install && cd ..
+cd backend && npm install
 
-# 4. Configurar base de datos
-cd backend
-npx prisma db push
+# 4. Configurar variables de entorno del backend
+cp .env.example .env
+# Edita .env si quieres cambiar ADMIN_EMAIL/ADMIN_PASSWORD u otros valores
+
+# 5. Crear la base de datos local y cargar datos de ejemplo
+npx prisma migrate deploy
 npx tsx src/prisma/seed.ts
 cd ..
+```
 
-# 5. Iniciar servidores de desarrollo (en dos terminales)
-# Terminal 1 - Backend:
+### Ejecutar como app de escritorio (recomendado)
+
+```bash
+npm run tauri:dev
+```
+
+Esto arranca el backend embebido y abre la ventana de la app. La primera vez, si no has ejecutado el seed, se te pedirá crear la cuenta de administrador.
+
+### Ejecutar como web normal (dos terminales, útil para desarrollar sin Tauri/Rust instalado)
+
+```bash
+# Terminal 1 - Backend
 cd backend && npm run dev
 
-# Terminal 2 - Frontend:
+# Terminal 2 - Frontend
 npm run dev
 ```
 
 - Frontend: `http://localhost:5173`
 - Backend API: `http://localhost:3000`
 
-### Credenciales de Desarrollo
+### Credenciales de Desarrollo (tras ejecutar el seed)
 
 | Rol | Email | Contraseña |
 |-----|-------|------------|
-| Superadmin | `superadmin@sistema.local` | `superadmin123` |
-| Admin Farmacia | `admin@farmaciademo.com` | `admin123` |
+| Admin | `admin@farmacia.local` | `changeme123` |
+
+Cambia esta contraseña en cuanto inicies sesión. En una instalación de escritorio real (sin seed de datos de ejemplo), la propia app te pedirá crear esta cuenta en el primer arranque.
+
+---
+
+## 📦 Compilar la app de escritorio
+
+```bash
+npm run tauri:build
+```
+
+Esto compila el frontend, empaqueta el backend (Node + Prisma) como recurso de la app, y genera el instalador nativo de tu sistema operativo en `src-tauri/target/release/bundle/` (`.deb`/`.rpm`/AppImage en Linux, `.msi`/`.exe` en Windows, `.dmg`/`.app` en macOS). Cada plataforma debe compilarse en su propio sistema operativo (o vía CI con matrix de runners); este repo no incluye todavía una pipeline de CI para generar los tres a la vez.
+
+En el primer arranque de un paquete instalado, la app genera automáticamente un `JWT_SECRET`/clave de cifrado aleatorios y una base de datos SQLite propia en el directorio de datos del usuario del sistema operativo — no hace falta configurar nada a mano.
 
 ---
 
 ## 🛠️ Tecnologías Utilizadas
+
+### App de escritorio
+- **Tauri 2** (Rust) — empaquetado nativo, backend Node embebido como proceso hijo
 
 ### Frontend
 - **React 18** - Biblioteca de UI
@@ -122,31 +146,18 @@ npm run dev
 ### Backend
 - **Node.js + Express** - Servidor API REST
 - **Prisma** - ORM para base de datos
-- **SQLite** - Desarrollo; **PostgreSQL (Supabase)** en producción
+- **SQLite** - Base de datos local de cada instalación
 - **Zod** - Validación de esquemas
 - **TypeScript estricto** - Sin errores de compilación
-
----
-
-## 🌐 Dónde está alojado (producción)
-
-| Parte | Servicio | Nota |
-|-------|----------|------|
-| **Frontend** | [Vercel](https://vercel.com) | Despliegue automático desde este repo (rama `main`). |
-| **Backend (API)** | [Render](https://render.com) | Web Service `formula-care-api` → `https://formula-care-api.onrender.com`. |
-| **Base de datos** | [Supabase](https://supabase.com) | PostgreSQL; el backend la usa en producción vía `DATABASE_URL`. |
-
-Detalle en [context/STACK.md](context/STACK.md).
 
 ---
 
 ## 📁 Estructura del Proyecto
 
 ```
-farmaciapontevea_servicios/
-├── src/                        # Frontend React
+formula-care/
+├── src/                        # Frontend React (empaquetado dentro de la app de escritorio)
 │   ├── pages/                  # Páginas de la aplicación
-│   │   └── admin/              # Páginas de administración (superadmin)
 │   ├── components/             # Componentes reutilizables
 │   │   ├── auth/               # Componentes de autenticación
 │   │   ├── dashboard/          # Componentes del dashboard
@@ -156,14 +167,16 @@ farmaciapontevea_servicios/
 │   ├── hooks/                  # Custom hooks (React Query)
 │   ├── lib/                    # Utilidades (API, PDF, etc.)
 │   └── types/                  # Tipos TypeScript
-├── backend/                    # Backend Node.js + Express
-│   ├── prisma/                 # Schema y migraciones
+├── backend/                    # Backend Node.js + Express (embebido en la app de escritorio)
+│   ├── prisma/                 # Schema y migraciones (SQLite)
 │   └── src/
 │       ├── controllers/        # Controladores de API
-│       ├── middleware/         # Middlewares (auth, tenant, etc.)
+│       ├── middleware/         # Middlewares (auth, etc.)
 │       ├── routes/             # Rutas de API
 │       ├── services/           # Servicios (email, notificaciones)
-│       └── scripts/            # Scripts de migración
+│       └── scripts/            # Scripts de mantenimiento
+├── src-tauri/                  # Empaquetado de escritorio (Tauri, Rust)
+├── booking-web/                # Servicio OPCIONAL y aparte: reserva pública de citas
 ├── context/                    # Documentación (guías, integraciones, histórico)
 └── public/                     # Archivos estáticos
 ```
@@ -178,6 +191,7 @@ Para más detalles, ver [context/guias/ESTRUCTURA_PROYECTO.md](context/guias/EST
 - **[AGENTS.md](AGENTS.md)** - Guía para agentes de IA (reglas, checklist, referencias)
 - Guías activas en [context/guias/](context/guias/) (código limpio, React, estructura, despliegue)
 - Backend: [backend/README.md](backend/README.md), [backend/EMAIL_CONFIG.md](backend/EMAIL_CONFIG.md)
+- Reserva pública opcional: [booking-web/README.md](booking-web/README.md)
 
 ---
 
@@ -205,7 +219,6 @@ Para más detalles, ver [context/guias/ESTRUCTURA_PROYECTO.md](context/guias/EST
 - Vista mensual de citas
 - Creación y gestión de citas
 - Diferentes tipos de citas (dermo, bio, consulta, seguimiento)
-- (Planificado) Sincronización con Google Calendar
 
 ### Dashboard
 - Estadísticas generales
@@ -218,11 +231,15 @@ Para más detalles, ver [context/guias/ESTRUCTURA_PROYECTO.md](context/guias/EST
 ## 💻 Scripts Disponibles
 
 ```bash
-# Desarrollo
-npm run dev          # Inicia servidor de desarrollo
+# Desarrollo web (sin Tauri)
+npm run dev          # Inicia el servidor de desarrollo de Vite
 
-# Build
-npm run build        # Construye para producción
+# App de escritorio
+npm run tauri:dev    # Levanta el backend embebido + la ventana de la app
+npm run tauri:build  # Genera el instalador nativo de tu sistema operativo
+
+# Build web
+npm run build        # Construye el frontend para producción
 npm run build:dev    # Construye en modo desarrollo
 
 # Testing
@@ -248,27 +265,18 @@ Este proyecto sigue principios de **código limpio y simple**:
 - ✅ **Nombres descriptivos** - Variables y funciones que se explican solas
 - ✅ **Comentarios útiles** - Explican el "por qué", no el "qué"
 - ✅ **Sin sobre-ingeniería** - Solo lo necesario
-- ✅ **Mejores prácticas de React** - Basadas en [Vercel Labs Agent Skills](https://github.com/vercel-labs/agent-skills/tree/main/skills/react-best-practices)
-
-Ver [GUIA_CODIGO_LIMPIO.md](./docs/GUIA_CODIGO_LIMPIO.md) y [REACT_BEST_PRACTICES.md](./docs/REACT_BEST_PRACTICES.md) para más detalles.
 
 ---
 
 ## 🤝 Contribución
 
-### Antes de Contribuir
+Formula Care es software libre y las contribuciones son bienvenidas.
 
-1. Lee la [Propuesta de Desarrollo](./PROPUESTA_DESARROLLO.md)
-2. Revisa la [Guía de Código Limpio](./docs/GUIA_CODIGO_LIMPIO.md)
-3. Asegúrate de seguir la estructura del proyecto
-
-### Proceso
-
-1. Crea una rama para tu feature: `git checkout -b feature/nueva-funcionalidad`
-2. Realiza tus cambios siguiendo los estándares de código
-3. Asegúrate de que el código compile sin errores
+1. Haz un fork del repositorio y crea una rama para tu cambio: `git checkout -b feature/nueva-funcionalidad`
+2. Sigue la [Guía de Código Limpio](context/guias/GUIA_CODIGO_LIMPIO.md) y la estructura existente del proyecto
+3. Asegúrate de que el código compila sin errores (`npm run lint`, `npx tsc -b`, y lo mismo en `backend/`)
 4. Haz commit con mensajes claros
-5. Crea un Pull Request
+5. Abre un Pull Request describiendo el cambio
 
 ---
 
@@ -283,24 +291,12 @@ Ver [GUIA_CODIGO_LIMPIO.md](./docs/GUIA_CODIGO_LIMPIO.md) y [REACT_BEST_PRACTICE
 
 ## 🐛 Problemas Conocidos
 
-- El sistema de emails requiere configuración de proveedor (Nodemailer/Resend)
-- Falta sistema de backup automático
-- Algunas funcionalidades del calendario aún en refinamiento
-
-Estos puntos están planificados para las siguientes fases de desarrollo.
-
----
-
-## 📞 Contacto
-
-Para preguntas o sugerencias sobre el proyecto, consulta la [Propuesta de Desarrollo](./PROPUESTA_DESARROLLO.md) o crea un issue en el repositorio.
+- Los instaladores de Windows y macOS aún no se generan en este repositorio (requieren compilarse en cada sistema operativo o mediante CI); en Linux se han verificado `.deb`/`.rpm`.
+- `booking-web/` (reserva pública opcional) no sincroniza automáticamente sus citas con la base de datos local de la app de escritorio — ver su propio README para el alcance exacto.
+- Falta sistema de copia de seguridad automática de la base de datos local.
 
 ---
 
 ## 📄 Licencia
 
-Este proyecto es software libre bajo la [Licencia MIT](./LICENSE).
-
----
-
-**Última actualización**: Enero 2026
+Formula Care es software libre bajo la [Licencia MIT](./LICENSE). Puedes usarlo, modificarlo y redistribuirlo libremente, incluso con fines comerciales, siempre que mantengas el aviso de copyright.
