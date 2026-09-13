@@ -299,7 +299,7 @@ Para preguntas o sugerencias sobre el proyecto, consulta la [Propuesta de Desarr
 
 ## 📄 Licencia
 
-[Especificar licencia si aplica]
+Este proyecto es software libre bajo la [Licencia MIT](./LICENSE).
 
 ---
 

@@ -20,7 +20,6 @@ declare global {
         email: string;
         nombre: string;
         rol: string;
-        farmaciaId: string | null;
       };
       // Alias para compatibilidad
       user?: {
@@ -28,7 +27,6 @@ declare global {
         email: string;
         nombre: string;
         rol: string;
-        farmaciaId: string | null;
       };
     }
   }
@@ -60,14 +58,13 @@ const JWT_EXPIRES_IN = '24h';
 /**
  * Genera un token JWT para un usuario
  */
-export function generarToken(usuario: { id: string; email: string; nombre: string; rol: string; farmaciaId: string | null }): string {
+export function generarToken(usuario: { id: string; email: string; nombre: string; rol: string }): string {
   return jwt.sign(
     {
       id: usuario.id,
       email: usuario.email,
       nombre: usuario.nombre,
       rol: usuario.rol,
-      farmaciaId: usuario.farmaciaId,
     },
     JWT_SECRET,
     { expiresIn: JWT_EXPIRES_IN }
@@ -75,14 +72,16 @@ export function generarToken(usuario: { id: string; email: string; nombre: strin
 }
 
 /**
- * Opciones de la cookie de autenticación
+ * Opciones de la cookie de autenticación.
+ * La app de escritorio embebe el backend en localhost junto al webview,
+ * por lo que la cookie siempre es same-site (no hace falta sameSite: 'none').
  */
 export function getAuthCookieOptions(): CookieOptions {
   const isProduction = process.env.NODE_ENV === 'production';
   return {
     httpOnly: true,
     secure: isProduction,
-    sameSite: isProduction ? 'none' : 'lax',
+    sameSite: 'lax',
     maxAge: 24 * 60 * 60 * 1000, // 24 horas en ms
     path: '/',
   };
@@ -125,13 +124,12 @@ export async function verificarToken(req: Request, res: Response, next: NextFunc
       email: string;
       nombre: string;
       rol: string;
-      farmaciaId: string | null;
     };
 
     // Verificar que el usuario existe y está activo
     const usuario = await prisma.usuario.findUnique({
       where: { id: decoded.id },
-      select: { id: true, email: true, nombre: true, rol: true, activo: true, farmaciaId: true },
+      select: { id: true, email: true, nombre: true, rol: true, activo: true },
     });
 
     if (!usuario) {
@@ -154,7 +152,6 @@ export async function verificarToken(req: Request, res: Response, next: NextFunc
       email: usuario.email,
       nombre: usuario.nombre,
       rol: usuario.rol,
-      farmaciaId: usuario.farmaciaId,
     };
     req.usuario = userData;
     req.user = userData;
@@ -221,12 +218,11 @@ export async function tokenOpcional(req: Request, res: Response, next: NextFunct
       email: string;
       nombre: string;
       rol: string;
-      farmaciaId: string | null;
     };
 
     const usuario = await prisma.usuario.findUnique({
       where: { id: decoded.id },
-      select: { id: true, email: true, nombre: true, rol: true, activo: true, farmaciaId: true },
+      select: { id: true, email: true, nombre: true, rol: true, activo: true },
     });
 
     if (usuario && usuario.activo) {
@@ -235,7 +231,6 @@ export async function tokenOpcional(req: Request, res: Response, next: NextFunct
         email: usuario.email,
         nombre: usuario.nombre,
         rol: usuario.rol,
-        farmaciaId: usuario.farmaciaId,
       };
       req.usuario = userData;
       req.user = userData;
