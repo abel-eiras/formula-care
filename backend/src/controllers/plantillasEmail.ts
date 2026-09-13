@@ -7,7 +7,6 @@ import type { Request, Response } from 'express';
 import { z } from 'zod';
 import { prisma } from '../lib/prisma.js';
 import { getParamString } from '../lib/queryHelpers.js';
-import { obtenerFarmaciaIdRequerido, obtenerFarmaciaIdOpcional } from '../middleware/tenant.js';
 
 // ==========================================
 // PLANTILLAS POR DEFECTO
@@ -266,13 +265,10 @@ const actualizarPlantillaSchema = z.object({
  */
 export async function obtenerPlantillas(req: Request, res: Response) {
   try {
-    const farmaciaId = obtenerFarmaciaIdRequerido(req);
-    
-    // Asegurar que existan las plantillas por defecto para esta farmacia
-    await asegurarPlantillasDefault(farmaciaId);
+    // Asegurar que existan las plantillas por defecto
+    await asegurarPlantillasDefault();
 
     const plantillas = await prisma.plantillaEmail.findMany({
-      where: { farmaciaId },
       orderBy: { tipo: 'asc' },
     });
 
@@ -288,16 +284,13 @@ export async function obtenerPlantillas(req: Request, res: Response) {
  */
 export async function obtenerPlantilla(req: Request, res: Response) {
   try {
-    const farmaciaId = obtenerFarmaciaIdRequerido(req);
     const tipo = getParamString(req.params.tipo);
     if (!tipo) {
       return res.status(400).json({ error: 'Tipo de plantilla requerido' });
     }
 
     const plantilla = await prisma.plantillaEmail.findUnique({
-      where: { 
-        farmaciaId_tipo: { farmaciaId, tipo }
-      },
+      where: { tipo },
     });
 
     if (!plantilla) {
@@ -316,7 +309,6 @@ export async function obtenerPlantilla(req: Request, res: Response) {
  */
 export async function actualizarPlantilla(req: Request, res: Response) {
   try {
-    const farmaciaId = obtenerFarmaciaIdRequerido(req);
     const tipo = getParamString(req.params.tipo);
     if (!tipo) {
       return res.status(400).json({ error: 'Tipo de plantilla requerido' });
@@ -331,9 +323,7 @@ export async function actualizarPlantilla(req: Request, res: Response) {
     }
 
     const plantilla = await prisma.plantillaEmail.update({
-      where: { 
-        farmaciaId_tipo: { farmaciaId, tipo }
-      },
+      where: { tipo },
       data: validacion.data,
     });
 
@@ -349,7 +339,6 @@ export async function actualizarPlantilla(req: Request, res: Response) {
  */
 export async function restaurarPlantillaPorDefecto(req: Request, res: Response) {
   try {
-    const farmaciaId = obtenerFarmaciaIdRequerido(req);
     const tipo = getParamString(req.params.tipo) as keyof typeof PLANTILLAS_DEFAULT;
     if (!tipo) {
       return res.status(400).json({ error: 'Tipo de plantilla requerido' });
@@ -361,9 +350,7 @@ export async function restaurarPlantillaPorDefecto(req: Request, res: Response) 
     }
 
     const plantilla = await prisma.plantillaEmail.update({
-      where: { 
-        farmaciaId_tipo: { farmaciaId, tipo }
-      },
+      where: { tipo },
       data: {
         nombre: plantillaDefault.nombre,
         asunto: plantillaDefault.asunto,
@@ -390,20 +377,17 @@ export async function obtenerVariablesDisponibles(req: Request, res: Response) {
 // ==========================================
 
 /**
- * Asegura que existan las plantillas por defecto en la BD para una farmacia
+ * Asegura que existan las plantillas por defecto en la BD
  */
-export async function asegurarPlantillasDefault(farmaciaId: string) {
+export async function asegurarPlantillasDefault() {
   for (const [tipo, datos] of Object.entries(PLANTILLAS_DEFAULT)) {
     const existe = await prisma.plantillaEmail.findUnique({
-      where: { 
-        farmaciaId_tipo: { farmaciaId, tipo }
-      },
+      where: { tipo },
     });
 
     if (!existe) {
       await prisma.plantillaEmail.create({
         data: {
-          farmaciaId,
           tipo,
           nombre: datos.nombre,
           asunto: datos.asunto,
@@ -411,7 +395,7 @@ export async function asegurarPlantillasDefault(farmaciaId: string) {
           activa: true,
         },
       });
-      console.log(`📧 Plantilla '${tipo}' creada por defecto para farmacia ${farmaciaId}`);
+      console.log(`📧 Plantilla '${tipo}' creada por defecto`);
     }
   }
 }
