@@ -38,3 +38,11 @@ backend/prisma/dev.db-journal
 # OS files
 Thumbs.db
 nul
+
+# TypeScript incremental build info
+*.tsbuildinfo
+
+# Tauri (app de escritorio)
+src-tauri/target/
+src-tauri/gen/
+backend/prisma/desktop-template.db

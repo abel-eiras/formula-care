@@ -16,6 +16,13 @@ const loginSchema = z.object({
   password: z.string().min(1, 'La contraseña es requerida'),
 });
 
+// Esquema de validación para el alta del primer administrador (primer arranque)
+const setupInicialSchema = z.object({
+  email: z.string().email('Email inválido'),
+  password: z.string().min(6, 'La contraseña debe tener al menos 6 caracteres'),
+  nombre: z.string().min(2, 'El nombre debe tener al menos 2 caracteres'),
+});
+
 // Esquema de validación para registro
 const registroSchema = z.object({
   email: z.string().email('Email inválido'),
@@ -42,6 +49,79 @@ const actualizarUsuarioSchema = z.object({
   rol: z.enum(['usuario', 'admin', 'farmaceutico']).optional(),
   activo: z.boolean().optional(),
 });
+
+/**
+ * GET /api/auth/necesita-setup
+ * Indica si esta instalación aún no tiene ningún usuario creado (primer
+ * arranque de la app de escritorio). Ruta pública: solo revela un booleano.
+ */
+export async function necesitaSetup(req: Request, res: Response) {
+  try {
+    const totalUsuarios = await prisma.usuario.count();
+    res.json({ necesitaSetup: totalUsuarios === 0 });
+  } catch (error) {
+    console.error('Error al comprobar setup inicial:', error);
+    res.status(500).json({ error: 'Error interno del servidor' });
+  }
+}
+
+/**
+ * POST /api/auth/setup-inicial
+ * Crea la cuenta de administrador inicial. Solo funciona mientras la
+ * instalación no tenga ningún usuario (primer arranque de la app de
+ * escritorio); a partir de ahí, los usuarios se gestionan desde /registro.
+ */
+export async function setupInicial(req: Request, res: Response) {
+  try {
+    const totalUsuarios = await prisma.usuario.count();
+    if (totalUsuarios > 0) {
+      return res.status(403).json({
+        error: 'Setup ya completado',
+        mensaje: 'Esta instalación ya tiene un administrador configurado.',
+      });
+    }
+
+    const datos = setupInicialSchema.parse(req.body);
+
+    const salt = await bcrypt.genSalt(10);
+    const passwordHash = await bcrypt.hash(datos.password, salt);
+
+    const usuario = await prisma.usuario.create({
+      data: {
+        email: datos.email.toLowerCase(),
+        password: passwordHash,
+        nombre: datos.nombre,
+        rol: 'admin',
+      },
+    });
+
+    const token = generarToken({
+      id: usuario.id,
+      email: usuario.email,
+      nombre: usuario.nombre,
+      rol: usuario.rol,
+    });
+    res.cookie('auth_token', token, getAuthCookieOptions());
+
+    res.status(201).json({
+      usuario: {
+        id: usuario.id,
+        email: usuario.email,
+        nombre: usuario.nombre,
+        rol: usuario.rol,
+      },
+    });
+  } catch (error) {
+    if (error instanceof z.ZodError) {
+      return res.status(400).json({
+        error: 'Datos inválidos',
+        detalles: error.errors,
+      });
+    }
+    console.error('Error en setup inicial:', error);
+    res.status(500).json({ error: 'Error interno del servidor' });
+  }
+}
 
 /**
  * POST /api/auth/login
