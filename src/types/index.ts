@@ -169,29 +169,6 @@ export interface Notificacion {
   };
 }
 
-export interface SolicitudCita {
-  id: string;
-  nombreCliente: string;
-  emailCliente: string;
-  telefonoCliente: string;
-  tipo: 'dermo' | 'bio' | 'evento';
-  fecha: string; // Formato ISO
-  hora: string; // Formato "HH:mm"
-  estado: 'pendiente' | 'aprobada' | 'rechazada';
-  notas?: string;
-  pacienteId?: string;
-  citaId?: string;
-  createdAt?: string;
-  updatedAt?: string;
-  paciente?: Paciente;
-  cita?: {
-    id: string;
-    titulo: string;
-    fecha: string;
-    hora: string;
-  };
-}
-
 export interface ConfiguracionCalendario {
   id: string;
   horariosPorTipo: string; // JSON: { "dermo": { "lunes": ["09:00-14:00"], ... }, "bio": {...} }

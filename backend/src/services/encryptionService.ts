@@ -170,59 +170,6 @@ export function decryptPacienteData<T extends { name?: string; phone?: string; e
 }
 
 /**
- * Encripta los campos sensibles de una solicitud de cita
- * 
- * @param data - Objeto con los datos de la solicitud
- * @returns Objeto con campos sensibles encriptados y emailClienteHash generado
- */
-export function encryptSolicitudData<T extends { nombreCliente?: string; emailCliente?: string; telefonoCliente?: string }>(
-  data: T
-): T & { emailClienteHash?: string } {
-  const result = { ...data } as T & { emailClienteHash?: string };
-  
-  if (data.nombreCliente) {
-    result.nombreCliente = encrypt(data.nombreCliente);
-  }
-  
-  if (data.emailCliente) {
-    result.emailClienteHash = hashEmail(data.emailCliente);
-    result.emailCliente = encrypt(data.emailCliente);
-  }
-  
-  if (data.telefonoCliente) {
-    result.telefonoCliente = encrypt(data.telefonoCliente);
-  }
-  
-  return result;
-}
-
-/**
- * Desencripta los campos sensibles de una solicitud de cita
- * 
- * @param data - Objeto con datos encriptados de la solicitud
- * @returns Objeto con campos sensibles desencriptados
- */
-export function decryptSolicitudData<T extends { nombreCliente?: string; emailCliente?: string; telefonoCliente?: string }>(
-  data: T
-): T {
-  const result = { ...data };
-  
-  if (data.nombreCliente) {
-    result.nombreCliente = decrypt(data.nombreCliente);
-  }
-  
-  if (data.emailCliente) {
-    result.emailCliente = decrypt(data.emailCliente);
-  }
-  
-  if (data.telefonoCliente) {
-    result.telefonoCliente = decrypt(data.telefonoCliente);
-  }
-  
-  return result;
-}
-
-/**
  * Desencripta una lista de pacientes
  * Útil para búsquedas en memoria después de obtener de la BD
  * 
@@ -233,16 +180,4 @@ export function decryptPacientesList<T extends { name?: string; phone?: string; 
   pacientes: T[]
 ): T[] {
   return pacientes.map(p => decryptPacienteData(p));
-}
-
-/**
- * Desencripta una lista de solicitudes
- * 
- * @param solicitudes - Array de solicitudes con datos encriptados
- * @returns Array de solicitudes con datos desencriptados
- */
-export function decryptSolicitudesList<T extends { nombreCliente?: string; emailCliente?: string; telefonoCliente?: string }>(
-  solicitudes: T[]
-): T[] {
-  return solicitudes.map(s => decryptSolicitudData(s));
 }
