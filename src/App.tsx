@@ -23,21 +23,8 @@ const ServicioBioPrint = lazy(() => import("./pages/ServicioBioPrint"));
 const Configuracion = lazy(() => import("./pages/Configuracion"));
 const Calendario = lazy(() => import("./pages/Calendario"));
 const Solicitudes = lazy(() => import("./pages/Solicitudes"));
-const SolicitarCita = lazy(() => import("./pages/SolicitarCita"));
 const Legal = lazy(() => import("./pages/Legal"));
-const LegalPublico = lazy(() => import("./pages/LegalPublico"));
-const ConfirmarCita = lazy(() => import("./pages/ConfirmarCita"));
-const ModificarCita = lazy(() => import("./pages/ModificarCita"));
-const CancelarCita = lazy(() => import("./pages/CancelarCita"));
-const EstablecerContrasena = lazy(() => import("./pages/EstablecerContrasena"));
 const NotFound = lazy(() => import("./pages/NotFound"));
-
-// Páginas de administración de plataforma (superadmin)
-const AdminDashboard = lazy(() => import("./pages/admin/AdminDashboard"));
-const AdminFarmacias = lazy(() => import("./pages/admin/Farmacias"));
-const NuevaFarmacia = lazy(() => import("./pages/admin/NuevaFarmacia"));
-const FarmaciaDetalle = lazy(() => import("./pages/admin/FarmaciaDetalle"));
-const ConfiguracionEmail = lazy(() => import("./pages/admin/ConfiguracionEmail"));
 
 const queryClient = new QueryClient({
   defaultOptions: {
@@ -66,23 +53,6 @@ const App = () => (
                 </Suspense>
               }
             />
-            <Route
-              path="/cita/:slug"
-              element={
-                <Suspense fallback={<LoadingSpinner />}>
-                  <SolicitarCita />
-                </Suspense>
-              }
-            />
-            {/* Rutas legales públicas por farmacia */}
-            <Route
-              path="/f/:slug/legal/:tipo"
-              element={
-                <Suspense fallback={<LoadingSpinner />}>
-                  <LegalPublico />
-                </Suspense>
-              }
-            />
             {/* Rutas legales generales (para usuarios autenticados) */}
             <Route
               path="/legal/:tipo"
@@ -92,45 +62,11 @@ const App = () => (
                 </Suspense>
               }
             />
-            {/* Rutas de gestión de citas desde email (públicas) */}
-            <Route
-              path="/cita/confirmar/:token"
-              element={
-                <Suspense fallback={<LoadingSpinner />}>
-                  <ConfirmarCita />
-                </Suspense>
-              }
-            />
-            <Route
-              path="/cita/modificar/:token"
-              element={
-                <Suspense fallback={<LoadingSpinner />}>
-                  <ModificarCita />
-                </Suspense>
-              }
-            />
-            <Route
-              path="/cita/cancelar/:token"
-              element={
-                <Suspense fallback={<LoadingSpinner />}>
-                  <CancelarCita />
-                </Suspense>
-              }
-            />
-            {/* Establecer contraseña desde invitación por email (público) */}
-            <Route
-              path="/establecer-contrasena"
-              element={
-                <Suspense fallback={<LoadingSpinner />}>
-                  <EstablecerContrasena />
-                </Suspense>
-              }
-            />
-            {/* Rutas de impresión (protegidas, solo usuarios de farmacia) */}
+            {/* Rutas de impresión (protegidas) */}
             <Route
               path="/servicios/dermo/print"
               element={
-                <ProtectedRoute excludeRoles={["superadmin"]}>
+                <ProtectedRoute>
                   <Suspense fallback={<LoadingSpinner />}>
                     <ServicioDermoPrint />
                   </Suspense>
@@ -140,37 +76,18 @@ const App = () => (
             <Route
               path="/servicios/bio/print"
               element={
-                <ProtectedRoute excludeRoles={["superadmin"]}>
+                <ProtectedRoute>
                   <Suspense fallback={<LoadingSpinner />}>
                     <ServicioBioPrint />
                   </Suspense>
                 </ProtectedRoute>
               }
             />
-            {/* Rutas de administración de plataforma (superadmin) */}
-            <Route
-              path="/admin"
-              element={
-                <ProtectedRoute requiredRole="superadmin">
-                  <MainLayout>
-                    <Suspense fallback={<LoadingSpinner />}>
-                      <Outlet />
-                    </Suspense>
-                  </MainLayout>
-                </ProtectedRoute>
-              }
-            >
-              <Route index element={<AdminDashboard />} />
-              <Route path="farmacias" element={<AdminFarmacias />} />
-              <Route path="farmacias/nueva" element={<NuevaFarmacia />} />
-              <Route path="farmacias/:id" element={<FarmaciaDetalle />} />
-              <Route path="configuracion-email" element={<ConfiguracionEmail />} />
-            </Route>
-            {/* Rutas protegidas con layout - Solo para usuarios de farmacia (no superadmin) */}
+            {/* Rutas protegidas con layout */}
             <Route
               path="/"
               element={
-                <ProtectedRoute excludeRoles={["superadmin"]}>
+                <ProtectedRoute>
                   <MainLayout>
                     <Suspense fallback={<LoadingSpinner />}>
                       <Outlet />
