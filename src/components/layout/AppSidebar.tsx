@@ -1,23 +1,20 @@
-import { 
-  LayoutDashboard, 
-  Users, 
-  Sparkles, 
+import {
+  LayoutDashboard,
+  Users,
+  Sparkles,
   FlaskConical,
   CalendarDays,
   Settings,
   LogOut,
   Menu,
   User,
-  Building2,
-  Shield,
   ClipboardList,
-  Mail,
 } from "lucide-react";
 import { NavLink, useLocation, useNavigate } from "react-router-dom";
 import { cn } from "@/lib/utils";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
-import { useMemo, useState } from "react";
+import { useState } from "react";
 import { useAuthContext } from "@/contexts/AuthContext";
 import { useSolicitudesPendientesCount } from "@/hooks/useSolicitudes";
 
@@ -55,35 +52,13 @@ const navigationItems = [
   },
 ];
 
-// Navegación para superadmin
-const adminNavigationItems = [
-  {
-    title: "Panel Admin",
-    url: "/admin",
-    icon: Shield,
-  },
-  {
-    title: "Farmacias",
-    url: "/admin/farmacias",
-    icon: Building2,
-  },
-  {
-    title: "Configuración SMTP",
-    url: "/admin/configuracion-email",
-    icon: Mail,
-  },
-];
-
 export function AppSidebar() {
   const location = useLocation();
   const navigate = useNavigate();
   const { usuario, logout } = useAuthContext();
   const [collapsed, setCollapsed] = useState(false);
 
-  // Verificar si es superadmin
-  const isSuperadmin = useMemo(() => usuario?.rol === 'superadmin', [usuario]);
-
-  // Obtener contador de solicitudes pendientes (solo para usuarios de farmacia)
+  // Obtener contador de solicitudes pendientes
   const solicitudesPendientes = useSolicitudesPendientesCount();
 
   const handleLogout = () => {
@@ -102,17 +77,8 @@ export function AppSidebar() {
       <div className="flex items-center justify-between p-4 border-b border-sidebar-border">
         {!collapsed && (
           <div className="flex flex-col animate-fade-in">
-            {isSuperadmin ? (
-              <>
-                <span className="text-lg font-bold text-sidebar-foreground">Admin</span>
-                <span className="text-sm font-medium text-sidebar-muted">Plataforma</span>
-              </>
-            ) : (
-              <>
-                <span className="text-lg font-bold text-sidebar-foreground">Fórmula</span>
-                <span className="text-sm font-medium text-sidebar-muted">Care</span>
-              </>
-            )}
+            <span className="text-lg font-bold text-sidebar-foreground">Fórmula</span>
+            <span className="text-sm font-medium text-sidebar-muted">Care</span>
           </div>
         )}
         <Button
@@ -127,72 +93,41 @@ export function AppSidebar() {
 
       {/* Navigation */}
       <nav className="flex-1 px-3 py-6 space-y-2 overflow-y-auto">
-        {/* Menú de superadmin - Solo muestra opciones de administración */}
-        {isSuperadmin ? (
-          <>
-            {adminNavigationItems.map((item) => {
-              const isActive = location.pathname === item.url || 
-                (item.url !== "/admin" && location.pathname.startsWith(item.url));
-              
-              return (
-                <NavLink
-                  key={item.title}
-                  to={item.url}
-                  className={cn(
-                    "flex items-center gap-3 px-4 py-3 rounded-lg transition-all duration-200",
-                    "hover:bg-sidebar-accent hover:text-sidebar-accent-foreground",
-                    isActive 
-                      ? "bg-amber-600 text-white font-semibold shadow-md" 
-                      : "text-sidebar-foreground",
-                    collapsed && "justify-center px-3"
-                  )}
-                >
-                  <item.icon className={cn("h-5 w-5 flex-shrink-0", isActive && "animate-slide-in")} />
-                  {!collapsed && (
-                    <span className="animate-fade-in truncate">{item.title}</span>
-                  )}
-                </NavLink>
-              );
-            })}
-          </>
-        ) : (
-          /* Menú normal para usuarios de farmacia */
-          navigationItems.map((item) => {
-            const isActive = location.pathname === item.url || 
-              (item.url !== "/" && location.pathname.startsWith(item.url) && !location.pathname.startsWith("/admin"));
-            const showBadge = item.url === '/solicitudes' && solicitudesPendientes > 0;
-            
-            return (
-              <NavLink
-                key={item.title}
-                to={item.url}
-                className={cn(
-                  "flex items-center gap-3 px-4 py-3 rounded-lg transition-all duration-200 relative",
-                  "hover:bg-sidebar-accent hover:text-sidebar-accent-foreground",
-                  isActive 
-                    ? "bg-sidebar-primary text-sidebar-primary-foreground font-semibold shadow-md" 
-                    : "text-sidebar-foreground",
-                  collapsed && "justify-center px-3"
+        {navigationItems.map((item) => {
+          const isActive = location.pathname === item.url ||
+            (item.url !== "/" && location.pathname.startsWith(item.url));
+          const showBadge = item.url === '/solicitudes' && solicitudesPendientes > 0;
+
+          return (
+            <NavLink
+              key={item.title}
+              to={item.url}
+              className={cn(
+                "flex items-center gap-3 px-4 py-3 rounded-lg transition-all duration-200 relative",
+                "hover:bg-sidebar-accent hover:text-sidebar-accent-foreground",
+                isActive
+                  ? "bg-sidebar-primary text-sidebar-primary-foreground font-semibold shadow-md"
+                  : "text-sidebar-foreground",
+                collapsed && "justify-center px-3"
+              )}
+            >
+              <div className="relative">
+                <item.icon className={cn("h-5 w-5 flex-shrink-0", isActive && "animate-slide-in")} />
+                {showBadge && collapsed && (
+                  <span className="absolute -top-1 -right-1 h-2 w-2 bg-red-500 rounded-full" />
                 )}
-              >
-                <div className="relative">
-                  <item.icon className={cn("h-5 w-5 flex-shrink-0", isActive && "animate-slide-in")} />
-                  {showBadge && collapsed && (
-                    <span className="absolute -top-1 -right-1 h-2 w-2 bg-red-500 rounded-full" />
-                  )}
-                </div>
-                {!collapsed && (
-                  <span className="animate-fade-in truncate flex-1">{item.title}</span>
-                )}
-                {showBadge && !collapsed && (
-                  <Badge variant="destructive" className="ml-auto text-xs px-1.5 py-0 h-5 min-w-[20px] flex items-center justify-center">
-                    {solicitudesPendientes > 99 ? '99+' : solicitudesPendientes}
-                  </Badge>
-                )}
-              </NavLink>
-            );
-          })
-        )}
+              </div>
+              {!collapsed && (
+                <span className="animate-fade-in truncate flex-1">{item.title}</span>
+              )}
+              {showBadge && !collapsed && (
+                <Badge variant="destructive" className="ml-auto text-xs px-1.5 py-0 h-5 min-w-[20px] flex items-center justify-center">
+                  {solicitudesPendientes > 99 ? '99+' : solicitudesPendientes}
+                </Badge>
+              )}
+            </NavLink>
+          );
+        })}
       </nav>
 
       {/* Footer */}
@@ -209,20 +144,17 @@ export function AppSidebar() {
             </div>
           </div>
         )}
-        {/* Configuración solo para usuarios de farmacia, no superadmin */}
-        {!isSuperadmin && (
-          <NavLink
-            to="/configuracion"
-            className={cn(
-              "flex items-center gap-3 px-4 py-3 rounded-lg transition-all duration-200",
-              "text-sidebar-foreground hover:bg-sidebar-accent hover:text-sidebar-accent-foreground",
-              collapsed && "justify-center px-3"
-            )}
-          >
-            <Settings className="h-5 w-5" />
-            {!collapsed && <span>Configuración</span>}
-          </NavLink>
-        )}
+        <NavLink
+          to="/configuracion"
+          className={cn(
+            "flex items-center gap-3 px-4 py-3 rounded-lg transition-all duration-200",
+            "text-sidebar-foreground hover:bg-sidebar-accent hover:text-sidebar-accent-foreground",
+            collapsed && "justify-center px-3"
+          )}
+        >
+          <Settings className="h-5 w-5" />
+          {!collapsed && <span>Configuración</span>}
+        </NavLink>
         <button
           onClick={handleLogout}
           className={cn(

@@ -39,18 +39,14 @@ export function ProtectedRoute({ children, requiredRoles, requiredRole, excludeR
   // Si hay roles excluidos, verificar que el usuario no tenga ninguno
   if (excludeRoles && excludeRoles.length > 0 && usuario) {
     if (excludeRoles.includes(usuario.rol)) {
-      // Redirigir superadmin a su panel, otros a dashboard
-      const redirectTo = usuario.rol === 'superadmin' ? '/admin' : '/';
-      return <Navigate to={redirectTo} state={{ error: 'No tienes permisos para acceder a esta página' }} replace />;
+      return <Navigate to="/" state={{ error: 'No tienes permisos para acceder a esta página' }} replace />;
     }
   }
 
   // Si se requieren roles específicos, verificar
   if (rolesRequeridos && rolesRequeridos.length > 0) {
     if (!tieneRol(...rolesRequeridos)) {
-      // Redirigir superadmin a su panel, otros a dashboard
-      const redirectTo = usuario?.rol === 'superadmin' ? '/admin' : '/';
-      return <Navigate to={redirectTo} state={{ error: 'No tienes permisos para acceder a esta página' }} replace />;
+      return <Navigate to="/" state={{ error: 'No tienes permisos para acceder a esta página' }} replace />;
     }
   }
 
