@@ -14,12 +14,16 @@ import {
   listarUsuarios,
   actualizarUsuario,
   eliminarUsuario,
+  necesitaSetup,
+  setupInicial,
 } from '../controllers/auth.js';
 import { verificarToken, verificarRol } from '../middleware/auth.js';
 
 export const authRouter = Router();
 
 // Rutas públicas (no requieren autenticación)
+authRouter.get('/necesita-setup', necesitaSetup);
+authRouter.post('/setup-inicial', setupInicial);
 authRouter.post('/login', login);
 authRouter.post('/logout', logout);
 authRouter.get('/invitacion/:token', obtenerInvitacion);
