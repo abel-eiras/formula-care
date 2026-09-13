@@ -2,20 +2,17 @@ import { Request, Response } from 'express';
 import { z } from 'zod';
 import { prisma } from '../lib/prisma.js';
 import { getQueryString, getParamString, getQueryNumber, getQueryLimit } from '../lib/queryHelpers.js';
-import { obtenerFarmaciaIdRequerido, obtenerFarmaciaIdOpcional } from '../middleware/tenant.js';
 
 /**
  * Obtener notificaciones no leídas
  */
 export async function obtenerNotificaciones(req: Request, res: Response) {
   try {
-    const farmaciaId = obtenerFarmaciaIdOpcional(req);
     const leidas = getQueryString(req.query.leidas);
     const limite = getQueryLimit(req.query.limit, 50, 200);
 
     const notificaciones = await prisma.notificacion.findMany({
       where: {
-        ...(farmaciaId ? { farmaciaId } : {}),
         leida: leidas === 'true' ? true : leidas === 'false' ? false : undefined,
       },
       include: {
@@ -116,8 +113,6 @@ export async function obtenerContadorNotificaciones(req: Request, res: Response)
  */
 export async function crearNotificacion(req: Request, res: Response) {
   try {
-    const farmaciaId = obtenerFarmaciaIdRequerido(req);
-    
     const schema = z.object({
       tipo: z.enum(['cita', 'revision', 'recordatorio', 'alerta']),
       pacienteId: z.string().optional(),
@@ -133,7 +128,6 @@ export async function crearNotificacion(req: Request, res: Response) {
     const notificacion = await prisma.notificacion.create({
       data: {
         ...datos,
-        farmaciaId,
       },
       include: {
         paciente: {

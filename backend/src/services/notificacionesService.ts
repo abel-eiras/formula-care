@@ -21,17 +21,16 @@ export async function crearNotificacionRevision(analisisId: string, pacienteId: 
 
     const paciente = await prisma.paciente.findUnique({
       where: { id: pacienteId },
-      select: { name: true, farmaciaId: true },
+      select: { name: true },
     });
 
-    if (!paciente?.farmaciaId) {
-      console.error('Paciente no encontrado o sin farmacia');
+    if (!paciente) {
+      console.error('Paciente no encontrado');
       return;
     }
 
     await prisma.notificacion.create({
       data: {
-        farmaciaId: paciente.farmaciaId,
         tipo: 'revision',
         pacienteId,
         analisisId,
@@ -72,7 +71,6 @@ export async function crearNotificacionRecordatorioCita(citaId: string) {
     if (diffHoras > 0 && diffHoras <= 24) {
       await prisma.notificacion.create({
         data: {
-          farmaciaId: cita.farmaciaId,
           tipo: 'recordatorio',
           pacienteId: cita.pacienteId,
           citaId: cita.id,
@@ -113,14 +111,13 @@ export async function verificarRevisionesProximas() {
       },
       include: {
         paciente: {
-          select: { name: true, farmaciaId: true },
+          select: { name: true },
         },
       },
     });
 
     for (const analisis of analisisConRevision) {
       if (!analisis.proximaRevision) continue;
-      if (!analisis.paciente.farmaciaId) continue;
 
       // Verificar si ya existe notificación
       const existe = await prisma.notificacion.findFirst({
@@ -134,7 +131,6 @@ export async function verificarRevisionesProximas() {
       if (!existe) {
         await prisma.notificacion.create({
           data: {
-            farmaciaId: analisis.paciente.farmaciaId,
             tipo: 'revision',
             pacienteId: analisis.pacienteId,
             analisisId: analisis.id,

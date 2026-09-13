@@ -2,7 +2,6 @@ import { Request, Response } from 'express';
 import { z } from 'zod';
 import { prisma } from '../lib/prisma.js';
 import { getParamString } from '../lib/queryHelpers.js';
-import { obtenerFarmaciaIdRequerido, obtenerFarmaciaIdOpcional } from '../middleware/tenant.js';
 
 // Esquema de validación para crear/actualizar evento
 const eventoSchema = z.object({
@@ -21,10 +20,7 @@ const eventoSchema = z.object({
  */
 export async function obtenerEventos(req: Request, res: Response) {
   try {
-    const farmaciaId = obtenerFarmaciaIdOpcional(req);
-    
     const eventos = await prisma.evento.findMany({
-      where: farmaciaId ? { farmaciaId } : {},
       orderBy: { nombre: 'asc' },
     });
 
@@ -103,12 +99,10 @@ export async function obtenerEvento(req: Request, res: Response) {
  */
 export async function crearEvento(req: Request, res: Response) {
   try {
-    const farmaciaId = obtenerFarmaciaIdRequerido(req);
     const datos = eventoSchema.parse(req.body);
 
     const evento = await prisma.evento.create({
       data: {
-        farmaciaId,
         nombre: datos.nombre,
         activo: datos.activo ?? true,
         fechas: JSON.stringify(datos.fechas),

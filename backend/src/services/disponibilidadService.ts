@@ -81,35 +81,22 @@ function citasSeSolapan(
   return (inicio1 < fin2 && fin1 > inicio2);
 }
 
+// ID fijo de la fila única de configuración del calendario (instalación local de una sola farmacia)
+const CONFIG_ID = 'singleton';
+
 /**
- * Obtiene la configuración del calendario para una farmacia
- * Si no se proporciona farmaciaId, obtiene la primera farmacia activa
+ * Obtiene la configuración del calendario (fila única de la instalación)
  */
-async function obtenerConfiguracionCalendario(farmaciaId?: string) {
-  // Si no hay farmaciaId, obtener la primera farmacia activa
-  let targetFarmaciaId = farmaciaId;
-  if (!targetFarmaciaId) {
-    const primeraFarmacia = await prisma.farmacia.findFirst({
-      where: { activa: true },
-      select: { id: true },
-    });
-    targetFarmaciaId = primeraFarmacia?.id;
-  }
-
-  if (!targetFarmaciaId) {
-    // No hay farmacias, retornar config vacía
-    return null;
-  }
-
+async function obtenerConfiguracionCalendario() {
   let config = await prisma.configuracionCalendario.findUnique({
-    where: { farmaciaId: targetFarmaciaId },
+    where: { id: CONFIG_ID },
   });
 
   // Si no existe, crear con valores por defecto
   if (!config) {
     config = await prisma.configuracionCalendario.create({
       data: {
-        farmaciaId: targetFarmaciaId,
+        id: CONFIG_ID,
         horariosPorTipo: '{}',
         fechasBloqueadas: '[]',
         horasBloqueadas: '{}',
@@ -130,9 +117,8 @@ async function obtenerConfiguracionCalendario(farmaciaId?: string) {
  * @param tipo - Tipo de servicio (dermo, bio, evento)
  * @param fecha - Fecha en formato YYYY-MM-DD
  * @param eventoId - ID del evento (solo si tipo es 'evento')
- * @param farmaciaId - ID de la farmacia (opcional, si no se proporciona usa la primera activa)
  */
-export async function obtenerDisponibilidad(tipo: string, fecha: string, eventoId?: string, farmaciaId?: string): Promise<string[]> {
+export async function obtenerDisponibilidad(tipo: string, fecha: string, eventoId?: string): Promise<string[]> {
   // Validar tipo
   const tiposValidos = ['dermo', 'bio', 'evento'];
   if (!tiposValidos.includes(tipo)) {
@@ -167,12 +153,11 @@ export async function obtenerDisponibilidad(tipo: string, fecha: string, eventoI
       }
     }
 
-    // Obtener solicitudes existentes para este evento en esta fecha
-    const solicitudesEvento = await prisma.solicitudCita.findMany({
+    // Obtener citas existentes para este evento en esta fecha
+    const citasEvento = await prisma.cita.findMany({
       where: {
         fecha,
         tipo: `evento:${eventoId}`,
-        estado: { in: ['pendiente', 'aprobada'] },
       },
       select: {
         hora: true,
@@ -181,8 +166,8 @@ export async function obtenerDisponibilidad(tipo: string, fecha: string, eventoI
 
     // Contar asistentes por hora
     const asistentesPorHora: Record<string, number> = {};
-    solicitudesEvento.forEach((s) => {
-      asistentesPorHora[s.hora] = (asistentesPorHora[s.hora] || 0) + 1;
+    citasEvento.forEach((c) => {
+      asistentesPorHora[c.hora] = (asistentesPorHora[c.hora] || 0) + 1;
     });
 
     // Filtrar horas disponibles (considerando maxAsistentes)
@@ -199,8 +184,8 @@ export async function obtenerDisponibilidad(tipo: string, fecha: string, eventoI
     throw new Error(`Formato de fecha inválido: ${fecha}. Debe ser YYYY-MM-DD`);
   }
 
-  // Obtener configuración (usando farmaciaId si se proporciona)
-  const config = await obtenerConfiguracionCalendario(farmaciaId);
+  // Obtener configuración del calendario
+  const config = await obtenerConfiguracionCalendario();
   
   // Si no hay configuración, retornar array vacío
   if (!config) {
@@ -253,20 +238,8 @@ export async function obtenerDisponibilidad(tipo: string, fecha: string, eventoI
     },
   });
 
-  // Obtener solicitudes aprobadas del mismo tipo en esa fecha
-  const solicitudesAprobadas = await prisma.solicitudCita.findMany({
-    where: {
-      fecha,
-      tipo: tipo.startsWith('evento:') ? tipo : tipo,
-      estado: 'aprobada',
-    },
-    select: {
-      hora: true,
-    },
-  });
-
-  // Combinar citas y solicitudes aprobadas
-  const ocupadas = [...citasExistentes, ...solicitudesAprobadas].map((c) => c.hora);
+  // Horas ocupadas por citas existentes
+  const ocupadas = citasExistentes.map((c) => c.hora);
 
   // Obtener horas bloqueadas para esta fecha específica
   const horasBloqueadasFecha = horasBloqueadas[fecha] || [];
@@ -301,14 +274,13 @@ export async function obtenerDisponibilidad(tipo: string, fecha: string, eventoI
 export async function verificarDisponibilidad(
   tipo: string,
   fecha: string,
-  hora: string,
-  farmaciaId?: string
+  hora: string
 ): Promise<boolean> {
   // Validar formato de hora (HH:mm)
   if (!/^([0-1]?[0-9]|2[0-3]):[0-5][0-9]$/.test(hora)) {
     throw new Error(`Formato de hora inválido: ${hora}. Debe ser HH:mm`);
   }
 
-  const horasDisponibles = await obtenerDisponibilidad(tipo, fecha, undefined, farmaciaId);
+  const horasDisponibles = await obtenerDisponibilidad(tipo, fecha, undefined);
   return horasDisponibles.includes(hora);
 }

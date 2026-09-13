@@ -36,7 +36,7 @@ const establecerContrasenaSchema = z.object({
   password: z.string().min(6, 'La contraseña debe tener al menos 6 caracteres'),
 });
 
-// Roles permitidos al actualizar usuario (no se puede asignar superadmin por API)
+// Roles permitidos al actualizar usuario
 const actualizarUsuarioSchema = z.object({
   nombre: z.string().min(2, 'El nombre debe tener al menos 2 caracteres').optional(),
   rol: z.enum(['usuario', 'admin', 'farmaceutico']).optional(),
@@ -93,7 +93,6 @@ export async function login(req: Request, res: Response) {
       email: usuario.email,
       nombre: usuario.nombre,
       rol: usuario.rol,
-      farmaciaId: usuario.farmaciaId,
     });
 
     // Enviar token como cookie HttpOnly (no accesible desde JS)
@@ -105,7 +104,6 @@ export async function login(req: Request, res: Response) {
         email: usuario.email,
         nombre: usuario.nombre,
         rol: usuario.rol,
-        farmaciaId: usuario.farmaciaId,
       },
     });
   } catch (error) {
@@ -194,16 +192,8 @@ export async function obtenerUsuarioActual(req: Request, res: Response) {
         email: true,
         nombre: true,
         rol: true,
-        farmaciaId: true,
         ultimoAcceso: true,
         createdAt: true,
-        farmacia: {
-          select: {
-            id: true,
-            nombre: true,
-            slug: true,
-          }
-        }
       },
     });
 
@@ -378,18 +368,11 @@ export async function establecerContrasenaInvitacion(req: Request, res: Response
 
 /**
  * GET /api/auth/usuarios
- * Listar usuarios (solo admin). Admins ven solo usuarios de su farmacia; superadmin ve todos.
+ * Listar usuarios (solo admin).
  */
 export async function listarUsuarios(req: Request, res: Response) {
   try {
-    const user = req.usuario || req.user;
-    const where: { farmaciaId?: string | null } = {};
-    if (user?.rol !== 'superadmin' && user?.farmaciaId) {
-      where.farmaciaId = user.farmaciaId;
-    }
-
     const usuarios = await prisma.usuario.findMany({
-      where,
       select: {
         id: true,
         email: true,
@@ -411,22 +394,18 @@ export async function listarUsuarios(req: Request, res: Response) {
 
 /**
  * PUT /api/auth/usuarios/:id
- * Actualizar usuario (solo admin). Admin solo puede actualizar usuarios de su farmacia.
+ * Actualizar usuario (solo admin).
  */
 export async function actualizarUsuario(req: Request, res: Response) {
   try {
     const id = getParamString(req.params.id);
     const datos = actualizarUsuarioSchema.parse(req.body);
-    const user = req.usuario || req.user;
 
     const usuario = await prisma.usuario.findUnique({
       where: { id },
     });
 
     if (!usuario) {
-      return res.status(404).json({ error: 'Usuario no encontrado' });
-    }
-    if (user?.rol !== 'superadmin' && user?.farmaciaId !== usuario.farmaciaId) {
       return res.status(404).json({ error: 'Usuario no encontrado' });
     }
 
@@ -477,10 +456,6 @@ export async function eliminarUsuario(req: Request, res: Response) {
     });
 
     if (!usuario) {
-      return res.status(404).json({ error: 'Usuario no encontrado' });
-    }
-    const user = req.usuario || req.user;
-    if (user?.rol !== 'superadmin' && user?.farmaciaId !== usuario.farmaciaId) {
       return res.status(404).json({ error: 'Usuario no encontrado' });
     }
 
