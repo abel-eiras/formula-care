@@ -10,6 +10,7 @@ import { verificarPasswordStaff, generarSesionStaff, getStaffCookieOptions, STAF
 import { decryptContactoData, encrypt } from '../services/encryptionService.js';
 import { enviarConfirmacionCita, enviarRechazoSolicitud } from '../services/emailService.js';
 import { verificarDisponibilidad } from '../services/disponibilidadService.js';
+import { getParamString } from '../lib/queryHelpers.js';
 
 // ==========================================
 // LOGIN
@@ -105,7 +106,7 @@ export async function listarSolicitudes(req: Request, res: Response) {
  */
 export async function aprobarSolicitud(req: Request, res: Response) {
   try {
-    const { id } = req.params;
+    const id = getParamString(req.params.id)!;
     const solicitud = await prisma.solicitudCita.findUnique({ where: { id } });
     if (!solicitud) return res.status(404).json({ error: 'Solicitud no encontrada' });
     if (solicitud.estado !== 'pendiente') {
@@ -175,7 +176,7 @@ const rechazarSchema = z.object({ motivo: z.string().optional() });
  */
 export async function rechazarSolicitud(req: Request, res: Response) {
   try {
-    const { id } = req.params;
+    const id = getParamString(req.params.id)!;
     const { motivo } = rechazarSchema.parse(req.body ?? {});
 
     const solicitud = await prisma.solicitudCita.findUnique({ where: { id } });
@@ -397,7 +398,7 @@ export async function crearEvento(req: Request, res: Response) {
 
 export async function actualizarEvento(req: Request, res: Response) {
   try {
-    const { id } = req.params;
+    const id = getParamString(req.params.id)!;
     const datos = eventoSchema.partial().parse(req.body);
     const data: Record<string, unknown> = { ...datos };
     if (datos.fechas !== undefined) data.fechas = JSON.stringify(datos.fechas);
@@ -416,7 +417,7 @@ export async function actualizarEvento(req: Request, res: Response) {
 
 export async function eliminarEvento(req: Request, res: Response) {
   try {
-    const { id } = req.params;
+    const id = getParamString(req.params.id)!;
     await prisma.evento.delete({ where: { id } });
     res.json({ success: true });
   } catch (error) {

@@ -18,7 +18,7 @@ datasource db {
   // servicio siempre encendido). También funciona con sqlite si se autoaloja
   // con disco persistente — ver README.md para el formato de DATABASE_URL
   // en cada caso.
-  provider = "sqlite"
+  provider = "postgresql"
   url      = env("DATABASE_URL")
 }
 
