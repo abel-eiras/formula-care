@@ -893,8 +893,8 @@ async function enviarEmailConConfig(
 // ==========================================
 
 /**
- * Envía un correo de prueba usando la configuración de plataforma
- * Usado desde el panel superadmin para verificar SMTP/Resend
+ * Envía un correo de prueba usando la configuración de la instalación
+ * Usado desde el panel de configuración para verificar SMTP/Resend
  */
 export async function enviarCorreoPruebaPlataforma(destinatario: string): Promise<boolean> {
   const config = await obtenerConfigEmail();
@@ -1022,27 +1022,12 @@ export async function enviarCancelacionCita(
     nombreCliente: string;
     motivoRechazo?: string;
     citaId?: string;
-    farmaciaId?: string; // Requerido cuando no hay citaId (ej. rechazo de solicitud)
   }
 ): Promise<boolean> {
   try {
-    // Obtener farmaciaId de la cita o del parámetro
-    let farmaciaId: string | undefined = datosCita.farmaciaId;
-    if (!farmaciaId && datosCita.citaId) {
-      const cita = await prisma.cita.findUnique({
-        where: { id: datosCita.citaId },
-        select: { farmaciaId: true },
-      });
-      farmaciaId = cita?.farmaciaId;
-    }
-    if (!farmaciaId) {
-      console.warn('❌ No se puede enviar cancelación: falta farmaciaId');
-      return false;
-    }
+    const datos = await obtenerDatosEmailCompletos(datosCita);
 
-    const datos = await obtenerDatosEmailCompletos(farmaciaId, datosCita);
-
-    const plantilla = farmaciaId ? await obtenerPlantilla('cancelacion', farmaciaId) : null;
+    const plantilla = await obtenerPlantilla('cancelacion');
 
     let html: string;
     let asunto: string;
@@ -1055,7 +1040,7 @@ export async function enviarCancelacionCita(
       asunto = `Cita cancelada - ${datos.tipoServicio}`;
     }
 
-    return await enviarEmail(emailDestinatario, asunto, html, farmaciaId);
+    return await enviarEmail(emailDestinatario, asunto, html);
   } catch (error) {
     console.error('❌ Error al enviar cancelación:', error);
     return false;
@@ -1076,20 +1061,9 @@ export async function enviarModificacionCita(
   }
 ): Promise<boolean> {
   try {
-    const cita = await prisma.cita.findUnique({
-      where: { id: datosCita.citaId },
-      select: { farmaciaId: true },
-    });
-    const farmaciaId = cita?.farmaciaId;
-    if (!farmaciaId) {
-      console.warn('❌ No se puede enviar modificación: cita sin farmaciaId');
-      return false;
-    }
+    const datos = await obtenerDatosEmailCompletos(datosCita);
 
-    const tokens = await generarTokensAccionCita(datosCita.citaId);
-    const datos = await obtenerDatosEmailCompletos(farmaciaId, datosCita, tokens);
-
-    const plantilla = await obtenerPlantilla('modificacion', farmaciaId);
+    const plantilla = await obtenerPlantilla('modificacion');
 
     let html: string;
     let asunto: string;
@@ -1102,33 +1076,11 @@ export async function enviarModificacionCita(
       asunto = `Tu cita ha sido modificada - ${datos.tipoServicio}`;
     }
 
-    return await enviarEmail(emailDestinatario, asunto, html, farmaciaId);
+    return await enviarEmail(emailDestinatario, asunto, html);
   } catch (error) {
     console.error('❌ Error al enviar modificación:', error);
     return false;
   }
-}
-
-/**
- * Envía email de rechazo de solicitud (mantener compatibilidad)
- * Requiere farmaciaId para cargar datos y plantilla de la farmacia.
- */
-export async function enviarRechazoSolicitud(
-  emailDestinatario: string,
-  datosSolicitud: {
-    tipo: string;
-    fecha: string;
-    hora: string;
-    nombreCliente: string;
-    motivo?: string;
-    farmaciaId: string;
-  }
-): Promise<boolean> {
-  return enviarCancelacionCita(emailDestinatario, {
-    ...datosSolicitud,
-    motivoRechazo: datosSolicitud.motivo,
-    farmaciaId: datosSolicitud.farmaciaId,
-  });
 }
 
 /**
@@ -1138,8 +1090,7 @@ export async function enviarInvitacionUsuario(
   emailDestinatario: string,
   nombreUsuario: string,
   nombreFarmacia: string,
-  urlEstablecerContrasena: string,
-  farmaciaId: string
+  urlEstablecerContrasena: string
 ): Promise<boolean> {
   const asunto = `Crea tu contraseña - ${nombreFarmacia}`;
   const html = `
@@ -1166,7 +1117,7 @@ export async function enviarInvitacionUsuario(
 </body>
 </html>`;
   const texto = `Hola ${nombreUsuario}, te han invitado a ${nombreFarmacia}. Crea tu contraseña aquí: ${urlEstablecerContrasena}. El enlace caduca en 7 días.`;
-  return enviarEmail(emailDestinatario, asunto, html, farmaciaId, texto);
+  return enviarEmail(emailDestinatario, asunto, html, texto);
 }
 
 // ==========================================
@@ -1217,9 +1168,6 @@ function generarPlantillaConfirmacionDefault(datos: DatosEmail): string {
     <p>Por favor, llegue con unos minutos de antelación.</p>
     
     <div style="text-align: center; margin: 30px 0;">
-      <a href="${datos.urlConfirmar}" style="display: inline-block; background-color: #22c55e; color: white; padding: 12px 24px; text-decoration: none; border-radius: 6px; margin: 5px; font-weight: bold;">✓ Confirmar asistencia</a>
-      <a href="${datos.urlModificar}" style="display: inline-block; background-color: #3b82f6; color: white; padding: 12px 24px; text-decoration: none; border-radius: 6px; margin: 5px; font-weight: bold;">✎ Modificar cita</a>
-      <a href="${datos.urlCancelar}" style="display: inline-block; background-color: #ef4444; color: white; padding: 12px 24px; text-decoration: none; border-radius: 6px; margin: 5px; font-weight: bold;">✕ Cancelar cita</a>
     </div>
     
     <hr style="border: none; border-top: 1px solid #eee; margin: 30px 0;">
@@ -1272,9 +1220,6 @@ function generarPlantillaRecordatorioDefault(datos: DatosEmail): string {
     <p>Por favor, llegue con unos minutos de antelación. Si no puedes asistir, te agradecemos que nos lo comuniques.</p>
     
     <div style="text-align: center; margin: 30px 0;">
-      <a href="${datos.urlConfirmar}" style="display: inline-block; background-color: #22c55e; color: white; padding: 12px 24px; text-decoration: none; border-radius: 6px; margin: 5px; font-weight: bold;">✓ Confirmar asistencia</a>
-      <a href="${datos.urlModificar}" style="display: inline-block; background-color: #3b82f6; color: white; padding: 12px 24px; text-decoration: none; border-radius: 6px; margin: 5px; font-weight: bold;">✎ Modificar cita</a>
-      <a href="${datos.urlCancelar}" style="display: inline-block; background-color: #ef4444; color: white; padding: 12px 24px; text-decoration: none; border-radius: 6px; margin: 5px; font-weight: bold;">✕ Cancelar cita</a>
     </div>
     
     <hr style="border: none; border-top: 1px solid #eee; margin: 30px 0;">
@@ -1383,9 +1328,6 @@ function generarPlantillaModificacionDefault(datos: DatosEmail): string {
     <p>Por favor, llegue con unos minutos de antelación.</p>
     
     <div style="text-align: center; margin: 30px 0;">
-      <a href="${datos.urlConfirmar}" style="display: inline-block; background-color: #22c55e; color: white; padding: 12px 24px; text-decoration: none; border-radius: 6px; margin: 5px; font-weight: bold;">✓ Confirmar asistencia</a>
-      <a href="${datos.urlModificar}" style="display: inline-block; background-color: #3b82f6; color: white; padding: 12px 24px; text-decoration: none; border-radius: 6px; margin: 5px; font-weight: bold;">✎ Modificar cita</a>
-      <a href="${datos.urlCancelar}" style="display: inline-block; background-color: #ef4444; color: white; padding: 12px 24px; text-decoration: none; border-radius: 6px; margin: 5px; font-weight: bold;">✕ Cancelar cita</a>
     </div>
     
     <hr style="border: none; border-top: 1px solid #eee; margin: 30px 0;">

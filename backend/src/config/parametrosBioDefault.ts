@@ -1,7 +1,6 @@
 /**
  * Parámetros bioquímicos y rangos de referencia por defecto.
- * Misma configuración que Farmacia Pontevea: se usa para nuevas farmacias y cuando
- * una farmacia no tiene configuración aún.
+ * Se usan para inicializar la configuración de una instalación nueva.
  */
 
 export const PARAMETROS_BIO_CONFIG_DEFAULT = [
