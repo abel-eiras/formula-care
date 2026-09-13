@@ -1,8 +1,6 @@
 /**
  * Seed de base de datos
- * Crea datos iniciales para desarrollo
- * 
- * Arquitectura Multi-Tenant: Crea superadmin + farmacia de ejemplo
+ * Crea datos iniciales para una instalación local de una sola farmacia
  */
 
 import { PrismaClient } from '@prisma/client';
@@ -14,86 +12,20 @@ import {
 
 const prisma = new PrismaClient();
 
-// Función para generar slug a partir del nombre
-function generarSlug(nombre: string): string {
-  return nombre
-    .toLowerCase()
-    .normalize('NFD')
-    .replace(/[\u0300-\u036f]/g, '')
-    .replace(/[^a-z0-9]+/g, '-')
-    .replace(/^-+|-+$/g, '');
-}
+// ID fijo de la fila única de configuración (instalación local de una sola farmacia)
+const CONFIG_ID = 'singleton';
 
 async function main() {
   console.log('🌱 Iniciando seed de base de datos...\n');
 
   // =============================================
-  // 1. CREAR SUPERADMIN (REDACTED_EMAIL)
+  // 1. CREAR USUARIO ADMIN
   // =============================================
-  const superadminEmail = 'REDACTED_EMAIL';
-  const superadminPassword = 'FormulaFarma2026!';
-
-  const superadminExiste = await prisma.usuario.findUnique({
-    where: { email: superadminEmail }
-  });
-
-  if (!superadminExiste) {
-    const salt = await bcrypt.genSalt(10);
-    const passwordHash = await bcrypt.hash(superadminPassword, salt);
-
-    await prisma.usuario.create({
-      data: {
-        email: superadminEmail,
-        password: passwordHash,
-        nombre: 'Abel - Fórmula Farma',
-        rol: 'superadmin',
-        farmaciaId: null,
-      },
-    });
-    console.log(`✅ Superadmin creado: ${superadminEmail} / ${superadminPassword}`);
-  } else {
-    console.log(`ℹ️ Superadmin ya existe: ${superadminEmail}`);
-  }
-
-  // =============================================
-  // 2. CREAR FARMACIA PONTEVEA
-  // =============================================
-  const nombreFarmacia = 'Farmacia Pontevea';
-  const slugFarmacia = generarSlug(nombreFarmacia);
-
-  let farmacia = await prisma.farmacia.findUnique({
-    where: { slug: slugFarmacia }
-  });
-
-  if (!farmacia) {
-    farmacia = await prisma.farmacia.create({
-      data: {
-        nombre: nombreFarmacia,
-        slug: slugFarmacia,
-        direccion: 'Lugar de A Igrexa, 7',
-        ciudad: 'Pontevea, A Estrada (Pontevedra)',
-        telefono: '986 580 157',
-        email: 'info@farmaciapontevea.com',
-        web: 'www.farmaciapontevea.com',
-        activa: true,
-        plan: 'profesional',
-        maxUsuarios: 5,
-        maxPacientes: 1000,
-      },
-    });
-    console.log(`✅ Farmacia creada: ${nombreFarmacia} (${slugFarmacia})`);
-  } else {
-    console.log(`ℹ️ Farmacia ya existe: ${nombreFarmacia}`);
-  }
-
-  // =============================================
-  // 3. CREAR ADMIN DE LA FARMACIA
-  // =============================================
-  const adminEmail = process.env.ADMIN_EMAIL || 'admin@farmaciapontevea.com';
-  const adminPassword = process.env.ADMIN_PASSWORD || 'admin123';
+  const adminEmail = process.env.ADMIN_EMAIL || 'admin@farmacia.local';
+  const adminPassword = process.env.ADMIN_PASSWORD || 'changeme123';
 
   const adminExiste = await prisma.usuario.findUnique({
-    where: { email: adminEmail }
+    where: { email: adminEmail },
   });
 
   if (!adminExiste) {
@@ -104,54 +36,54 @@ async function main() {
       data: {
         email: adminEmail,
         password: passwordHash,
-        nombre: 'Farmacia Pontevea',
+        nombre: 'Administrador',
         rol: 'admin',
-        farmaciaId: farmacia.id,
       },
     });
-    console.log(`✅ Admin farmacia creado: ${adminEmail} / ${adminPassword}`);
+    console.log(`✅ Admin creado: ${adminEmail} / ${adminPassword}`);
+    console.log('⚠️  IMPORTANTE: cambia esta contraseña por defecto en cuanto inicies sesión.');
   } else {
-    console.log(`ℹ️ Admin farmacia ya existe: ${adminEmail}`);
+    console.log(`ℹ️ Admin ya existe: ${adminEmail}`);
   }
 
   // =============================================
-  // 4. CREAR CONFIGURACIÓN DE LA FARMACIA
+  // 2. CREAR CONFIGURACIÓN DE LA FARMACIA (fila única)
   // =============================================
   const configExiste = await prisma.configuracion.findUnique({
-    where: { farmaciaId: farmacia.id }
+    where: { id: CONFIG_ID },
   });
 
   if (!configExiste) {
     await prisma.configuracion.create({
       data: {
-        farmaciaId: farmacia.id,
-        farmaciaNombre: farmacia.nombre,
-        farmaciaDireccion: farmacia.direccion,
-        farmaciaCiudad: farmacia.ciudad,
-        farmaciaTelefono: farmacia.telefono,
-        farmaciaEmail: farmacia.email,
-        farmaciaWeb: farmacia.web,
+        id: CONFIG_ID,
+        farmaciaNombre: 'Mi Farmacia',
+        farmaciaDireccion: 'Calle Principal 1',
+        farmaciaCiudad: 'Ciudad',
+        farmaciaTelefono: '',
+        farmaciaEmail: '',
+        farmaciaWeb: '',
         valoracionBioActiva: true,
         parametrosReferencia: JSON.stringify(PARAMETROS_REFERENCIA_DEFAULT),
         parametrosBioConfig: JSON.stringify(PARAMETROS_BIO_CONFIG_DEFAULT),
       },
     });
-    console.log('✅ Configuración de farmacia creada (parámetros bio = Pontevea por defecto)');
+    console.log('✅ Configuración de la farmacia creada (con parámetros bioquímicos por defecto)');
   } else {
-    console.log('ℹ️ Configuración de farmacia ya existe');
+    console.log('ℹ️ Configuración de la farmacia ya existe');
   }
 
   // =============================================
-  // 5. CREAR CONFIGURACIÓN DE CALENDARIO
+  // 3. CREAR CONFIGURACIÓN DE CALENDARIO (fila única)
   // =============================================
   const calExiste = await prisma.configuracionCalendario.findUnique({
-    where: { farmaciaId: farmacia.id }
+    where: { id: CONFIG_ID },
   });
 
   if (!calExiste) {
     await prisma.configuracionCalendario.create({
       data: {
-        farmaciaId: farmacia.id,
+        id: CONFIG_ID,
         horariosPorTipo: JSON.stringify({
           dermo: {
             lunes: ['09:00-14:00', '16:00-20:00'],
@@ -183,16 +115,13 @@ async function main() {
   }
 
   // =============================================
-  // 6. CREAR PACIENTES DE EJEMPLO
+  // 4. CREAR PACIENTES DE EJEMPLO
   // =============================================
-  const pacientesCount = await prisma.paciente.count({
-    where: { farmaciaId: farmacia.id }
-  });
+  const pacientesCount = await prisma.paciente.count();
 
   if (pacientesCount === 0) {
     const paciente1 = await prisma.paciente.create({
       data: {
-        farmaciaId: farmacia.id,
         name: 'María García López',
         age: 45,
         sex: 'F',
@@ -206,7 +135,6 @@ async function main() {
 
     const paciente2 = await prisma.paciente.create({
       data: {
-        farmaciaId: farmacia.id,
         name: 'Juan Martínez Ruiz',
         age: 62,
         sex: 'M',
@@ -266,8 +194,7 @@ async function main() {
   console.log('🎉 Seed completado exitosamente');
   console.log('═══════════════════════════════════════════════════════');
   console.log('\n📋 Credenciales:');
-  console.log(`   Superadmin: ${superadminEmail} / ${superadminPassword}`);
-  console.log(`   Admin farmacia: ${adminEmail} / ${adminPassword}`);
+  console.log(`   Admin: ${adminEmail} / ${adminPassword}`);
   console.log('\n');
 }
 

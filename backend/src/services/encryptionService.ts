@@ -4,7 +4,6 @@
  * 
  * Los campos encriptados son:
  * - Paciente: name, phone, email
- * - SolicitudCita: nombreCliente, emailCliente, telefonoCliente
  */
 
 import crypto from 'crypto';

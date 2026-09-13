@@ -43,9 +43,6 @@ const PLANTILLAS_DEFAULT = {
     <p>Por favor, llegue con unos minutos de antelación.</p>
     
     <div style="text-align: center; margin: 30px 0;">
-      <a href="{{urlConfirmar}}" style="display: inline-block; background-color: #22c55e; color: white; padding: 12px 24px; text-decoration: none; border-radius: 6px; margin: 5px; font-weight: bold;">✓ Confirmar asistencia</a>
-      <a href="{{urlModificar}}" style="display: inline-block; background-color: #3b82f6; color: white; padding: 12px 24px; text-decoration: none; border-radius: 6px; margin: 5px; font-weight: bold;">✎ Modificar cita</a>
-      <a href="{{urlCancelar}}" style="display: inline-block; background-color: #ef4444; color: white; padding: 12px 24px; text-decoration: none; border-radius: 6px; margin: 5px; font-weight: bold;">✕ Cancelar cita</a>
     </div>
     
     <hr style="border: none; border-top: 1px solid #eee; margin: 30px 0;">
@@ -94,9 +91,6 @@ const PLANTILLAS_DEFAULT = {
     <p>Por favor, llegue con unos minutos de antelación. Si no puedes asistir, te agradecemos que nos lo comuniques.</p>
     
     <div style="text-align: center; margin: 30px 0;">
-      <a href="{{urlConfirmar}}" style="display: inline-block; background-color: #22c55e; color: white; padding: 12px 24px; text-decoration: none; border-radius: 6px; margin: 5px; font-weight: bold;">✓ Confirmar asistencia</a>
-      <a href="{{urlModificar}}" style="display: inline-block; background-color: #3b82f6; color: white; padding: 12px 24px; text-decoration: none; border-radius: 6px; margin: 5px; font-weight: bold;">✎ Modificar cita</a>
-      <a href="{{urlCancelar}}" style="display: inline-block; background-color: #ef4444; color: white; padding: 12px 24px; text-decoration: none; border-radius: 6px; margin: 5px; font-weight: bold;">✕ Cancelar cita</a>
     </div>
     
     <hr style="border: none; border-top: 1px solid #eee; margin: 30px 0;">
@@ -194,9 +188,6 @@ const PLANTILLAS_DEFAULT = {
     <p>Por favor, llegue con unos minutos de antelación.</p>
     
     <div style="text-align: center; margin: 30px 0;">
-      <a href="{{urlConfirmar}}" style="display: inline-block; background-color: #22c55e; color: white; padding: 12px 24px; text-decoration: none; border-radius: 6px; margin: 5px; font-weight: bold;">✓ Confirmar asistencia</a>
-      <a href="{{urlModificar}}" style="display: inline-block; background-color: #3b82f6; color: white; padding: 12px 24px; text-decoration: none; border-radius: 6px; margin: 5px; font-weight: bold;">✎ Modificar cita</a>
-      <a href="{{urlCancelar}}" style="display: inline-block; background-color: #ef4444; color: white; padding: 12px 24px; text-decoration: none; border-radius: 6px; margin: 5px; font-weight: bold;">✕ Cancelar cita</a>
     </div>
     
     <hr style="border: none; border-top: 1px solid #eee; margin: 30px 0;">
@@ -228,9 +219,6 @@ export const VARIABLES_DISPONIBLES = [
   { nombre: 'telefonoFarmacia', descripcion: 'Teléfono de contacto' },
   { nombre: 'emailFarmacia', descripcion: 'Email de contacto' },
   { nombre: 'webFarmacia', descripcion: 'URL de la web' },
-  { nombre: 'urlConfirmar', descripcion: 'Enlace para confirmar la cita' },
-  { nombre: 'urlModificar', descripcion: 'Enlace para modificar la cita' },
-  { nombre: 'urlCancelar', descripcion: 'Enlace para cancelar la cita' },
   { nombre: 'urlSolicitarCita', descripcion: 'URL para solicitar nueva cita en la farmacia' },
   { nombre: 'urlWhatsapp', descripcion: 'Enlace WhatsApp (si configurado)' },
   { nombre: 'urlTelefono', descripcion: 'Enlace tel: para llamar (si configurado)' },
