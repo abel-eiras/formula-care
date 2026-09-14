@@ -17,11 +17,11 @@ import { execFileSync } from "node:child_process";
 import { createHash } from "node:crypto";
 import {
   chmodSync,
+  copyFileSync,
   existsSync,
   mkdirSync,
   mkdtempSync,
   readFileSync,
-  renameSync,
   rmSync,
 } from "node:fs";
 import { tmpdir } from "node:os";
@@ -126,7 +126,11 @@ async function main() {
       : path.join(tmpDir, archiveBase, "bin", "node");
 
     mkdirSync(binariesDir, { recursive: true });
-    renameSync(extractedBinary, destPath);
+    // copyFileSync (no renameSync): el directorio temporal del sistema y el
+    // checkout del repo pueden estar en discos/particiones distintas (p. ej.
+    // C:\ vs D:\ en los runners de Windows de GitHub Actions), y rename()
+    // no permite mover archivos entre dispositivos distintos (EXDEV).
+    copyFileSync(extractedBinary, destPath);
     if (!isWindows) {
       chmodSync(destPath, 0o755);
     }
