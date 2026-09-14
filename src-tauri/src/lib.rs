@@ -50,6 +50,44 @@ fn ensure_local_secrets(app_data_dir: &Path) -> std::io::Result<LocalSecrets> {
     Ok(secrets)
 }
 
+/// Aplica las migraciones de Prisma pendientes contra la base de datos de esta
+/// instalación. Se ejecuta en cada arranque, tanto en una instalación nueva
+/// (recién copiada desde la plantilla, ya al día — no hace nada) como en una
+/// ya existente que se actualiza a una versión con cambios de esquema.
+/// Usa el CLI de `prisma` ya empaquetado en backend/node_modules, sin
+/// depender de que el sistema tenga Node global fuera del que trae la app.
+fn run_pending_migrations(
+    backend_dir: &Path,
+    db_path: &Path,
+) -> Result<(), Box<dyn std::error::Error>> {
+    let prisma_cli = backend_dir
+        .join("node_modules")
+        .join("prisma")
+        .join("build")
+        .join("index.js");
+    let schema_path = backend_dir.join("prisma").join("schema.prisma");
+
+    let output = Command::new("node")
+        .arg(&prisma_cli)
+        .arg("migrate")
+        .arg("deploy")
+        .arg(format!("--schema={}", schema_path.display()))
+        .current_dir(backend_dir)
+        .env("DATABASE_URL", format!("file:{}", db_path.display()))
+        .output()?;
+
+    if !output.status.success() {
+        return Err(format!(
+            "prisma migrate deploy falló ({}):\n{}",
+            output.status,
+            String::from_utf8_lossy(&output.stderr)
+        )
+        .into());
+    }
+
+    Ok(())
+}
+
 fn spawn_backend_dev() -> std::io::Result<Child> {
     // En desarrollo, backend/.env ya define DATABASE_URL (SQLite local) y un
     // JWT_SECRET de desarrollo — basta con levantar el backend tal cual.
@@ -77,6 +115,18 @@ fn spawn_backend_release(app: &tauri::AppHandle) -> Result<Child, Box<dyn std::e
     if !db_path.exists() {
         let template_db = backend_dir.join("prisma").join("desktop-template.db");
         fs::copy(&template_db, &db_path)?;
+    }
+
+    // Pone la base de datos al día con el esquema de esta versión. En una
+    // instalación recién creada (plantilla ya migrada) esto es un no-op; en
+    // una actualización, aplica las migraciones nuevas. Si falla, se deja
+    // constancia en un log y se intenta arrancar igualmente: es preferible
+    // que la app abra (aunque falle alguna petición) a que no abra en
+    // absoluto por un problema de migración que el usuario no puede depurar.
+    if let Err(e) = run_pending_migrations(&backend_dir, &db_path) {
+        let log_path = app_data_dir.join("migrate-error.log");
+        let _ = fs::write(&log_path, format!("{}\n", e));
+        eprintln!("⚠️  Error aplicando migraciones (ver {}): {}", log_path.display(), e);
     }
 
     let secrets = ensure_local_secrets(&app_data_dir)?;
