@@ -276,7 +276,7 @@ const COLORES_DEFAULT = {
 /** Temas preconfigurados (coinciden con src/lib/coloresMarca.ts) */
 const TEMAS_PRECONFIGURADOS: Record<string, { primario: string; secundario: string; acento: string }> = {
   default: { primario: '#79438f', secundario: '#6495a8', acento: '#79438f' },
-  pontevea: { primario: '#79438f', secundario: '#6495a8', acento: '#79438f' },
+  porDefecto: { primario: '#79438f', secundario: '#6495a8', acento: '#79438f' },
   verde: { primario: '#0d9488', secundario: '#14b8a6', acento: '#0d9488' },
   azul: { primario: '#2563eb', secundario: '#3b82f6', acento: '#2563eb' },
 };

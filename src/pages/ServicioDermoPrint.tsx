@@ -309,7 +309,7 @@ export default function ServicioDermoPrint() {
                   textTransform: "uppercase",
                 }}
               >
-                pontevea
+                {nombreFarmacia}
               </div>
             </div>
           </div>

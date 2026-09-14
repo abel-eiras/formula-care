@@ -1,9 +1,9 @@
 ---
 name: react-codigo-limpio
-description: Aplica estándares de código limpio y mejores prácticas de React en el proyecto Farmacia Pontevea. Usar al escribir o revisar código React/TypeScript, al refactorizar componentes, o cuando se mencionen waterfalls, bundle size, re-renders, código limpio o buenas prácticas.
+description: Aplica estándares de código limpio y mejores prácticas de React en el proyecto Formula Care. Usar al escribir o revisar código React/TypeScript, al refactorizar componentes, o cuando se mencionen waterfalls, bundle size, re-renders, código limpio o buenas prácticas.
 ---
 
-# React y Código Limpio - Farmacia Pontevea
+# React y Código Limpio - Formula Care
 
 Este skill codifica las reglas de código limpio y las mejores prácticas de React que debe seguir el proyecto. Consulta también [context/guias/GUIA_CODIGO_LIMPIO.md](../../context/guias/GUIA_CODIGO_LIMPIO.md) y [context/guias/REACT_BEST_PRACTICES.md](../../context/guias/REACT_BEST_PRACTICES.md).
 

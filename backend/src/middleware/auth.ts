@@ -33,7 +33,7 @@ declare global {
 }
 
 // Clave secreta para JWT. Obligatoria en producción y no puede ser el valor de ejemplo.
-const DEFAULT_SECRET = 'farmacia-pontevea-secret-key-2026';
+const DEFAULT_SECRET = 'formula-care-dev-secret-key-2026';
 const JWT_SECRET = (() => {
   const secret = process.env.JWT_SECRET;
 

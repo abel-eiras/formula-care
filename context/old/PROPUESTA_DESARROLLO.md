@@ -1,4 +1,4 @@
-# Propuesta de Desarrollo - Farmacia Pontevea Servicios
+# Propuesta de Desarrollo (histórico)
 
 ## 📋 Análisis del Estado Actual
 
@@ -116,7 +116,7 @@
 ### **Estructura de Carpetas Propuesta**
 
 ```
-farmaciapontevea_servicios/
+formula-care/
 ├── README.md
 ├── package.json
 ├── .env.example

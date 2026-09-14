@@ -1,4 +1,4 @@
-# Mejores Prácticas de React - Farmacia Pontevea
+# Mejores Prácticas de React - Formula Care
 
 > Basado en [Vercel Labs Agent Skills - React Best Practices](https://github.com/vercel-labs/agent-skills/tree/main/skills/react-best-practices)
 > 

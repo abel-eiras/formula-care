@@ -1,9 +1,9 @@
 ---
-name: stack-farmacia-pontevea
-description: Proporciona contexto del stack tecnológico y la estructura del proyecto Farmacia Pontevea. Usar cuando se necesite saber qué tecnologías se usan, dónde está el frontend/backend, convenciones de nombres o cómo está organizado el código.
+name: stack-formula-care
+description: Proporciona contexto del stack tecnológico y la estructura del proyecto Formula Care. Usar cuando se necesite saber qué tecnologías se usan, dónde está el frontend/backend, convenciones de nombres o cómo está organizado el código.
 ---
 
-# Stack y Estructura - Farmacia Pontevea
+# Stack y Estructura - Formula Care
 
 Este skill resume el stack y la organización del proyecto. Detalle en [context/STACK.md](../../context/STACK.md) y [context/guias/ESTRUCTURA_PROYECTO.md](../../context/guias/ESTRUCTURA_PROYECTO.md).
 

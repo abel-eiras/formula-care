@@ -229,7 +229,7 @@ export default function ServicioBioPrint() {
                   textTransform: "uppercase",
                 }}
               >
-                pontevea
+                {nombreFarmacia}
               </div>
             </div>
           </div>
