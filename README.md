@@ -48,7 +48,7 @@ Formula Care corre **de forma local en tu ordenador**: los datos de tus paciente
 ### 🚧 En Desarrollo
 - Mejoras de rendimiento
 - Tests automatizados
-- Instaladores firmados de Windows/macOS (por ahora, cada plataforma necesita compilar su propio paquete; ver [Compilar la app de escritorio](#-compilar-la-app-de-escritorio))
+- Firma de código para los instaladores de Windows/macOS (ya se compilan vía CI, ver [Compilar la app de escritorio](#-compilar-la-app-de-escritorio), pero sin firmar el sistema operativo avisa de "editor no verificado")
 
 ### 📝 Planificado
 Ver la carpeta [context/](context/) para documentación (guías activas e histórica).
@@ -122,9 +122,11 @@ Cambia esta contraseña en cuanto inicies sesión. En una instalación de escrit
 npm run tauri:build
 ```
 
-Esto compila el frontend, empaqueta el backend (Node + Prisma) como recurso de la app, y genera el instalador nativo de tu sistema operativo en `src-tauri/target/release/bundle/` (`.deb`/`.rpm`/AppImage en Linux, `.msi`/`.exe` en Windows, `.dmg`/`.app` en macOS). Cada plataforma debe compilarse en su propio sistema operativo (o vía CI con matrix de runners); este repo no incluye todavía una pipeline de CI para generar los tres a la vez.
+Esto compila el frontend, empaqueta el backend (Node + Prisma) como recurso de la app, y genera el instalador nativo de tu sistema operativo en `src-tauri/target/release/bundle/` (`.deb`/`.rpm`/AppImage en Linux, `.msi`/`.exe` en Windows, `.dmg`/`.app` en macOS). Cada plataforma debe compilarse en su propio sistema operativo.
 
-En el primer arranque de un paquete instalado, la app genera automáticamente un `JWT_SECRET`/clave de cifrado aleatorios y una base de datos SQLite propia en el directorio de datos del usuario del sistema operativo — no hace falta configurar nada a mano.
+Para generar los tres a la vez sin tener las tres máquinas, usa el workflow de GitHub Actions [`desktop-release.yml`](.github/workflows/desktop-release.yml): dispáralo a mano desde la pestaña *Actions* (deja los instaladores como artefactos del run) o haz push de un tag `v*` (crea además un borrador de release con los seis instaladores adjuntos). Detalle en [context/guias/GUIA_DESPLIEGUE.md](context/guias/GUIA_DESPLIEGUE.md).
+
+En el primer arranque de un paquete instalado, la app genera automáticamente un `JWT_SECRET`/clave de cifrado aleatorios y una base de datos SQLite propia en el directorio de datos del usuario del sistema operativo, y aplica las migraciones pendientes en cada arranque (también en actualizaciones futuras) — no hace falta configurar ni migrar nada a mano.
 
 ---
 
@@ -291,7 +293,7 @@ Formula Care es software libre y las contribuciones son bienvenidas.
 
 ## 🐛 Problemas Conocidos
 
-- Los instaladores de Windows y macOS aún no se generan en este repositorio (requieren compilarse en cada sistema operativo o mediante CI); en Linux se han verificado `.deb`/`.rpm`.
+- Los instaladores de Windows y macOS se generan vía CI ([`.github/workflows/desktop-release.yml`](.github/workflows/desktop-release.yml)) pero no se han podido ejecutar/probar en esos sistemas operativos todavía (este entorno de desarrollo es Linux); en Linux se han verificado `.deb`/`.rpm` instalados y ejecutados. Ninguno de los tres está firmado digitalmente, así que Windows/macOS mostrarán un aviso de "editor no verificado" al abrirlos.
 - `booking-web/` (reserva pública opcional) no sincroniza automáticamente sus citas con la base de datos local de la app de escritorio — ver su propio README para el alcance exacto.
 - Falta sistema de copia de seguridad automática de la base de datos local.
 

@@ -25,7 +25,16 @@ Esto:
 2. Compila y empaqueta el backend (`backend/npm run build:desktop`): genera el cliente Prisma, compila TypeScript, y crea `backend/prisma/desktop-template.db` (una base de datos SQLite ya migrada, sin datos — la plantilla que se copia al equipo del usuario en el primer arranque).
 3. Invoca `tauri build`, que compila el binario nativo (Rust) y genera los instaladores en `src-tauri/target/release/bundle/`.
 
-**Importante:** cada sistema operativo debe compilar su propio instalador (Tauri no hace cross-compilation completa de un SO a otro por defecto). Para distribuir en Windows, macOS y Linux hace falta compilar en cada uno, normalmente vía una matriz de CI (ver la [documentación oficial de Tauri sobre CI](https://v2.tauri.app/distribute/) para ejemplos de GitHub Actions).
+**Importante:** cada sistema operativo debe compilar su propio instalador (Tauri no hace cross-compilation completa de un SO a otro por defecto).
+
+### CI multiplataforma (GitHub Actions)
+
+[`.github/workflows/desktop-release.yml`](../../.github/workflows/desktop-release.yml) compila Linux, Windows y macOS en paralelo usando [`tauri-apps/tauri-action`](https://github.com/tauri-apps/tauri-action):
+
+- **Al hacer push de un tag `v*`** (p. ej. `git tag v0.2.0 && git push origin v0.2.0`): compila las tres plataformas y crea un **borrador** de release en GitHub con los seis instaladores adjuntos (`.deb`, `.rpm`, `.AppImage`, `.msi`, `.exe`, `.dmg`). El borrador te deja revisar las notas y publicarlo a mano.
+- **Manual** (pestaña *Actions* → *Build app de escritorio* → *Run workflow*): compila las tres plataformas y deja los instaladores como artefactos descargables del run, sin crear ningún release — útil para comprobar que el build sigue funcionando sin necesidad de etiquetar una versión.
+
+No requiere ningún secreto adicional: usa el `GITHUB_TOKEN` que Actions inyecta automáticamente. Lo que **no** hace este workflow —y queda fuera de alcance por ahora— es firmar los binarios: sin firma, Windows (SmartScreen) y macOS (Gatekeeper) muestran un aviso de "editor no verificado/desconocido" la primera vez que alguien abre el instalador. Firmarlos requiere un certificado de firma de código (de pago) por plataforma; ver la [documentación de Tauri sobre firma de código](https://v2.tauri.app/distribute/sign/) si se decide dar ese paso.
 
 ## Qué pasa en el primer arranque de un paquete instalado
 
