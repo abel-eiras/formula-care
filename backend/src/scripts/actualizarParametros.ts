@@ -2,6 +2,7 @@
  * Script para actualizar los parámetros bioquímicos de la instalación
  * Usa los mismos valores por defecto que el resto del sistema (parametrosBioDefault).
  */
+import 'dotenv/config';
 import { PrismaClient } from '@prisma/client';
 import {
   PARAMETROS_BIO_CONFIG_DEFAULT,

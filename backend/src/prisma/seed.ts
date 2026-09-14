@@ -3,6 +3,7 @@
  * Crea datos iniciales para una instalación local de una sola farmacia
  */
 
+import 'dotenv/config';
 import { PrismaClient } from '@prisma/client';
 import bcrypt from 'bcryptjs';
 import {
