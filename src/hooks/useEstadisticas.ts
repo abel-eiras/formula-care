@@ -1,5 +1,10 @@
 import { useQuery } from '@tanstack/react-query';
 import { api } from '@/lib/api';
+import type { AnalisisDermo, Paciente } from '@/types';
+
+export interface RevisionProxima extends Pick<AnalisisDermo, 'id' | 'pacienteId' | 'proximaRevision'> {
+  paciente?: Pick<Paciente, 'id' | 'name' | 'phone' | 'email'>;
+}
 
 export interface Estadisticas {
   pacientes: {
@@ -62,7 +67,7 @@ export function usePacientesRecientes(limit = 5) {
   return useQuery({
     queryKey: ['estadisticas', 'pacientes-recientes', limit],
     queryFn: async () => {
-      return api.get(`/estadisticas/pacientes-recientes?limit=${limit}`);
+      return api.get<Paciente[]>(`/estadisticas/pacientes-recientes?limit=${limit}`);
     },
     staleTime: 2 * 60 * 1000,
   });
@@ -75,7 +80,7 @@ export function useProximasRevisiones(limit = 10) {
   return useQuery({
     queryKey: ['estadisticas', 'proximas-revisiones', limit],
     queryFn: async () => {
-      return api.get(`/estadisticas/proximas-revisiones?limit=${limit}`);
+      return api.get<RevisionProxima[]>(`/estadisticas/proximas-revisiones?limit=${limit}`);
     },
     staleTime: 2 * 60 * 1000,
   });

@@ -89,7 +89,6 @@ export default function NuevoPaciente() {
         birthDate: formData.birthDate || undefined,
         address: formData.address || undefined,
         notes: formData.notes || undefined,
-        services: [],
       };
 
       await crearPaciente.mutateAsync(nuevoPaciente);
@@ -195,7 +194,7 @@ export default function NuevoPaciente() {
                 <Label htmlFor="address">Dirección</Label>
                 <Input
                   id="address"
-                  placeholder="Ej: Calle Mayor 15, Pontevea"
+                  placeholder="Ej: Calle Mayor 15, Madrid"
                   value={formData.address}
                   onChange={(e) => handleChange("address", e.target.value)}
                 />

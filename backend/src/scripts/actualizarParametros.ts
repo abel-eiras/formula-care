@@ -1,7 +1,8 @@
 /**
- * Script para actualizar parámetros bioquímicos de Farmacia Pontevea
+ * Script para actualizar los parámetros bioquímicos de la instalación
  * Usa los mismos valores por defecto que el resto del sistema (parametrosBioDefault).
  */
+import 'dotenv/config';
 import { PrismaClient } from '@prisma/client';
 import {
   PARAMETROS_BIO_CONFIG_DEFAULT,
@@ -10,19 +11,20 @@ import {
 
 const prisma = new PrismaClient();
 
+// ID fijo de la fila única de configuración (instalación local de una sola farmacia)
+const CONFIG_ID = 'singleton';
+
 async function actualizarParametros() {
   console.log('🔧 Actualizando parámetros bioquímicos...\n');
 
-  const farmacia = await prisma.farmacia.findFirst({ where: { slug: 'farmacia-pontevea' } });
-  if (!farmacia) {
-    console.log('❌ No se encontró Farmacia Pontevea');
+  const config = await prisma.configuracion.findUnique({ where: { id: CONFIG_ID } });
+  if (!config) {
+    console.log('❌ No se encontró la configuración de la instalación. Ejecuta el seed primero.');
     return;
   }
 
-  console.log(`📍 Farmacia encontrada: ${farmacia.nombre} (ID: ${farmacia.id})`);
-
   await prisma.configuracion.update({
-    where: { farmaciaId: farmacia.id },
+    where: { id: CONFIG_ID },
     data: {
       parametrosBioConfig: JSON.stringify(PARAMETROS_BIO_CONFIG_DEFAULT),
       parametrosReferencia: JSON.stringify(PARAMETROS_REFERENCIA_DEFAULT),

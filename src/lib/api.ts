@@ -4,7 +4,9 @@
  * no necesita manejar tokens manualmente.
  */
 
-// Validar y construir la URL base del API
+// Validar y construir la URL base del API.
+// El backend corre embebido en localhost junto a la app de escritorio;
+// VITE_API_URL solo hace falta para apuntar a otro puerto en desarrollo.
 function getApiBaseUrl(): string {
   const envUrl = import.meta.env.VITE_API_URL;
 

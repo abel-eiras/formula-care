@@ -1,6 +1,8 @@
 /**
  * Página de Login
- * Punto de entrada al sistema
+ * Punto de entrada al sistema.
+ * En el primer arranque de una instalación (sin usuarios todavía) muestra
+ * en su lugar un formulario para crear la cuenta de administrador inicial.
  */
 
 import { useState, useEffect } from 'react';
@@ -11,21 +13,35 @@ import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle }
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Alert, AlertDescription } from '@/components/ui/alert';
-import { Loader2, Lock, Mail } from 'lucide-react';
+import { Loader2, Lock, Mail, User } from 'lucide-react';
 import { useAuthContext } from '@/contexts/AuthContext';
+import { api } from '@/lib/api';
 
 export default function Login() {
   const navigate = useNavigate();
   const location = useLocation();
-  const { login, isAuthenticated, isLoading: authLoading, error: authError } = useAuthContext();
+  const { login, setupInicial, isAuthenticated, isLoading: authLoading, error: authError } = useAuthContext();
 
   // Nombre de la aplicación
   const nombreApp = 'Fórmula Care';
 
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
+  const [nombre, setNombre] = useState('');
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [error, setError] = useState<string | null>(null);
+
+  // Primer arranque: si la instalación no tiene ningún usuario todavía,
+  // se muestra el formulario de alta del administrador en vez del login.
+  const [comprobandoSetup, setComprobandoSetup] = useState(true);
+  const [necesitaSetup, setNecesitaSetup] = useState(false);
+
+  useEffect(() => {
+    api.get<{ necesitaSetup: boolean }>('/auth/necesita-setup')
+      .then((data) => setNecesitaSetup(data.necesitaSetup))
+      .catch(() => setNecesitaSetup(false))
+      .finally(() => setComprobandoSetup(false));
+  }, []);
 
   // Mensaje al llegar desde establecer-contrasena
   useEffect(() => {
@@ -48,7 +64,23 @@ export default function Login() {
     setError(null);
     setIsSubmitting(true);
 
-    // Validación básica
+    if (necesitaSetup) {
+      if (!email || !password || !nombre) {
+        setError('Por favor, completa todos los campos');
+        setIsSubmitting(false);
+        return;
+      }
+
+      const success = await setupInicial(email, password, nombre);
+      if (success) {
+        navigate('/');
+      } else {
+        setError(authError || 'Error al crear la cuenta de administrador');
+      }
+      setIsSubmitting(false);
+      return;
+    }
+
     if (!email || !password) {
       setError('Por favor, completa todos los campos');
       setIsSubmitting(false);
@@ -66,8 +98,8 @@ export default function Login() {
     setIsSubmitting(false);
   };
 
-  // Mostrar loading mientras se verifica autenticación inicial
-  if (authLoading) {
+  // Mostrar loading mientras se verifica autenticación inicial o si hace falta setup
+  if (authLoading || comprobandoSetup) {
     return (
       <div className="min-h-screen flex items-center justify-center bg-gradient-to-br from-primary/5 via-background to-secondary/5">
         <Loader2 className="h-8 w-8 animate-spin text-primary" />
@@ -84,15 +116,21 @@ export default function Login() {
             <img src="/logo.webp" alt="Fórmula Care" className="w-full h-full object-contain" />
           </div>
           <h1 className="text-2xl font-bold text-foreground">{nombreApp}</h1>
-          <p className="text-muted-foreground mt-1">Una app de Fórmula Farma</p>
+          <p className="text-muted-foreground mt-1">
+            {necesitaSetup ? 'Configuración inicial' : 'Gestión de servicios de farmacia'}
+          </p>
         </div>
 
-        {/* Formulario de login */}
+        {/* Formulario de login / setup inicial */}
         <Card className="shadow-lg border-border/50">
           <CardHeader className="space-y-1">
-            <CardTitle className="text-xl">Iniciar Sesión</CardTitle>
+            <CardTitle className="text-xl">
+              {necesitaSetup ? 'Crear cuenta de administrador' : 'Iniciar Sesión'}
+            </CardTitle>
             <CardDescription>
-              Introduce tus credenciales para acceder al panel
+              {necesitaSetup
+                ? 'Esta instalación es nueva: crea la primera cuenta para empezar a usar la app.'
+                : 'Introduce tus credenciales para acceder al panel'}
             </CardDescription>
           </CardHeader>
           <form onSubmit={handleSubmit}>
@@ -102,6 +140,26 @@ export default function Login() {
                 <Alert variant="destructive">
                   <AlertDescription>{error}</AlertDescription>
                 </Alert>
+              )}
+
+              {/* Nombre (solo en setup inicial) */}
+              {necesitaSetup && (
+                <div className="space-y-2">
+                  <Label htmlFor="nombre">Nombre</Label>
+                  <div className="relative">
+                    <User className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
+                    <Input
+                      id="nombre"
+                      type="text"
+                      placeholder="Tu nombre"
+                      value={nombre}
+                      onChange={(e) => setNombre(e.target.value)}
+                      className="pl-10"
+                      autoComplete="name"
+                      disabled={isSubmitting}
+                    />
+                  </div>
+                </div>
               )}
 
               {/* Email */}
@@ -134,7 +192,7 @@ export default function Login() {
                     value={password}
                     onChange={(e) => setPassword(e.target.value)}
                     className="pl-10"
-                    autoComplete="current-password"
+                    autoComplete={necesitaSetup ? 'new-password' : 'current-password'}
                     disabled={isSubmitting}
                   />
                 </div>
@@ -149,8 +207,10 @@ export default function Login() {
                 {isSubmitting ? (
                   <>
                     <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-                    Iniciando sesión...
+                    {necesitaSetup ? 'Creando cuenta...' : 'Iniciando sesión...'}
                   </>
+                ) : necesitaSetup ? (
+                  'Crear cuenta y entrar'
                 ) : (
                   'Iniciar Sesión'
                 )}
@@ -182,88 +242,9 @@ export default function Login() {
           </form>
         </Card>
 
-        {/* Credenciales de desarrollo */}
-        {import.meta.env.DEV && (
-          <Card className="mt-4 border-dashed border-amber-300 bg-amber-50/50">
-            <CardContent className="pt-4 space-y-3">
-              <p className="text-xs font-semibold text-amber-700">Credenciales de desarrollo:</p>
-              
-              {/* Superadmin */}
-              <div className="font-mono text-xs bg-white p-2 rounded border">
-                <p className="text-[10px] font-semibold text-purple-700 mb-1">Superadmin (Gestión Plataforma)</p>
-                <div className="space-y-1">
-                  <p className="flex justify-between">
-                    <span className="text-muted-foreground">Email:</span>
-                    <code 
-                      className="text-purple-800 cursor-pointer hover:bg-purple-100 px-1 rounded"
-                      onClick={() => {
-                        navigator.clipboard.writeText('superadmin@sistema.local');
-                        setEmail('superadmin@sistema.local');
-                      }}
-                      title="Click para copiar y rellenar"
-                    >
-                      superadmin@sistema.local
-                    </code>
-                  </p>
-                  <p className="flex justify-between">
-                    <span className="text-muted-foreground">Password:</span>
-                    <code 
-                      className="text-purple-800 cursor-pointer hover:bg-purple-100 px-1 rounded"
-                      onClick={() => {
-                        navigator.clipboard.writeText('superadmin123');
-                        setPassword('superadmin123');
-                      }}
-                      title="Click para copiar y rellenar"
-                    >
-                      superadmin123
-                    </code>
-                  </p>
-                </div>
-              </div>
-
-              {/* Admin Farmacia */}
-              <div className="font-mono text-xs bg-white p-2 rounded border">
-                <p className="text-[10px] font-semibold text-amber-700 mb-1">Admin Farmacia Demo</p>
-                <div className="space-y-1">
-                  <p className="flex justify-between">
-                    <span className="text-muted-foreground">Email:</span>
-                    <code 
-                      className="text-amber-800 cursor-pointer hover:bg-amber-100 px-1 rounded"
-                      onClick={() => {
-                        navigator.clipboard.writeText('admin@farmaciapontevea.com');
-                        setEmail('admin@farmaciapontevea.com');
-                      }}
-                      title="Click para copiar y rellenar"
-                    >
-                      admin@farmaciapontevea.com
-                    </code>
-                  </p>
-                  <p className="flex justify-between">
-                    <span className="text-muted-foreground">Password:</span>
-                    <code 
-                      className="text-amber-800 cursor-pointer hover:bg-amber-100 px-1 rounded"
-                      onClick={() => {
-                        navigator.clipboard.writeText('admin123');
-                        setPassword('admin123');
-                      }}
-                      title="Click para copiar y rellenar"
-                    >
-                      admin123
-                    </code>
-                  </p>
-                </div>
-              </div>
-
-              <p className="text-[10px] text-amber-600">
-                Click en los valores para copiar y rellenar automáticamente
-              </p>
-            </CardContent>
-          </Card>
-        )}
-
         {/* Footer */}
         <p className="text-center text-sm text-muted-foreground mt-6">
-          © {new Date().getFullYear()} Fórmula Farma. Todos los derechos reservados.
+          © {new Date().getFullYear()} {nombreApp}. Software libre bajo licencia MIT.
         </p>
       </div>
     </div>

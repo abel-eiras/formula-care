@@ -1,10 +1,12 @@
 {
-  "name": "farmaciapontevea-backend",
+  "name": "formula-care-backend",
   "version": "1.0.0",
   "type": "module",
+  "license": "MIT",
   "scripts": {
     "dev": "tsx watch src/server.ts",
     "build": "prisma generate && prisma migrate deploy && tsc",
+    "build:desktop": "prisma generate && tsc && node scripts/build-desktop-db-template.mjs",
     "start": "node dist/server.js",
     "prisma:generate": "prisma generate",
     "prisma:migrate": "prisma migrate dev",

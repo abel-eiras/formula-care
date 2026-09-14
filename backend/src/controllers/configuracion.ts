@@ -1,11 +1,13 @@
 import { Request, Response } from 'express';
 import { z } from 'zod';
 import { prisma } from '../lib/prisma.js';
-import { obtenerFarmaciaIdRequerido } from '../middleware/tenant.js';
 import {
   PARAMETROS_BIO_CONFIG_DEFAULT,
   PARAMETROS_REFERENCIA_DEFAULT,
 } from '../config/parametrosBioDefault.js';
+
+// ID fijo de la fila única de configuración (instalación local de una sola farmacia)
+const CONFIG_ID = 'singleton';
 
 // Esquema de validación para datos de farmacia
 const farmaciaSchema = z.object({
@@ -91,33 +93,19 @@ const bloquearFechaHoraSchema = z.object({
 });
 
 /**
- * Obtener la configuración actual (requiere farmaciaId: por token en usuarios normales o ?farmaciaId= en superadmin)
+ * Obtener la configuración actual (fila única de la instalación)
  */
 export async function obtenerConfiguracion(req: Request, res: Response) {
   try {
-    let farmaciaId: string;
-    try {
-      farmaciaId = obtenerFarmaciaIdRequerido(req);
-    } catch (err) {
-      const msg = err instanceof Error ? err.message : String(err);
-      if (msg === 'Superadmin debe especificar farmaciaId') {
-        return res.status(400).json({
-          error: 'Superadmin debe especificar farmaciaId',
-          mensaje: 'La configuración de farmacia requiere ?farmaciaId=<id>. En el panel admin usa la configuración de cada farmacia.',
-        });
-      }
-      throw err;
-    }
-
     let config = await prisma.configuracion.findUnique({
-      where: { farmaciaId },
+      where: { id: CONFIG_ID },
     });
 
     // Si no existe, crear con valores por defecto (parámetros de referencia y lista de parámetros bio)
     if (!config) {
       config = await prisma.configuracion.create({
         data: {
-          farmaciaId,
+          id: CONFIG_ID,
           parametrosReferencia: JSON.stringify(PARAMETROS_REFERENCIA_DEFAULT),
           parametrosBioConfig: JSON.stringify(PARAMETROS_BIO_CONFIG_DEFAULT),
         },
@@ -163,7 +151,6 @@ export async function obtenerConfiguracion(req: Request, res: Response) {
  */
 export async function actualizarFarmacia(req: Request, res: Response) {
   try {
-    const farmaciaId = obtenerFarmaciaIdRequerido(req);
     const datos = farmaciaSchema.parse(req.body);
 
     // Serializar coloresMarca a JSON si viene como objeto
@@ -172,26 +159,11 @@ export async function actualizarFarmacia(req: Request, res: Response) {
       dataParaPrisma.coloresMarca = JSON.stringify(dataParaPrisma.coloresMarca);
     }
 
-    // Verificar que existe la configuración
-    let config = await prisma.configuracion.findUnique({
-      where: { farmaciaId },
+    const config = await prisma.configuracion.upsert({
+      where: { id: CONFIG_ID },
+      create: { id: CONFIG_ID, ...dataParaPrisma },
+      update: dataParaPrisma,
     });
-
-    if (!config) {
-      // Crear si no existe
-      config = await prisma.configuracion.create({
-        data: {
-          farmaciaId,
-          ...dataParaPrisma,
-        },
-      });
-    } else {
-      // Actualizar
-      config = await prisma.configuracion.update({
-        where: { farmaciaId },
-        data: dataParaPrisma,
-      });
-    }
 
     res.json(config);
   } catch (error) {
@@ -212,31 +184,18 @@ export async function actualizarFarmacia(req: Request, res: Response) {
  */
 export async function actualizarParametrosReferencia(req: Request, res: Response) {
   try {
-    const farmaciaId = obtenerFarmaciaIdRequerido(req);
     const parametros = parametrosReferenciaSchema.parse(req.body);
 
-    // Verificar que existe la configuración
-    let config = await prisma.configuracion.findUnique({
-      where: { farmaciaId },
+    const config = await prisma.configuracion.upsert({
+      where: { id: CONFIG_ID },
+      create: {
+        id: CONFIG_ID,
+        parametrosReferencia: JSON.stringify(parametros),
+      },
+      update: {
+        parametrosReferencia: JSON.stringify(parametros),
+      },
     });
-
-    if (!config) {
-      // Crear si no existe
-      config = await prisma.configuracion.create({
-        data: {
-          farmaciaId,
-          parametrosReferencia: JSON.stringify(parametros),
-        },
-      });
-    } else {
-      // Actualizar
-      config = await prisma.configuracion.update({
-        where: { farmaciaId },
-        data: {
-          parametrosReferencia: JSON.stringify(parametros),
-        },
-      });
-    }
 
     // Parsear JSON para respuesta
     const parametrosReferencia = typeof config.parametrosReferencia === 'string'
@@ -265,29 +224,13 @@ export async function actualizarParametrosReferencia(req: Request, res: Response
  */
 export async function actualizarValoracionBio(req: Request, res: Response) {
   try {
-    const farmaciaId = obtenerFarmaciaIdRequerido(req);
     const { valoracionBioActiva } = valoracionBioSchema.parse(req.body);
 
-    // Verificar que existe la configuración
-    let config = await prisma.configuracion.findUnique({
-      where: { farmaciaId },
+    const config = await prisma.configuracion.upsert({
+      where: { id: CONFIG_ID },
+      create: { id: CONFIG_ID, valoracionBioActiva },
+      update: { valoracionBioActiva },
     });
-
-    if (!config) {
-      // Crear si no existe
-      config = await prisma.configuracion.create({
-        data: {
-          farmaciaId,
-          valoracionBioActiva,
-        },
-      });
-    } else {
-      // Actualizar
-      config = await prisma.configuracion.update({
-        where: { farmaciaId },
-        data: { valoracionBioActiva },
-      });
-    }
 
     res.json(config);
   } catch (error) {
@@ -302,29 +245,18 @@ export async function actualizarValoracionBio(req: Request, res: Response) {
  */
 export async function actualizarParametrosBioConfig(req: Request, res: Response) {
   try {
-    const farmaciaId = obtenerFarmaciaIdRequerido(req);
     const parametrosBioConfig = parametrosBioConfigSchema.parse(req.body);
 
-    // Verificar que existe la configuración
-    let config = await prisma.configuracion.findUnique({
-      where: { farmaciaId },
+    const config = await prisma.configuracion.upsert({
+      where: { id: CONFIG_ID },
+      create: {
+        id: CONFIG_ID,
+        parametrosBioConfig: JSON.stringify(parametrosBioConfig),
+      },
+      update: {
+        parametrosBioConfig: JSON.stringify(parametrosBioConfig),
+      },
     });
-
-    if (!config) {
-      config = await prisma.configuracion.create({
-        data: {
-          farmaciaId,
-          parametrosBioConfig: JSON.stringify(parametrosBioConfig),
-        },
-      });
-    } else {
-      config = await prisma.configuracion.update({
-        where: { farmaciaId },
-        data: {
-          parametrosBioConfig: JSON.stringify(parametrosBioConfig),
-        },
-      });
-    }
 
     res.json({
       ...config,
@@ -345,17 +277,15 @@ export async function actualizarParametrosBioConfig(req: Request, res: Response)
  */
 export async function obtenerConfiguracionCalendario(req: Request, res: Response) {
   try {
-    const farmaciaId = obtenerFarmaciaIdRequerido(req);
-    
     let config = await prisma.configuracionCalendario.findUnique({
-      where: { farmaciaId },
+      where: { id: CONFIG_ID },
     });
 
     // Si no existe, crear con valores por defecto
     if (!config) {
       config = await prisma.configuracionCalendario.create({
         data: {
-          farmaciaId,
+          id: CONFIG_ID,
           horariosPorTipo: '{}',
           fechasBloqueadas: '[]',
           horasBloqueadas: '{}',
@@ -401,7 +331,6 @@ export async function obtenerConfiguracionCalendario(req: Request, res: Response
  */
 export async function actualizarConfiguracionCalendario(req: Request, res: Response) {
   try {
-    const farmaciaId = obtenerFarmaciaIdRequerido(req);
     const datos = configuracionCalendarioSchema.parse(req.body);
     const {
       horariosPorTipo,
@@ -413,7 +342,7 @@ export async function actualizarConfiguracionCalendario(req: Request, res: Respo
 
     // Obtener configuración actual
     let config = await prisma.configuracionCalendario.findUnique({
-      where: { farmaciaId },
+      where: { id: CONFIG_ID },
     });
 
     // Preparar datos para actualizar
@@ -445,7 +374,7 @@ export async function actualizarConfiguracionCalendario(req: Request, res: Respo
       // Crear si no existe
       config = await prisma.configuracionCalendario.create({
         data: {
-          farmaciaId,
+          id: CONFIG_ID,
           horariosPorTipo: datosActualizar.horariosPorTipo || '{}',
           fechasBloqueadas: datosActualizar.fechasBloqueadas || '[]',
           horasBloqueadas: datosActualizar.horasBloqueadas || '{}',
@@ -459,7 +388,7 @@ export async function actualizarConfiguracionCalendario(req: Request, res: Respo
     } else {
       // Actualizar
       config = await prisma.configuracionCalendario.update({
-        where: { farmaciaId },
+        where: { id: CONFIG_ID },
         data: datosActualizar,
       });
     }
@@ -505,18 +434,17 @@ export async function actualizarConfiguracionCalendario(req: Request, res: Respo
  */
 export async function bloquearFechaHora(req: Request, res: Response) {
   try {
-    const farmaciaId = obtenerFarmaciaIdRequerido(req);
     const { fecha, hora } = bloquearFechaHoraSchema.parse(req.body);
 
     // Obtener configuración actual
     let config = await prisma.configuracionCalendario.findUnique({
-      where: { farmaciaId },
+      where: { id: CONFIG_ID },
     });
 
     if (!config) {
       config = await prisma.configuracionCalendario.create({
         data: {
-          farmaciaId,
+          id: CONFIG_ID,
           horariosPorTipo: '{}',
           fechasBloqueadas: '[]',
           horasBloqueadas: '{}',
@@ -553,7 +481,7 @@ export async function bloquearFechaHora(req: Request, res: Response) {
 
     // Actualizar configuración
     config = await prisma.configuracionCalendario.update({
-      where: { farmaciaId },
+      where: { id: CONFIG_ID },
       data: {
         fechasBloqueadas: JSON.stringify(fechasBloqueadas),
         horasBloqueadas: JSON.stringify(horasBloqueadas),
@@ -580,7 +508,6 @@ export async function bloquearFechaHora(req: Request, res: Response) {
  */
 export async function desbloquearFechaHora(req: Request, res: Response) {
   try {
-    const farmaciaId = obtenerFarmaciaIdRequerido(req);
     const { fecha, hora } = req.query;
 
     if (!fecha) {
@@ -603,7 +530,7 @@ export async function desbloquearFechaHora(req: Request, res: Response) {
 
     // Obtener configuración actual
     const config = await prisma.configuracionCalendario.findUnique({
-      where: { farmaciaId },
+      where: { id: CONFIG_ID },
     });
 
     if (!config) {
@@ -635,7 +562,7 @@ export async function desbloquearFechaHora(req: Request, res: Response) {
 
     // Actualizar configuración
     const configActualizada = await prisma.configuracionCalendario.update({
-      where: { farmaciaId },
+      where: { id: CONFIG_ID },
       data: {
         fechasBloqueadas: JSON.stringify(fechasBloqueadas),
         horasBloqueadas: JSON.stringify(horasBloqueadas),
@@ -659,10 +586,8 @@ export async function desbloquearFechaHora(req: Request, res: Response) {
  */
 export async function obtenerRgpd(req: Request, res: Response) {
   try {
-    const farmaciaId = obtenerFarmaciaIdRequerido(req);
-    
     let config = await prisma.configuracion.findUnique({
-      where: { farmaciaId },
+      where: { id: CONFIG_ID },
       select: {
         rgpdRazonSocial: true,
         rgpdCif: true,
@@ -683,7 +608,7 @@ export async function obtenerRgpd(req: Request, res: Response) {
     if (!config) {
       // Crear configuración por defecto
       await prisma.configuracion.create({
-        data: { farmaciaId },
+        data: { id: CONFIG_ID },
       });
       config = {
         rgpdRazonSocial: null,
@@ -715,29 +640,13 @@ export async function obtenerRgpd(req: Request, res: Response) {
  */
 export async function actualizarRgpd(req: Request, res: Response) {
   try {
-    const farmaciaId = obtenerFarmaciaIdRequerido(req);
     const datos = rgpdSchema.parse(req.body);
 
-    // Verificar que existe la configuración
-    let config = await prisma.configuracion.findUnique({
-      where: { farmaciaId },
+    const config = await prisma.configuracion.upsert({
+      where: { id: CONFIG_ID },
+      create: { id: CONFIG_ID, ...datos },
+      update: datos,
     });
-
-    if (!config) {
-      // Crear si no existe
-      config = await prisma.configuracion.create({
-        data: {
-          farmaciaId,
-          ...datos,
-        },
-      });
-    } else {
-      // Actualizar
-      config = await prisma.configuracion.update({
-        where: { farmaciaId },
-        data: datos,
-      });
-    }
 
     // Devolver solo campos RGPD
     res.json({
@@ -767,4 +676,3 @@ export async function actualizarRgpd(req: Request, res: Response) {
     res.status(500).json({ error: 'Error al actualizar configuración RGPD' });
   }
 }
-

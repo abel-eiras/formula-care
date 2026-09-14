@@ -243,7 +243,6 @@ export default function ServicioDermo() {
         suplementacionOral: formData.suplementacionOral,
         proximaRevision: formData.proximaRevision ? parsearFecha(formData.proximaRevision) : undefined,
         farmaceutico: formData.farmaceutico,
-        concerns: [], // Mantener compatibilidad
       };
 
       if (analisisId) {
@@ -329,7 +328,7 @@ export default function ServicioDermo() {
 
       const filename = generatePDFFilename(
         'dermo',
-        paciente?.nombre,
+        paciente?.name,
         analisisExistente?.fecha
       );
 

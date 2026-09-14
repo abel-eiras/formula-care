@@ -32,9 +32,7 @@ export default function ServicioBioPrint() {
   const direccionFarmacia = config?.farmaciaDireccion || '';
   const ciudadFarmacia = config?.farmaciaCiudad || '';
   const telefonoFarmacia = config?.farmaciaTelefono || '';
-  const logoUrl = config?.farmaciaLogo
-    ? (config.farmaciaLogo.startsWith("data:") ? config.farmaciaLogo : `/microcaya/${config.farmaciaLogo}`)
-    : "/logo.png";
+  const logoUrl = config?.farmaciaLogo || "/logo.png";
 
   const paciente = analisis?.pacienteId
     ? pacientes.find((p) => p.id === analisis.pacienteId)
@@ -229,7 +227,7 @@ export default function ServicioBioPrint() {
                   textTransform: "uppercase",
                 }}
               >
-                pontevea
+                {nombreFarmacia}
               </div>
             </div>
           </div>

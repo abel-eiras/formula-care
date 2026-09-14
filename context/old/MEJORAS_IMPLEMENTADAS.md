@@ -1,4 +1,4 @@
-# Mejoras Implementadas - Farmacia Pontevea
+# Mejoras Implementadas (histórico)
 
 ## ✅ Mejoras Completadas
 

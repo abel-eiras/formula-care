@@ -1,6 +1,8 @@
-# Backend - Farmacia Pontevea
+# Backend - Formula Care
 
-API REST para el sistema de gestión de servicios de farmacia.
+API REST para el sistema de gestión de servicios de farmacia. Se ejecuta
+embebida dentro de la app de escritorio (Tauri); también puede arrancarse de
+forma independiente para desarrollo (ver más abajo).
 
 ## 🚀 Inicio Rápido
 
@@ -105,7 +107,7 @@ backend/
 
 ## 📝 Notas
 
-- La base de datos usa SQLite por defecto (simple para desarrollo)
-- Para producción, cambiar a PostgreSQL en `schema.prisma`
-- Todas las rutas requieren JSON en el body
+- La base de datos es SQLite (una instalación de escritorio = una farmacia, sin multi-tenancy)
+- Todas las rutas protegidas requieren JSON en el body y cookie JWT (`auth_token`, HttpOnly)
 - Las validaciones se hacen con Zod
+- `npm run build:desktop` compila el backend y genera `prisma/desktop-template.db`, la plantilla de base de datos que se empaqueta con la app de escritorio (ver [../context/guias/GUIA_DESPLIEGUE.md](../context/guias/GUIA_DESPLIEGUE.md))

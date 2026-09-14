@@ -1,4 +1,4 @@
-# Sugerencias de Mejoras para Farmacia Pontevea
+# Sugerencias de Mejoras (histórico)
 
 Este documento contiene sugerencias de mejoras y funcionalidades adicionales que podrían implementarse en el sistema.
 

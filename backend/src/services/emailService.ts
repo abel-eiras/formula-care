@@ -7,7 +7,6 @@ import nodemailer from 'nodemailer';
 import { Resend } from 'resend';
 import { prisma } from '../lib/prisma.js';
 import { decrypt } from './encryptionService.js';
-import { generarTokensAccionCita, construirUrlsAccion, type TipoAccionCita } from './tokenService.js';
 
 // ==========================================
 // TIPOS
@@ -23,9 +22,6 @@ interface DatosEmail {
   telefonoFarmacia?: string;
   emailFarmacia?: string;
   webFarmacia?: string;
-  urlConfirmar?: string;
-  urlModificar?: string;
-  urlCancelar?: string;
   urlSolicitarCita?: string;
   urlWhatsapp?: string;
   urlTelefono?: string;
@@ -78,53 +74,27 @@ let resendClient: Resend | null = null;
 // INICIALIZACIÓN
 // ==========================================
 
-/**
- * Obtiene la configuración de email: farmacia → ConfiguracionPlataforma → variables de entorno
- */
-async function obtenerConfigEmail(farmaciaId: string): Promise<ConfigEmail> {
-  const [config, configPlataforma] = await Promise.all([
-    prisma.configuracion.findUnique({ where: { farmaciaId } }),
-    prisma.configuracionPlataforma.findFirst({ orderBy: { createdAt: 'asc' } }),
-  ]);
-
-  return {
-    provider: (config?.emailProvider as 'smtp' | 'resend') ?? configPlataforma?.emailProvider ?? 'smtp',
-    resendApiKey: config?.resendApiKey ?? configPlataforma?.resendApiKey ?? process.env.RESEND_API_KEY ?? undefined,
-    emailRemitente: config?.emailRemitente ?? configPlataforma?.smtpFrom ?? process.env.SMTP_FROM ?? config?.farmaciaEmail ?? undefined,
-    nombreRemitente: config?.emailNombreRemitente ?? configPlataforma?.emailNombreRemitente ?? config?.farmaciaNombre ?? 'Sistema de Gestión',
-    smtpHost: config?.smtpHost ?? configPlataforma?.smtpHost ?? process.env.SMTP_HOST ?? undefined,
-    smtpPort: config?.smtpPort ?? configPlataforma?.smtpPort ?? parseInt(process.env.SMTP_PORT || '587', 10),
-    smtpSecure: config?.smtpSecure ?? configPlataforma?.smtpSecure ?? process.env.SMTP_SECURE === 'true',
-    smtpAcceptSelfSigned: config?.smtpAcceptSelfSigned ?? configPlataforma?.smtpAcceptSelfSigned ?? false,
-    smtpUser: config?.smtpUser ?? configPlataforma?.smtpUser ?? process.env.SMTP_USER ?? undefined,
-    smtpPass: (() => {
-      const raw = config?.smtpPass ?? configPlataforma?.smtpPass ?? process.env.SMTP_PASS ?? undefined;
-      return raw ? decrypt(raw) : undefined;
-    })(),
-  };
-}
+// ID fijo de la fila única de configuración (instalación local de una sola farmacia)
+const CONFIG_ID = 'singleton';
 
 /**
- * Obtiene la configuración de email solo de plataforma (sin farmacia)
- * Para envío de correo de prueba desde el panel superadmin
+ * Obtiene la configuración de email: configuración de la instalación → variables de entorno
  */
-async function obtenerConfigEmailPlataforma(): Promise<ConfigEmail> {
-  const configPlataforma = await prisma.configuracionPlataforma.findFirst({
-    orderBy: { createdAt: 'asc' },
-  });
+async function obtenerConfigEmail(): Promise<ConfigEmail> {
+  const config = await prisma.configuracion.findUnique({ where: { id: CONFIG_ID } });
 
   return {
-    provider: (configPlataforma?.emailProvider as 'smtp' | 'resend') ?? 'smtp',
-    resendApiKey: configPlataforma?.resendApiKey ?? process.env.RESEND_API_KEY ?? undefined,
-    emailRemitente: configPlataforma?.smtpFrom ?? process.env.SMTP_FROM ?? undefined,
-    nombreRemitente: configPlataforma?.emailNombreRemitente ?? 'Sistema de Gestión',
-    smtpHost: configPlataforma?.smtpHost ?? process.env.SMTP_HOST ?? undefined,
-    smtpPort: configPlataforma?.smtpPort ?? parseInt(process.env.SMTP_PORT || '587', 10),
-    smtpSecure: configPlataforma?.smtpSecure ?? process.env.SMTP_SECURE === 'true',
-    smtpAcceptSelfSigned: configPlataforma?.smtpAcceptSelfSigned ?? false,
-    smtpUser: configPlataforma?.smtpUser ?? process.env.SMTP_USER ?? undefined,
+    provider: (config?.emailProvider as 'smtp' | 'resend') ?? 'smtp',
+    resendApiKey: config?.resendApiKey ?? process.env.RESEND_API_KEY ?? undefined,
+    emailRemitente: config?.emailRemitente ?? process.env.SMTP_FROM ?? config?.farmaciaEmail ?? undefined,
+    nombreRemitente: config?.emailNombreRemitente ?? config?.farmaciaNombre ?? 'Sistema de Gestión',
+    smtpHost: config?.smtpHost ?? process.env.SMTP_HOST ?? undefined,
+    smtpPort: config?.smtpPort ?? parseInt(process.env.SMTP_PORT || '587', 10),
+    smtpSecure: config?.smtpSecure ?? process.env.SMTP_SECURE === 'true',
+    smtpAcceptSelfSigned: config?.smtpAcceptSelfSigned ?? false,
+    smtpUser: config?.smtpUser ?? process.env.SMTP_USER ?? undefined,
     smtpPass: (() => {
-      const raw = configPlataforma?.smtpPass ?? process.env.SMTP_PASS ?? undefined;
+      const raw = config?.smtpPass ?? process.env.SMTP_PASS ?? undefined;
       return raw ? decrypt(raw) : undefined;
     })(),
   };
@@ -215,13 +185,11 @@ function inicializarResend(config: ConfigEmail): Resend | null {
 // ==========================================
 
 /**
- * Obtiene una plantilla de email por tipo y farmacia
+ * Obtiene una plantilla de email por tipo
  */
-async function obtenerPlantilla(tipo: string, farmaciaId: string) {
+async function obtenerPlantilla(tipo: string) {
   const plantilla = await prisma.plantillaEmail.findUnique({
-    where: { 
-      farmaciaId_tipo: { farmaciaId, tipo }
-    },
+    where: { tipo },
   });
 
   if (!plantilla || !plantilla.activa) {
@@ -249,9 +217,6 @@ function reemplazarVariables(contenido: string, datos: DatosEmail): string {
     telefonoFarmacia: datos.telefonoFarmacia,
     emailFarmacia: datos.emailFarmacia,
     webFarmacia: datos.webFarmacia,
-    urlConfirmar: datos.urlConfirmar,
-    urlModificar: datos.urlModificar,
-    urlCancelar: datos.urlCancelar,
     urlSolicitarCita: datos.urlSolicitarCita,
     urlWhatsapp: datos.urlWhatsapp,
     urlTelefono: datos.urlTelefono,
@@ -311,7 +276,7 @@ const COLORES_DEFAULT = {
 /** Temas preconfigurados (coinciden con src/lib/coloresMarca.ts) */
 const TEMAS_PRECONFIGURADOS: Record<string, { primario: string; secundario: string; acento: string }> = {
   default: { primario: '#79438f', secundario: '#6495a8', acento: '#79438f' },
-  pontevea: { primario: '#79438f', secundario: '#6495a8', acento: '#79438f' },
+  porDefecto: { primario: '#79438f', secundario: '#6495a8', acento: '#79438f' },
   verde: { primario: '#0d9488', secundario: '#14b8a6', acento: '#0d9488' },
   azul: { primario: '#2563eb', secundario: '#3b82f6', acento: '#2563eb' },
 };
@@ -361,39 +326,22 @@ export interface DatosFarmaciaParaEmail {
 }
 
 /**
- * Obtiene los datos de la farmacia desde la configuración (por farmaciaId)
- * Incluye logo, colores de marca, enlaces WhatsApp/teléfono y URL para solicitar cita
+ * Obtiene los datos de la farmacia desde la configuración de la instalación
+ * Incluye logo, colores de marca y enlaces WhatsApp/teléfono
  */
-async function obtenerDatosFarmacia(farmaciaId: string): Promise<DatosFarmaciaParaEmail> {
-  const [config, farmacia] = await Promise.all([
-    prisma.configuracion.findUnique({ where: { farmaciaId } }),
-    prisma.farmacia.findUnique({
-      where: { id: farmaciaId },
-      select: { slug: true, logo: true },
-    }),
-  ]);
+async function obtenerDatosFarmacia(): Promise<DatosFarmaciaParaEmail> {
+  const config = await prisma.configuracion.findUnique({ where: { id: CONFIG_ID } });
 
-  const baseUrl = process.env.APP_URL || 'http://localhost:5173';
-  const slug = farmacia?.slug || '';
   const direccion = config?.farmaciaDireccion || '';
   const ciudad = config?.farmaciaCiudad || '';
   const telefono = config?.farmaciaTelefono || '';
   const whatsapp = config?.farmaciaWhatsapp || '';
-  const farmaciaLogo = config?.farmaciaLogo || farmacia?.logo || '';
 
-  // Logo: data: base64 se usa tal cual; ruta relativa se convierte en URL absoluta
-  let logoFarmacia = '';
-  if (farmaciaLogo) {
-    if (farmaciaLogo.startsWith('data:')) {
-      logoFarmacia = farmaciaLogo;
-    } else {
-      const path = farmaciaLogo.startsWith('/') ? farmaciaLogo : `/microcaya/${farmaciaLogo}`;
-      logoFarmacia = `${baseUrl}${path}`;
-    }
-  }
+  // El logo se guarda siempre como data: URI (base64) desde el formulario de Configuración
+  const logoFarmacia = config?.farmaciaLogo || '';
 
-  // URL solicitar cita: /cita/{slug}
-  const urlSolicitarCita = slug ? `${baseUrl}/cita/${slug}` : (config?.farmaciaWeb || '');
+  // URL solicitar cita: usa la web configurada de la farmacia (no hay reserva pública en este backend)
+  const urlSolicitarCita = config?.farmaciaWeb || '';
 
   // WhatsApp: https://wa.me/34XXXXXXXXX (sin + ni espacios)
   const urlWhatsapp = whatsapp
@@ -462,15 +410,9 @@ interface DatosCitaBase {
 
 /**
  * Construye DatosEmail completos con logo, colores y enlaces (WhatsApp, teléfono, solicitar cita).
- * Si se pasan tokens, incluye urlConfirmar, urlModificar, urlCancelar.
  */
-async function obtenerDatosEmailCompletos(
-  farmaciaId: string,
-  datosCita: DatosCitaBase,
-  tokens?: Record<TipoAccionCita, string>
-): Promise<DatosEmail> {
-  const datosFarmacia = await obtenerDatosFarmacia(farmaciaId);
-  const urls = tokens ? construirUrlsAccion(tokens) : null;
+async function obtenerDatosEmailCompletos(datosCita: DatosCitaBase): Promise<DatosEmail> {
+  const datosFarmacia = await obtenerDatosFarmacia();
 
   const direccionCompleta = [datosFarmacia.direccion, datosFarmacia.ciudad].filter(Boolean).join(', ');
 
@@ -484,9 +426,6 @@ async function obtenerDatosEmailCompletos(
     telefonoFarmacia: datosFarmacia.telefono,
     emailFarmacia: datosFarmacia.email,
     webFarmacia: datosFarmacia.web,
-    urlConfirmar: urls?.confirmar,
-    urlModificar: urls?.modificar,
-    urlCancelar: urls?.cancelar,
     urlSolicitarCita: datosFarmacia.urlSolicitarCita,
     urlWhatsapp: datosFarmacia.urlWhatsapp,
     urlTelefono: datosFarmacia.urlTelefono,
@@ -509,10 +448,9 @@ async function enviarEmail(
   destinatario: string,
   asunto: string,
   html: string,
-  farmaciaId: string,
   texto?: string
 ): Promise<boolean> {
-  const config = await obtenerConfigEmail(farmaciaId);
+  const config = await obtenerConfigEmail();
 
   try {
     if (config.provider === 'resend' && config.resendApiKey) {
@@ -744,7 +682,7 @@ export async function enviarCorreoPruebaPlataformaConDiagnostico(destinatario: s
   // Paso 1: Obtener configuración
   let config: ConfigEmail;
   try {
-    config = await obtenerConfigEmailPlataforma();
+    config = await obtenerConfigEmail();
     pasos.push({ paso: 'Obtener configuración de correo', ok: true });
   } catch (e) {
     pasos.push({
@@ -945,11 +883,11 @@ async function enviarEmailConConfig(
 // ==========================================
 
 /**
- * Envía un correo de prueba usando la configuración de plataforma
- * Usado desde el panel superadmin para verificar SMTP/Resend
+ * Envía un correo de prueba usando la configuración de la instalación
+ * Usado desde el panel de configuración para verificar SMTP/Resend
  */
 export async function enviarCorreoPruebaPlataforma(destinatario: string): Promise<boolean> {
-  const config = await obtenerConfigEmailPlataforma();
+  const config = await obtenerConfigEmail();
   const asunto = 'Correo de prueba - Configuración SMTP';
   const html = `
 <!DOCTYPE html>
@@ -983,25 +921,10 @@ export async function enviarConfirmacionCita(
   }
 ): Promise<boolean> {
   try {
-    // Obtener farmaciaId de la cita
-    const cita = await prisma.cita.findUnique({
-      where: { id: datosCita.citaId },
-      select: { farmaciaId: true },
-    });
-    const farmaciaId = cita?.farmaciaId;
-    if (!farmaciaId) {
-      console.warn('❌ No se puede enviar confirmación: cita sin farmaciaId');
-      return false;
-    }
-
-    // Generar tokens de acción
-    const tokens = await generarTokensAccionCita(datosCita.citaId);
-
     // Preparar datos para la plantilla (incluye logo, colores, WhatsApp, teléfono, urlSolicitarCita)
-    const datos = await obtenerDatosEmailCompletos(farmaciaId, datosCita, tokens);
+    const datos = await obtenerDatosEmailCompletos(datosCita);
 
-    // Obtener plantilla (si hay farmaciaId)
-    const plantilla = farmaciaId ? await obtenerPlantilla('confirmacion', farmaciaId) : null;
+    const plantilla = await obtenerPlantilla('confirmacion');
 
     let html: string;
     let asunto: string;
@@ -1015,7 +938,7 @@ export async function enviarConfirmacionCita(
       asunto = `Confirmación de cita - ${datos.tipoServicio}`;
     }
 
-    const enviado = await enviarEmail(emailDestinatario, asunto, html, farmaciaId);
+    const enviado = await enviarEmail(emailDestinatario, asunto, html);
 
     if (enviado) {
       // Marcar cita como email de confirmación enviado
@@ -1046,21 +969,9 @@ export async function enviarRecordatorioCita(
   }
 ): Promise<boolean> {
   try {
-    // Obtener farmaciaId de la cita
-    const cita = await prisma.cita.findUnique({
-      where: { id: datosCita.citaId },
-      select: { farmaciaId: true },
-    });
-    const farmaciaId = cita?.farmaciaId;
-    if (!farmaciaId) {
-      console.warn('❌ No se puede enviar recordatorio: cita sin farmaciaId');
-      return false;
-    }
+    const datos = await obtenerDatosEmailCompletos(datosCita);
 
-    const tokens = await generarTokensAccionCita(datosCita.citaId);
-    const datos = await obtenerDatosEmailCompletos(farmaciaId, datosCita, tokens);
-
-    const plantilla = farmaciaId ? await obtenerPlantilla('recordatorio', farmaciaId) : null;
+    const plantilla = await obtenerPlantilla('recordatorio');
 
     let html: string;
     let asunto: string;
@@ -1073,7 +984,7 @@ export async function enviarRecordatorioCita(
       asunto = `Recordatorio: Tu cita es mañana - ${datos.tipoServicio}`;
     }
 
-    const enviado = await enviarEmail(emailDestinatario, asunto, html, farmaciaId);
+    const enviado = await enviarEmail(emailDestinatario, asunto, html);
 
     if (enviado) {
       await prisma.cita.update({
@@ -1101,27 +1012,12 @@ export async function enviarCancelacionCita(
     nombreCliente: string;
     motivoRechazo?: string;
     citaId?: string;
-    farmaciaId?: string; // Requerido cuando no hay citaId (ej. rechazo de solicitud)
   }
 ): Promise<boolean> {
   try {
-    // Obtener farmaciaId de la cita o del parámetro
-    let farmaciaId: string | undefined = datosCita.farmaciaId;
-    if (!farmaciaId && datosCita.citaId) {
-      const cita = await prisma.cita.findUnique({
-        where: { id: datosCita.citaId },
-        select: { farmaciaId: true },
-      });
-      farmaciaId = cita?.farmaciaId;
-    }
-    if (!farmaciaId) {
-      console.warn('❌ No se puede enviar cancelación: falta farmaciaId');
-      return false;
-    }
+    const datos = await obtenerDatosEmailCompletos(datosCita);
 
-    const datos = await obtenerDatosEmailCompletos(farmaciaId, datosCita);
-
-    const plantilla = farmaciaId ? await obtenerPlantilla('cancelacion', farmaciaId) : null;
+    const plantilla = await obtenerPlantilla('cancelacion');
 
     let html: string;
     let asunto: string;
@@ -1134,7 +1030,7 @@ export async function enviarCancelacionCita(
       asunto = `Cita cancelada - ${datos.tipoServicio}`;
     }
 
-    return await enviarEmail(emailDestinatario, asunto, html, farmaciaId);
+    return await enviarEmail(emailDestinatario, asunto, html);
   } catch (error) {
     console.error('❌ Error al enviar cancelación:', error);
     return false;
@@ -1155,20 +1051,9 @@ export async function enviarModificacionCita(
   }
 ): Promise<boolean> {
   try {
-    const cita = await prisma.cita.findUnique({
-      where: { id: datosCita.citaId },
-      select: { farmaciaId: true },
-    });
-    const farmaciaId = cita?.farmaciaId;
-    if (!farmaciaId) {
-      console.warn('❌ No se puede enviar modificación: cita sin farmaciaId');
-      return false;
-    }
+    const datos = await obtenerDatosEmailCompletos(datosCita);
 
-    const tokens = await generarTokensAccionCita(datosCita.citaId);
-    const datos = await obtenerDatosEmailCompletos(farmaciaId, datosCita, tokens);
-
-    const plantilla = await obtenerPlantilla('modificacion', farmaciaId);
+    const plantilla = await obtenerPlantilla('modificacion');
 
     let html: string;
     let asunto: string;
@@ -1181,33 +1066,11 @@ export async function enviarModificacionCita(
       asunto = `Tu cita ha sido modificada - ${datos.tipoServicio}`;
     }
 
-    return await enviarEmail(emailDestinatario, asunto, html, farmaciaId);
+    return await enviarEmail(emailDestinatario, asunto, html);
   } catch (error) {
     console.error('❌ Error al enviar modificación:', error);
     return false;
   }
-}
-
-/**
- * Envía email de rechazo de solicitud (mantener compatibilidad)
- * Requiere farmaciaId para cargar datos y plantilla de la farmacia.
- */
-export async function enviarRechazoSolicitud(
-  emailDestinatario: string,
-  datosSolicitud: {
-    tipo: string;
-    fecha: string;
-    hora: string;
-    nombreCliente: string;
-    motivo?: string;
-    farmaciaId: string;
-  }
-): Promise<boolean> {
-  return enviarCancelacionCita(emailDestinatario, {
-    ...datosSolicitud,
-    motivoRechazo: datosSolicitud.motivo,
-    farmaciaId: datosSolicitud.farmaciaId,
-  });
 }
 
 /**
@@ -1217,8 +1080,7 @@ export async function enviarInvitacionUsuario(
   emailDestinatario: string,
   nombreUsuario: string,
   nombreFarmacia: string,
-  urlEstablecerContrasena: string,
-  farmaciaId: string
+  urlEstablecerContrasena: string
 ): Promise<boolean> {
   const asunto = `Crea tu contraseña - ${nombreFarmacia}`;
   const html = `
@@ -1245,7 +1107,7 @@ export async function enviarInvitacionUsuario(
 </body>
 </html>`;
   const texto = `Hola ${nombreUsuario}, te han invitado a ${nombreFarmacia}. Crea tu contraseña aquí: ${urlEstablecerContrasena}. El enlace caduca en 7 días.`;
-  return enviarEmail(emailDestinatario, asunto, html, farmaciaId, texto);
+  return enviarEmail(emailDestinatario, asunto, html, texto);
 }
 
 // ==========================================
@@ -1296,9 +1158,6 @@ function generarPlantillaConfirmacionDefault(datos: DatosEmail): string {
     <p>Por favor, llegue con unos minutos de antelación.</p>
     
     <div style="text-align: center; margin: 30px 0;">
-      <a href="${datos.urlConfirmar}" style="display: inline-block; background-color: #22c55e; color: white; padding: 12px 24px; text-decoration: none; border-radius: 6px; margin: 5px; font-weight: bold;">✓ Confirmar asistencia</a>
-      <a href="${datos.urlModificar}" style="display: inline-block; background-color: #3b82f6; color: white; padding: 12px 24px; text-decoration: none; border-radius: 6px; margin: 5px; font-weight: bold;">✎ Modificar cita</a>
-      <a href="${datos.urlCancelar}" style="display: inline-block; background-color: #ef4444; color: white; padding: 12px 24px; text-decoration: none; border-radius: 6px; margin: 5px; font-weight: bold;">✕ Cancelar cita</a>
     </div>
     
     <hr style="border: none; border-top: 1px solid #eee; margin: 30px 0;">
@@ -1351,9 +1210,6 @@ function generarPlantillaRecordatorioDefault(datos: DatosEmail): string {
     <p>Por favor, llegue con unos minutos de antelación. Si no puedes asistir, te agradecemos que nos lo comuniques.</p>
     
     <div style="text-align: center; margin: 30px 0;">
-      <a href="${datos.urlConfirmar}" style="display: inline-block; background-color: #22c55e; color: white; padding: 12px 24px; text-decoration: none; border-radius: 6px; margin: 5px; font-weight: bold;">✓ Confirmar asistencia</a>
-      <a href="${datos.urlModificar}" style="display: inline-block; background-color: #3b82f6; color: white; padding: 12px 24px; text-decoration: none; border-radius: 6px; margin: 5px; font-weight: bold;">✎ Modificar cita</a>
-      <a href="${datos.urlCancelar}" style="display: inline-block; background-color: #ef4444; color: white; padding: 12px 24px; text-decoration: none; border-radius: 6px; margin: 5px; font-weight: bold;">✕ Cancelar cita</a>
     </div>
     
     <hr style="border: none; border-top: 1px solid #eee; margin: 30px 0;">
@@ -1462,9 +1318,6 @@ function generarPlantillaModificacionDefault(datos: DatosEmail): string {
     <p>Por favor, llegue con unos minutos de antelación.</p>
     
     <div style="text-align: center; margin: 30px 0;">
-      <a href="${datos.urlConfirmar}" style="display: inline-block; background-color: #22c55e; color: white; padding: 12px 24px; text-decoration: none; border-radius: 6px; margin: 5px; font-weight: bold;">✓ Confirmar asistencia</a>
-      <a href="${datos.urlModificar}" style="display: inline-block; background-color: #3b82f6; color: white; padding: 12px 24px; text-decoration: none; border-radius: 6px; margin: 5px; font-weight: bold;">✎ Modificar cita</a>
-      <a href="${datos.urlCancelar}" style="display: inline-block; background-color: #ef4444; color: white; padding: 12px 24px; text-decoration: none; border-radius: 6px; margin: 5px; font-weight: bold;">✕ Cancelar cita</a>
     </div>
     
     <hr style="border: none; border-top: 1px solid #eee; margin: 30px 0;">

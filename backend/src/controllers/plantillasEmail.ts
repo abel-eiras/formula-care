@@ -7,7 +7,6 @@ import type { Request, Response } from 'express';
 import { z } from 'zod';
 import { prisma } from '../lib/prisma.js';
 import { getParamString } from '../lib/queryHelpers.js';
-import { obtenerFarmaciaIdRequerido, obtenerFarmaciaIdOpcional } from '../middleware/tenant.js';
 
 // ==========================================
 // PLANTILLAS POR DEFECTO
@@ -44,9 +43,6 @@ const PLANTILLAS_DEFAULT = {
     <p>Por favor, llegue con unos minutos de antelación.</p>
     
     <div style="text-align: center; margin: 30px 0;">
-      <a href="{{urlConfirmar}}" style="display: inline-block; background-color: #22c55e; color: white; padding: 12px 24px; text-decoration: none; border-radius: 6px; margin: 5px; font-weight: bold;">✓ Confirmar asistencia</a>
-      <a href="{{urlModificar}}" style="display: inline-block; background-color: #3b82f6; color: white; padding: 12px 24px; text-decoration: none; border-radius: 6px; margin: 5px; font-weight: bold;">✎ Modificar cita</a>
-      <a href="{{urlCancelar}}" style="display: inline-block; background-color: #ef4444; color: white; padding: 12px 24px; text-decoration: none; border-radius: 6px; margin: 5px; font-weight: bold;">✕ Cancelar cita</a>
     </div>
     
     <hr style="border: none; border-top: 1px solid #eee; margin: 30px 0;">
@@ -95,9 +91,6 @@ const PLANTILLAS_DEFAULT = {
     <p>Por favor, llegue con unos minutos de antelación. Si no puedes asistir, te agradecemos que nos lo comuniques.</p>
     
     <div style="text-align: center; margin: 30px 0;">
-      <a href="{{urlConfirmar}}" style="display: inline-block; background-color: #22c55e; color: white; padding: 12px 24px; text-decoration: none; border-radius: 6px; margin: 5px; font-weight: bold;">✓ Confirmar asistencia</a>
-      <a href="{{urlModificar}}" style="display: inline-block; background-color: #3b82f6; color: white; padding: 12px 24px; text-decoration: none; border-radius: 6px; margin: 5px; font-weight: bold;">✎ Modificar cita</a>
-      <a href="{{urlCancelar}}" style="display: inline-block; background-color: #ef4444; color: white; padding: 12px 24px; text-decoration: none; border-radius: 6px; margin: 5px; font-weight: bold;">✕ Cancelar cita</a>
     </div>
     
     <hr style="border: none; border-top: 1px solid #eee; margin: 30px 0;">
@@ -195,9 +188,6 @@ const PLANTILLAS_DEFAULT = {
     <p>Por favor, llegue con unos minutos de antelación.</p>
     
     <div style="text-align: center; margin: 30px 0;">
-      <a href="{{urlConfirmar}}" style="display: inline-block; background-color: #22c55e; color: white; padding: 12px 24px; text-decoration: none; border-radius: 6px; margin: 5px; font-weight: bold;">✓ Confirmar asistencia</a>
-      <a href="{{urlModificar}}" style="display: inline-block; background-color: #3b82f6; color: white; padding: 12px 24px; text-decoration: none; border-radius: 6px; margin: 5px; font-weight: bold;">✎ Modificar cita</a>
-      <a href="{{urlCancelar}}" style="display: inline-block; background-color: #ef4444; color: white; padding: 12px 24px; text-decoration: none; border-radius: 6px; margin: 5px; font-weight: bold;">✕ Cancelar cita</a>
     </div>
     
     <hr style="border: none; border-top: 1px solid #eee; margin: 30px 0;">
@@ -229,9 +219,6 @@ export const VARIABLES_DISPONIBLES = [
   { nombre: 'telefonoFarmacia', descripcion: 'Teléfono de contacto' },
   { nombre: 'emailFarmacia', descripcion: 'Email de contacto' },
   { nombre: 'webFarmacia', descripcion: 'URL de la web' },
-  { nombre: 'urlConfirmar', descripcion: 'Enlace para confirmar la cita' },
-  { nombre: 'urlModificar', descripcion: 'Enlace para modificar la cita' },
-  { nombre: 'urlCancelar', descripcion: 'Enlace para cancelar la cita' },
   { nombre: 'urlSolicitarCita', descripcion: 'URL para solicitar nueva cita en la farmacia' },
   { nombre: 'urlWhatsapp', descripcion: 'Enlace WhatsApp (si configurado)' },
   { nombre: 'urlTelefono', descripcion: 'Enlace tel: para llamar (si configurado)' },
@@ -266,13 +253,10 @@ const actualizarPlantillaSchema = z.object({
  */
 export async function obtenerPlantillas(req: Request, res: Response) {
   try {
-    const farmaciaId = obtenerFarmaciaIdRequerido(req);
-    
-    // Asegurar que existan las plantillas por defecto para esta farmacia
-    await asegurarPlantillasDefault(farmaciaId);
+    // Asegurar que existan las plantillas por defecto
+    await asegurarPlantillasDefault();
 
     const plantillas = await prisma.plantillaEmail.findMany({
-      where: { farmaciaId },
       orderBy: { tipo: 'asc' },
     });
 
@@ -288,16 +272,13 @@ export async function obtenerPlantillas(req: Request, res: Response) {
  */
 export async function obtenerPlantilla(req: Request, res: Response) {
   try {
-    const farmaciaId = obtenerFarmaciaIdRequerido(req);
     const tipo = getParamString(req.params.tipo);
     if (!tipo) {
       return res.status(400).json({ error: 'Tipo de plantilla requerido' });
     }
 
     const plantilla = await prisma.plantillaEmail.findUnique({
-      where: { 
-        farmaciaId_tipo: { farmaciaId, tipo }
-      },
+      where: { tipo },
     });
 
     if (!plantilla) {
@@ -316,7 +297,6 @@ export async function obtenerPlantilla(req: Request, res: Response) {
  */
 export async function actualizarPlantilla(req: Request, res: Response) {
   try {
-    const farmaciaId = obtenerFarmaciaIdRequerido(req);
     const tipo = getParamString(req.params.tipo);
     if (!tipo) {
       return res.status(400).json({ error: 'Tipo de plantilla requerido' });
@@ -331,9 +311,7 @@ export async function actualizarPlantilla(req: Request, res: Response) {
     }
 
     const plantilla = await prisma.plantillaEmail.update({
-      where: { 
-        farmaciaId_tipo: { farmaciaId, tipo }
-      },
+      where: { tipo },
       data: validacion.data,
     });
 
@@ -349,7 +327,6 @@ export async function actualizarPlantilla(req: Request, res: Response) {
  */
 export async function restaurarPlantillaPorDefecto(req: Request, res: Response) {
   try {
-    const farmaciaId = obtenerFarmaciaIdRequerido(req);
     const tipo = getParamString(req.params.tipo) as keyof typeof PLANTILLAS_DEFAULT;
     if (!tipo) {
       return res.status(400).json({ error: 'Tipo de plantilla requerido' });
@@ -361,9 +338,7 @@ export async function restaurarPlantillaPorDefecto(req: Request, res: Response) 
     }
 
     const plantilla = await prisma.plantillaEmail.update({
-      where: { 
-        farmaciaId_tipo: { farmaciaId, tipo }
-      },
+      where: { tipo },
       data: {
         nombre: plantillaDefault.nombre,
         asunto: plantillaDefault.asunto,
@@ -390,20 +365,17 @@ export async function obtenerVariablesDisponibles(req: Request, res: Response) {
 // ==========================================
 
 /**
- * Asegura que existan las plantillas por defecto en la BD para una farmacia
+ * Asegura que existan las plantillas por defecto en la BD
  */
-export async function asegurarPlantillasDefault(farmaciaId: string) {
+export async function asegurarPlantillasDefault() {
   for (const [tipo, datos] of Object.entries(PLANTILLAS_DEFAULT)) {
     const existe = await prisma.plantillaEmail.findUnique({
-      where: { 
-        farmaciaId_tipo: { farmaciaId, tipo }
-      },
+      where: { tipo },
     });
 
     if (!existe) {
       await prisma.plantillaEmail.create({
         data: {
-          farmaciaId,
           tipo,
           nombre: datos.nombre,
           asunto: datos.asunto,
@@ -411,7 +383,7 @@ export async function asegurarPlantillasDefault(farmaciaId: string) {
           activa: true,
         },
       });
-      console.log(`📧 Plantilla '${tipo}' creada por defecto para farmacia ${farmaciaId}`);
+      console.log(`📧 Plantilla '${tipo}' creada por defecto`);
     }
   }
 }
