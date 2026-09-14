@@ -223,7 +223,7 @@ model Configuracion {
   farmaciaWhatsapp      String?
   farmaciaLogo          String?  // Ruta al logo
   // Apariencia y marca (colores, tema)
-  temaActivo            String?  @default("default") // "default", "pontevea", "custom"
+  temaActivo            String?  @default("default") // "default", "porDefecto", "verde", "azul", "custom"
   coloresMarca          String?  // JSON: { "primario": "#79438f", "secundario": "#6495a8", ... }
   // Configuración de valoración bioquímica
   valoracionBioActiva   Boolean  @default(true) // Activar/desactivar valoración global

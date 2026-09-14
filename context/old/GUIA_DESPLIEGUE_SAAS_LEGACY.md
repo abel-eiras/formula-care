@@ -349,7 +349,7 @@ Ve a tu repositorio → Settings → Secrets and variables → Actions:
 
 | Secret | Valor |
 |--------|-------|
-| `SSH_HOST` | Tu dominio o IP (ej: `farmaciapontevea.com`) |
+| `SSH_HOST` | Tu dominio o IP (ej: `tu-dominio.com`) |
 | `SSH_USER` | Tu usuario SSH de Raiola |
 | `SSH_PRIVATE_KEY` | Tu clave privada SSH (ver abajo) |
 | `SSH_PORT` | `22` (o el puerto SSH de Raiola) |
@@ -658,7 +658,7 @@ npm start
 
 #### En Vercel:
 1. Ve a Settings → Domains
-2. Añade tu dominio (ej: `farmaciapontevea.com`)
+2. Añade tu dominio (ej: `tu-dominio.com`)
 3. Configura DNS según instrucciones
 
 #### En Railway:

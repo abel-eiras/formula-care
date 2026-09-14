@@ -1,4 +1,4 @@
-# 🚀 Instrucciones de Inicio - Farmacia Pontevea
+# 🚀 Instrucciones de Inicio (histórico)
 
 ## ✅ Backend Implementado
 

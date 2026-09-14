@@ -1,4 +1,4 @@
-# Guía para Agentes de IA - Farmacia Pontevea
+# Guía para Agentes de IA - Formula Care
 
 > Este documento proporciona contexto y reglas para agentes de IA que trabajen en este proyecto.
 
@@ -114,7 +114,7 @@ const Dashboard = lazy(() => import('./pages/Dashboard'))
 ├── src-tauri/        # Empaquetado de escritorio (Tauri, Rust)
 ├── booking-web/      # Servicio OPCIONAL y aparte: reserva pública de citas (sin sync)
 ├── context/          # Documentación para agentes (guías, old, integraciones)
-└── .cursor/skills/   # Skills de proyecto (react-codigo-limpio, stack-farmacia-pontevea)
+└── .cursor/skills/   # Skills de proyecto (react-codigo-limpio, stack-formula-care)
 ```
 
 Al trabajar en `booking-web/`, ten en cuenta que es un proyecto independiente
@@ -128,7 +128,7 @@ En **.cursor/skills/** hay skills específicos de este repositorio:
 | Skill | Cuándo usarlo |
 |-------|----------------|
 | **react-codigo-limpio** | Al escribir o revisar código React/TypeScript; aplicar estándares de código limpio, evitar waterfalls, optimizar bundle y re-renders. |
-| **stack-farmacia-pontevea** | Cuando necesites contexto del stack (React, Vite, Prisma, Express) o de la estructura del proyecto. |
+| **stack-formula-care** | Cuando necesites contexto del stack (React, Vite, Prisma, Express) o de la estructura del proyecto. |
 
 ## ✅ Checklist Antes de Commit
 

@@ -29,7 +29,7 @@ export const TEMAS_PRECONFIGURADOS: Record<string, { nombre: string; colores: Co
       linea: "#6495a8",
     },
   },
-  pontevea: {
+  porDefecto: {
     nombre: "Por defecto",
     colores: {
       primario: "#79438f",

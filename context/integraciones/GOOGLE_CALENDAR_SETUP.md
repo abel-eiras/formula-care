@@ -24,13 +24,13 @@ Esta guía explica cómo configurar la integración con Google Calendar para sin
 2. Haz clic en "Create Credentials" > "OAuth client ID"
 3. Si es la primera vez, configura la pantalla de consentimiento:
    - Tipo de aplicación: "External"
-   - Nombre de la aplicación: "Farmacia Pontevea Servicios"
+   - Nombre de la aplicación: "Formula Care"
    - Email de soporte: tu email
    - Dominios autorizados: tu dominio (o `localhost` para desarrollo)
    - Guarda y continúa
 4. Crea el OAuth Client ID:
    - Tipo de aplicación: "Web application"
-   - Nombre: "Farmacia Pontevea Web Client"
+   - Nombre: "Formula Care Web Client"
    - **Authorized redirect URIs**: 
      - Desarrollo: `http://localhost:5000/api/google-calendar/callback`
      - Producción: `https://tu-dominio.com/api/google-calendar/callback`

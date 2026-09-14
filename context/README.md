@@ -34,6 +34,6 @@ Esta carpeta concentra la documentación de referencia para trabajar en el proye
 El proyecto incluye skills en `.cursor/skills/` para Cursor:
 
 - **react-codigo-limpio** – Código limpio y buenas prácticas React (waterfalls, bundle, memoización).
-- **stack-farmacia-pontevea** – Stack y estructura del proyecto.
+- **stack-formula-care** – Stack y estructura del proyecto.
 
 Úsalos cuando escribas o revises código en este repositorio.
