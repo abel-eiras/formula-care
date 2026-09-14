@@ -1,13 +1,20 @@
-# Guía para Agentes de IA - Farmacia Pontevea
+# Guía para Agentes de IA - Formula Care
 
 > Este documento proporciona contexto y reglas para agentes de IA que trabajen en este proyecto.
 
 ## 📋 Información del Proyecto
 
-**Nombre:** Farmacia Pontevea - Sistema de Gestión de Servicios  
-**Stack Principal:** React 18 + TypeScript + Node.js + Express  
-**Base de Datos:** Prisma ORM (SQLite/PostgreSQL)  
+**Nombre:** Formula Care - Sistema de Gestión de Servicios de Farmacia (app de escritorio, software libre)
+**Stack Principal:** Tauri 2 (Rust) + React 18 + TypeScript + Node.js + Express
+**Base de Datos:** Prisma ORM (SQLite local, una instalación = una farmacia)
 **UI Framework:** shadcn/ui + Tailwind CSS
+**Licencia:** MIT
+
+Formula Care corre localmente como app de escritorio (backend Express embebido
+por Tauri). No es multi-tenant: no hay modelo `Farmacia` ni rol `superadmin`.
+La reserva pública de citas vive aparte, en [`booking-web/`](./booking-web/),
+un servicio opcional y autohospedable sin sincronización con la app de
+escritorio (ver su propio README).
 
 ## 🎯 Principios Fundamentales
 
@@ -97,16 +104,22 @@ const Dashboard = lazy(() => import('./pages/Dashboard'))
 
 ```
 (raíz)
-├── src/              # Frontend React (Vite)
+├── src/              # Frontend React (Vite), empaquetado en la app de escritorio
 │   ├── pages/        # Páginas (PascalCase)
 │   ├── components/   # Componentes reutilizables (ui/, layout/, [feature]/)
 │   ├── hooks/        # Custom hooks (camelCase con "use")
 │   ├── lib/          # api.ts, utils.ts, etc.
 │   └── types/        # TypeScript types
-├── backend/          # API Node.js + Express + Prisma
+├── backend/          # API Node.js + Express + Prisma (SQLite, embebido en la app)
+├── src-tauri/        # Empaquetado de escritorio (Tauri, Rust)
+├── booking-web/      # Servicio OPCIONAL y aparte: reserva pública de citas (sin sync)
 ├── context/          # Documentación para agentes (guías, old, integraciones)
-└── .cursor/skills/   # Skills de proyecto (react-codigo-limpio, stack-farmacia-pontevea)
+└── .cursor/skills/   # Skills de proyecto (react-codigo-limpio, stack-formula-care)
 ```
+
+Al trabajar en `booking-web/`, ten en cuenta que es un proyecto independiente
+(su propio `package.json`, su propio `schema.prisma`, sin `farmaciaId` porque
+también es de una sola farmacia) — no comparte base de datos con `backend/`.
 
 ## 🧩 Skills de Proyecto
 
@@ -115,7 +128,7 @@ En **.cursor/skills/** hay skills específicos de este repositorio:
 | Skill | Cuándo usarlo |
 |-------|----------------|
 | **react-codigo-limpio** | Al escribir o revisar código React/TypeScript; aplicar estándares de código limpio, evitar waterfalls, optimizar bundle y re-renders. |
-| **stack-farmacia-pontevea** | Cuando necesites contexto del stack (React, Vite, Prisma, Express) o de la estructura del proyecto. |
+| **stack-formula-care** | Cuando necesites contexto del stack (React, Vite, Prisma, Express) o de la estructura del proyecto. |
 
 ## ✅ Checklist Antes de Commit
 

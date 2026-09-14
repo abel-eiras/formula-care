@@ -353,7 +353,7 @@ export default function Configuracion() {
                     {farmaciaData.farmaciaLogo && (
                       <div className="relative w-24 h-24 border rounded-md overflow-hidden bg-gray-50">
                         <img
-                          src={farmaciaData.farmaciaLogo.startsWith('data:') ? farmaciaData.farmaciaLogo : `/microcaya/${farmaciaData.farmaciaLogo}`}
+                          src={farmaciaData.farmaciaLogo}
                           alt="Logo"
                           className="w-full h-full object-contain"
                           onError={(e) => {

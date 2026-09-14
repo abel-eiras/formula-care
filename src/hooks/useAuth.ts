@@ -89,6 +89,30 @@ export function useAuth() {
   }, []);
 
   /**
+   * Crear la cuenta de administrador inicial (solo funciona en el primer
+   * arranque de una instalación, cuando todavía no existe ningún usuario).
+   */
+  const setupInicial = useCallback(async (email: string, password: string, nombre: string): Promise<boolean> => {
+    setError(null);
+    setIsLoading(true);
+
+    try {
+      const response = await api.post<LoginResponse>('/auth/setup-inicial', { email, password, nombre });
+
+      sessionStorage.setItem(USER_KEY, JSON.stringify(response.usuario));
+      setUsuario(response.usuario);
+      setIsLoading(false);
+
+      return true;
+    } catch (err) {
+      const errorMessage = err instanceof Error ? err.message : 'Error al crear la cuenta de administrador';
+      setError(errorMessage);
+      setIsLoading(false);
+      return false;
+    }
+  }, []);
+
+  /**
    * Cerrar sesión: el servidor elimina la cookie
    */
   const logout = useCallback(async () => {
@@ -118,6 +142,7 @@ export function useAuth() {
     isAuthenticated: !!usuario,
     isAdmin: usuario?.rol === 'admin',
     login,
+    setupInicial,
     logout,
     tieneRol,
   };

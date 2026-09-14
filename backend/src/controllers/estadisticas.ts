@@ -1,6 +1,7 @@
 import { Request, Response } from 'express';
 import { prisma } from '../lib/prisma.js';
 import { getQueryLimit } from '../lib/queryHelpers.js';
+import { decryptPacienteData, decryptPacientesList } from '../services/encryptionService.js';
 
 /**
  * Obtener estadísticas generales del dashboard
@@ -179,7 +180,7 @@ export async function obtenerPacientesRecientes(req: Request, res: Response) {
       },
     });
 
-    res.json(pacientes);
+    res.json(decryptPacientesList(pacientes));
   } catch (error) {
     console.error('Error al obtener pacientes recientes:', error);
     res.status(500).json({ error: 'Error al obtener pacientes recientes' });
@@ -218,7 +219,12 @@ export async function obtenerProximasRevisiones(req: Request, res: Response) {
       take: limite,
     });
 
-    res.json(analisisConRevision);
+    const resultado = analisisConRevision.map((analisis) => ({
+      ...analisis,
+      paciente: analisis.paciente ? decryptPacienteData(analisis.paciente) : analisis.paciente,
+    }));
+
+    res.json(resultado);
   } catch (error) {
     console.error('Error al obtener próximas revisiones:', error);
     res.status(500).json({ error: 'Error al obtener próximas revisiones' });

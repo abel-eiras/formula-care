@@ -3,8 +3,7 @@ import { prisma } from '../lib/prisma.js';
 import { z } from 'zod';
 import type { Prisma } from '@prisma/client';
 import { getQueryString, getParamString, getQueryNumber } from '../lib/queryHelpers.js';
-import { obtenerFarmaciaIdRequerido, obtenerFarmaciaIdOpcional, validarAccesoFarmacia } from '../middleware/tenant.js';
-import { 
+import {
   encryptPacienteData, 
   decryptPacienteData, 
   decryptPacientesList,
@@ -33,13 +32,6 @@ const actualizarPacienteSchema = crearPacienteSchema.partial();
  */
 export async function obtenerPacientes(req: Request, res: Response) {
   try {
-    const user = req.usuario || req.user;
-    let farmaciaId: string | null = obtenerFarmaciaIdOpcional(req);
-    // Usuarios no superadmin deben tener farmaciaId para listar (evitar ver todos los pacientes)
-    if (user && user.rol !== 'superadmin' && !farmaciaId) {
-      return res.status(403).json({ error: 'Usuario no asignado a ninguna farmacia' });
-    }
-
     const busqueda = getQueryString(req.query.busqueda);
     const email = getQueryString(req.query.email);
     const sexo = getQueryString(req.query.sexo);
@@ -55,12 +47,7 @@ export async function obtenerPacientes(req: Request, res: Response) {
     
     // Construir condiciones de búsqueda (solo campos NO encriptados)
     const condiciones: Prisma.PacienteWhereInput[] = [];
-    
-    // Filtrar por farmacia (obligatorio para usuarios normales)
-    if (farmaciaId) {
-      condiciones.push({ farmaciaId });
-    }
-    
+
     // Filtro por sexo
     if (sexo && (sexo === 'M' || sexo === 'F' || sexo === 'O')) {
       condiciones.push({ sex: sexo });
@@ -184,11 +171,6 @@ export async function obtenerPaciente(req: Request, res: Response) {
       return res.status(404).json({ error: 'Paciente no encontrado' });
     }
 
-    const user = req.usuario || req.user;
-    if (user && !validarAccesoFarmacia(paciente.farmaciaId, user.farmaciaId, user.rol)) {
-      return res.status(404).json({ error: 'Paciente no encontrado' });
-    }
-
     // Desencriptar datos sensibles antes de enviar
     const pacienteDesencriptado = decryptPacienteData(paciente);
 
@@ -205,9 +187,6 @@ export async function obtenerPaciente(req: Request, res: Response) {
  */
 export async function crearPaciente(req: Request, res: Response) {
   try {
-    // Obtener farmaciaId del usuario autenticado
-    const farmaciaId = obtenerFarmaciaIdRequerido(req);
-    
     const datos = crearPacienteSchema.parse(req.body);
 
     // Encriptar datos sensibles antes de guardar
@@ -222,7 +201,6 @@ export async function crearPaciente(req: Request, res: Response) {
         ...datos,
         ...datosEncriptados,
         email: datosEncriptados.email || undefined,
-        farmaciaId,
       },
     });
 
@@ -237,10 +215,6 @@ export async function crearPaciente(req: Request, res: Response) {
       });
     }
 
-    if (error instanceof Error && error.message.includes('farmacia')) {
-      return res.status(403).json({ error: 'No tiene permiso para acceder a este recurso' });
-    }
-
     console.error('Error al crear paciente:', error);
     res.status(500).json({ error: 'Error al crear paciente' });
   }
@@ -253,19 +227,12 @@ export async function crearPaciente(req: Request, res: Response) {
 export async function actualizarPaciente(req: Request, res: Response) {
   try {
     const id = getParamString(req.params.id);
-    const user = req.usuario || req.user;
-    if (!user) {
-      return res.status(401).json({ error: 'No autorizado' });
-    }
 
     const pacienteExistente = await prisma.paciente.findUnique({
       where: { id },
-      select: { farmaciaId: true },
+      select: { id: true },
     });
     if (!pacienteExistente) {
-      return res.status(404).json({ error: 'Paciente no encontrado' });
-    }
-    if (!validarAccesoFarmacia(pacienteExistente.farmaciaId, user.farmaciaId, user.rol)) {
       return res.status(404).json({ error: 'Paciente no encontrado' });
     }
 
@@ -328,19 +295,12 @@ export async function actualizarPaciente(req: Request, res: Response) {
 export async function eliminarPaciente(req: Request, res: Response) {
   try {
     const id = getParamString(req.params.id);
-    const user = req.usuario || req.user;
-    if (!user) {
-      return res.status(401).json({ error: 'No autorizado' });
-    }
 
     const pacienteExistente = await prisma.paciente.findUnique({
       where: { id },
-      select: { farmaciaId: true },
+      select: { id: true },
     });
     if (!pacienteExistente) {
-      return res.status(404).json({ error: 'Paciente no encontrado' });
-    }
-    if (!validarAccesoFarmacia(pacienteExistente.farmaciaId, user.farmaciaId, user.rol)) {
       return res.status(404).json({ error: 'Paciente no encontrado' });
     }
 

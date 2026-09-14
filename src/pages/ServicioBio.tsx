@@ -360,7 +360,7 @@ export default function ServicioBio() {
 
       const filename = generatePDFFilename(
         'bio',
-        paciente?.nombre,
+        paciente?.name,
         analisisExistente?.fecha
       );
 

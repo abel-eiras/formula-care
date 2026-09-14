@@ -117,6 +117,7 @@ export interface AnalisisBio {
   // Medidas corporales
   weight?: number;
   height?: number;
+  perimetroAbdominal?: number;
   imc?: number; // Calculado automáticamente
   // Observaciones y recomendaciones
   observaciones?: string;
@@ -127,6 +128,48 @@ export interface AnalisisBio {
   paciente?: Paciente;
   // Campo legacy para compatibilidad
   glucose?: number;
+}
+
+export interface RutinaDia {
+  higiene?: string;
+  contornoOjos?: string;
+  productoIntensivo?: string;
+  hidratacion?: string;
+  proteccionSolar?: string;
+}
+
+export interface RutinaNoche {
+  limpieza?: string;
+  contornoOjos?: string;
+  productoIntensivo?: string;
+  hidratacion?: string;
+}
+
+export interface CuidadosSemanales {
+  exfoliante?: string;
+  mascarilla?: string;
+}
+
+export interface AnalisisDermo {
+  id: string;
+  pacienteId: string;
+  fecha: string;
+  motivoConsulta?: string;
+  valoracionPiel: string[];
+  habitos: string[];
+  medicacionHabitual?: string;
+  patologias?: string;
+  etapaHormonal?: string; // Solo para mujeres
+  rutinaDia?: RutinaDia | null;
+  rutinaNoche?: RutinaNoche | null;
+  cuidadosSemanales?: CuidadosSemanales | null;
+  suplementacionOral?: string;
+  proximaRevision?: string;
+  farmaceutico?: string;
+  createdAt?: string;
+  updatedAt?: string;
+  // Relación
+  paciente?: Paciente;
 }
 
 export interface Paciente {
@@ -143,6 +186,16 @@ export interface Paciente {
   origen?: 'manual' | 'autoregistro'; // "manual" = registrado por farmacia, "autoregistro" = formulario público
   createdAt?: string;
   updatedAt?: string;
+  // Relaciones: presentes solo en el detalle (GET /pacientes/:id), no en el listado
+  analisisDermo?: AnalisisDermo[];
+  analisisBio?: AnalisisBio[];
+  citas?: Cita[];
+  // Presente solo en el listado (GET /pacientes): recuento de relaciones, sin los datos completos
+  _count?: {
+    analisisDermo: number;
+    analisisBio: number;
+    citas: number;
+  };
 }
 
 export interface Notificacion {
@@ -158,29 +211,6 @@ export interface Notificacion {
   fechaEnvio?: string;
   leida: boolean;
   fechaLectura?: string;
-  createdAt?: string;
-  updatedAt?: string;
-  paciente?: Paciente;
-  cita?: {
-    id: string;
-    titulo: string;
-    fecha: string;
-    hora: string;
-  };
-}
-
-export interface SolicitudCita {
-  id: string;
-  nombreCliente: string;
-  emailCliente: string;
-  telefonoCliente: string;
-  tipo: 'dermo' | 'bio' | 'evento';
-  fecha: string; // Formato ISO
-  hora: string; // Formato "HH:mm"
-  estado: 'pendiente' | 'aprobada' | 'rechazada';
-  notas?: string;
-  pacienteId?: string;
-  citaId?: string;
   createdAt?: string;
   updatedAt?: string;
   paciente?: Paciente;
@@ -248,236 +278,15 @@ export interface Evento {
 }
 
 // ==========================================
-// TIPOS MULTI-TENANT Y SUPERADMIN
+// USUARIOS
 // ==========================================
-
-export type PlanFarmacia = 'basico' | 'profesional' | 'enterprise';
-
-export interface Farmacia {
-  id: string;
-  nombre: string;
-  slug: string;
-  direccion?: string;
-  ciudad?: string;
-  telefono?: string;
-  email?: string;
-  web?: string;
-  logo?: string;
-  activa: boolean;
-  plan: PlanFarmacia;
-  fechaAlta: string;
-  fechaExpiracion?: string;
-  maxUsuarios: number;
-  maxPacientes: number;
-  // Contadores (calculados en el servidor)
-  totalUsuarios?: number;
-  totalPacientes?: number;
-  createdAt?: string;
-  updatedAt?: string;
-}
-
-export interface FarmaciaDetalle extends Farmacia {
-  usuarios: Usuario[];
-  estadisticas: {
-    totalUsuarios: number;
-    totalPacientes: number;
-    totalCitas: number;
-    totalEventos: number;
-  };
-  configuracion?: {
-    id: string;
-    valoracionBioActiva: boolean;
-    emailProvider?: string;
-  };
-}
 
 export interface Usuario {
   id: string;
   email: string;
   nombre: string;
-  rol: 'superadmin' | 'admin' | 'farmaceutico' | 'usuario';
+  rol: 'admin' | 'farmaceutico' | 'usuario';
   activo: boolean;
-  farmaciaId?: string;
-  farmacia?: {
-    id: string;
-    nombre: string;
-    slug: string;
-  };
   ultimoAcceso?: string;
   createdAt?: string;
-}
-
-export interface CrearFarmaciaData {
-  nombre: string;
-  slug?: string;
-  direccion?: string;
-  ciudad?: string;
-  telefono?: string;
-  email?: string;
-  web?: string;
-  plan: PlanFarmacia;
-  maxUsuarios?: number;
-  maxPacientes?: number;
-  fechaExpiracion?: string;
-  // Datos del admin inicial
-  adminEmail: string;
-  adminPassword: string;
-  adminNombre: string;
-}
-
-export interface ActualizarFarmaciaData {
-  nombre?: string;
-  direccion?: string;
-  ciudad?: string;
-  telefono?: string;
-  email?: string;
-  web?: string;
-  activa?: boolean;
-  plan?: PlanFarmacia;
-  maxUsuarios?: number;
-  maxPacientes?: number;
-  fechaExpiracion?: string | null;
-}
-
-/** Configuración SMTP/email de la plataforma (por defecto para todas las farmacias). smtpPass no se devuelve. */
-export interface ConfiguracionPlataforma {
-  id?: string;
-  emailProvider: 'smtp' | 'resend';
-  smtpHost: string | null;
-  smtpPort: number | null;
-  smtpSecure: boolean;
-  smtpAcceptSelfSigned?: boolean;
-  smtpUser: string | null;
-  smtpPass?: string | null; // Solo al enviar; API no devuelve valor real
-  smtpFrom: string | null;
-  resendApiKey: string | null;
-  emailNombreRemitente: string | null;
-  updatedAt?: string;
-}
-
-/** Configuración de una farmacia (vista superadmin para editar) */
-export interface ConfiguracionFarmaciaAdmin {
-  id: string;
-  farmaciaId: string;
-  valoracionBioActiva: boolean;
-  parametrosReferencia: Record<string, ParametroReferencia>;
-  parametrosBioConfig: ParametroBioConfig[];
-  emailProvider: string | null;
-  emailRemitente: string | null;
-  emailNombreRemitente: string | null;
-  resendApiKey: string | null;
-  smtpHost: string | null;
-  smtpPort: number | null;
-  smtpSecure: boolean;
-  smtpAcceptSelfSigned?: boolean;
-  smtpUser: string | null;
-  smtpPass?: null;
-  updatedAt?: string;
-}
-
-export interface ActualizarConfiguracionFarmaciaData {
-  valoracionBioActiva?: boolean;
-  parametrosReferencia?: Record<string, ParametroReferencia>;
-  parametrosBioConfig?: ParametroBioConfig[];
-  emailProvider?: 'smtp' | 'resend' | null;
-  emailRemitente?: string | null;
-  emailNombreRemitente?: string | null;
-  resendApiKey?: string | null;
-  smtpHost?: string | null;
-  smtpPort?: number | null;
-  smtpSecure?: boolean;
-  smtpAcceptSelfSigned?: boolean;
-  smtpUser?: string | null;
-  smtpPass?: string | null;
-}
-
-export interface ActualizarConfiguracionPlataformaData {
-  emailProvider?: 'smtp' | 'resend';
-  smtpHost?: string | null;
-  smtpPort?: number | null;
-  smtpSecure?: boolean;
-  smtpAcceptSelfSigned?: boolean;
-  smtpUser?: string | null;
-  smtpPass?: string | null;
-  smtpFrom?: string | null;
-  resendApiKey?: string | null;
-  emailNombreRemitente?: string | null;
-}
-
-/** Un paso del diagnóstico de envío de correo (para mostrar al usuario) */
-export interface PasoDiagnosticoEmail {
-  paso: string;
-  ok: boolean;
-  mensaje?: string;
-  sugerencia?: string;
-}
-
-/** Resultado del envío de prueba con diagnóstico (respuesta API) */
-export interface ResultadoEnvioPruebaEmail {
-  mensaje: string;
-  enviado: boolean;
-  pasos: PasoDiagnosticoEmail[];
-  mensajeError?: string;
-  sugerencia?: string;
-}
-
-export interface EstadisticasPlataforma {
-  // Contadores principales
-  totalFarmacias: number;
-  farmaciasActivas: number;
-  farmaciasInactivas: number;
-  totalUsuarios: number;
-  totalPacientes: number;
-  // Citas
-  citasHoy: number;
-  citasSemana: number;
-  citasMes: number;
-  // Distribución por plan
-  farmaciasPorPlan: {
-    basico: number;
-    profesional: number;
-    enterprise: number;
-  };
-  // Alertas
-  farmaciasProximasExpirar: {
-    id: string;
-    nombre: string;
-    slug: string;
-    plan: PlanFarmacia;
-    fechaExpiracion: string;
-  }[];
-  // Actividad
-  ultimasFarmacias: {
-    id: string;
-    nombre: string;
-    slug: string;
-    plan: PlanFarmacia;
-    activa: boolean;
-    fechaAlta: string;
-    totalUsuarios: number;
-    totalPacientes: number;
-  }[];
-  crecimientoMensual: {
-    mes: string;
-    farmacias: number;
-  }[];
-  actividadReciente: {
-    id: string;
-    nombre: string;
-    email: string;
-    rol: string;
-    ultimoAcceso: string;
-    farmacia?: {
-      nombre: string;
-      slug: string;
-    };
-  }[];
-  topFarmacias: {
-    id: string;
-    nombre: string;
-    slug: string;
-    plan: PlanFarmacia;
-    totalCitas: number;
-    totalPacientes: number;
-  }[];
 }

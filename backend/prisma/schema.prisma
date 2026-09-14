@@ -1,51 +1,15 @@
 // Esquema de base de datos para Sistema de Gestión de Farmacias
-// Arquitectura Multi-Tenant con farmaciaId en cada tabla
+// Arquitectura local-first: una instalación = una farmacia, base de datos SQLite embebida.
+// La reserva pública de citas (con acceso desde internet) vive en booking-web/, un
+// servicio aparte con su propia base de datos.
 
 generator client {
   provider = "prisma-client-js"
 }
 
 datasource db {
-  provider = "postgresql"
+  provider = "sqlite"
   url      = env("DATABASE_URL")
-}
-
-// ==========================================
-// MODELO DE FARMACIA (Multi-Tenant)
-// ==========================================
-model Farmacia {
-  id                String    @id @default(cuid())
-  nombre            String
-  slug              String    @unique // URL-friendly identifier
-  direccion         String?
-  ciudad            String?
-  telefono          String?
-  email             String?
-  web               String?
-  logo              String?
-  activa            Boolean   @default(true)
-  plan              String    @default("basico") // "basico", "profesional", "enterprise"
-  fechaAlta         DateTime  @default(now())
-  fechaExpiracion   DateTime? // Para planes con fecha límite
-  maxUsuarios       Int       @default(3)
-  maxPacientes      Int       @default(500)
-  createdAt         DateTime  @default(now())
-  updatedAt         DateTime  @updatedAt
-
-  // Relaciones
-  usuarios              Usuario[]
-  configuracion         Configuracion?
-  configuracionCalendario ConfiguracionCalendario?
-  pacientes             Paciente[]
-  citas                 Cita[]
-  notificaciones        Notificacion[]
-  solicitudesCita       SolicitudCita[]
-  eventos               Evento[]
-  plantillasEmail       PlantillaEmail[]
-
-  @@index([slug])
-  @@index([activa])
-  @@index([plan])
 }
 
 // ==========================================
@@ -56,20 +20,16 @@ model Usuario {
   email         String    @unique
   password      String    // Hash bcrypt
   nombre        String
-  rol           String    @default("usuario") // "superadmin", "admin", "farmaceutico", "usuario"
+  rol           String    @default("usuario") // "admin", "farmaceutico", "usuario"
   activo        Boolean   @default(true)
   ultimoAcceso  DateTime?
-  farmaciaId    String?   // Nullable para superadmin (no pertenece a ninguna farmacia)
   createdAt     DateTime  @default(now())
   updatedAt     DateTime  @updatedAt
 
-  // Relación con Farmacia (opcional para superadmin)
-  farmacia Farmacia? @relation(fields: [farmaciaId], references: [id], onDelete: Cascade)
   tokensInvitacion TokenInvitacionUsuario[]
 
   @@index([email])
   @@index([rol])
-  @@index([farmaciaId])
 }
 
 // ==========================================
@@ -79,7 +39,6 @@ model Usuario {
 // Para búsquedas por email usar emailHash (SHA-256)
 model Paciente {
   id          String   @id @default(cuid())
-  farmaciaId  String   // Cada paciente pertenece a una farmacia
   name        String   // ENCRIPTADO: nombre del paciente
   age         Int
   sex         String   // "M", "F", "O"
@@ -95,14 +54,11 @@ model Paciente {
   updatedAt   DateTime @updatedAt
 
   // Relaciones
-  farmacia      Farmacia @relation(fields: [farmaciaId], references: [id], onDelete: Cascade)
   analisisDermo AnalisisDermo[]
   analisisBio   AnalisisBio[]
   citas         Cita[]
   notificaciones Notificacion[]
-  solicitudesCita SolicitudCita[]
 
-  @@index([farmaciaId])
   @@index([emailHash])
   @@index([origen])
 }
@@ -202,7 +158,6 @@ model AnalisisBio {
 // ==========================================
 model Cita {
   id         String   @id @default(cuid())
-  farmaciaId String   // Cada cita pertenece a una farmacia
   titulo     String
   pacienteId String
   fecha      String   // Fecha en formato ISO
@@ -216,13 +171,9 @@ model Cita {
   updatedAt  DateTime @updatedAt
 
   // Relaciones
-  farmacia   Farmacia @relation(fields: [farmaciaId], references: [id], onDelete: Cascade)
   paciente   Paciente @relation(fields: [pacienteId], references: [id], onDelete: Cascade)
   notificaciones Notificacion[]
-  solicitudesCita SolicitudCita[]
-  tokensAccion TokenAccionCita[]
 
-  @@index([farmaciaId])
   @@index([pacienteId])
   @@index([fecha])
   @@index([estado])
@@ -233,7 +184,6 @@ model Cita {
 // ==========================================
 model Notificacion {
   id          String   @id @default(cuid())
-  farmaciaId  String   // Cada notificación pertenece a una farmacia
   tipo        String   // "cita", "revision", "recordatorio"
   pacienteId  String?
   citaId      String?
@@ -249,11 +199,9 @@ model Notificacion {
   updatedAt   DateTime @updatedAt
 
   // Relaciones
-  farmacia Farmacia  @relation(fields: [farmaciaId], references: [id], onDelete: Cascade)
   paciente Paciente? @relation(fields: [pacienteId], references: [id], onDelete: Cascade)
   cita     Cita?     @relation(fields: [citaId], references: [id], onDelete: Cascade)
 
-  @@index([farmaciaId])
   @@index([pacienteId])
   @@index([citaId])
   @@index([enviada])
@@ -261,32 +209,11 @@ model Notificacion {
 }
 
 // ==========================================
-// CONFIGURACIÓN DE PLATAFORMA (singleton, solo superadmin)
-// SMTP/email por defecto para todas las farmacias
-// ==========================================
-model ConfiguracionPlataforma {
-  id                    String   @id @default(cuid())
-  emailProvider         String   @default("smtp") // "smtp" o "resend"
-  smtpHost              String?
-  smtpPort              Int?     // 587, 465, etc.
-  smtpSecure            Boolean  @default(false)
-  smtpAcceptSelfSigned  Boolean  @default(false) // Para servidores con certificado autofirmado (p. ej. Raiola)
-  smtpUser              String?
-  smtpPass              String?  // No exponer en respuestas API
-  smtpFrom              String?  // Email remitente por defecto
-  resendApiKey          String?
-  emailNombreRemitente  String?
-  createdAt             DateTime @default(now())
-  updatedAt             DateTime @updatedAt
-}
-
-// ==========================================
-// MODELO DE CONFIGURACIÓN (por Farmacia)
+// MODELO DE CONFIGURACIÓN (singleton, una fila por instalación)
 // ==========================================
 model Configuracion {
-  id                    String   @id @default(cuid())
-  farmaciaId            String   @unique // Relación 1:1 con Farmacia
-  // Datos de la farmacia (redundantes para acceso rápido, sincronizados con Farmacia)
+  id                    String   @id @default("singleton")
+  // Datos de la farmacia
   farmaciaNombre        String?
   farmaciaDireccion     String?
   farmaciaCiudad        String?
@@ -296,7 +223,7 @@ model Configuracion {
   farmaciaWhatsapp      String?
   farmaciaLogo          String?  // Ruta al logo
   // Apariencia y marca (colores, tema)
-  temaActivo            String?  @default("default") // "default", "pontevea", "custom"
+  temaActivo            String?  @default("default") // "default", "porDefecto", "verde", "azul", "custom"
   coloresMarca          String?  // JSON: { "primario": "#79438f", "secundario": "#6495a8", ... }
   // Configuración de valoración bioquímica
   valoracionBioActiva   Boolean  @default(true) // Activar/desactivar valoración global
@@ -315,13 +242,13 @@ model Configuracion {
   rgpdEmailContacto         String?  // Email para solicitudes RGPD
   rgpdResponsable           String?  // Nombre del responsable del tratamiento
   rgpdDpo                   String?  // Delegado de Protección de Datos (opcional)
-  
+
   // Textos legales configurables
   textoAvisoLegal           String?  // Texto completo del aviso legal
   textoPoliticaPrivacidad   String?  // Texto de la política de privacidad
   textoPoliticaCookies      String?  // Texto de la política de cookies
   textoConsentimiento       String?  // Texto del consentimiento informado
-  
+
   // Configuración de consentimiento
   consentimientoRequerido   Boolean  @default(true)  // Requerir consentimiento al crear paciente
   consentimientoVersion     String?  @default("v1.0") // Versión actual del consentimiento
@@ -334,7 +261,6 @@ model Configuracion {
   resendApiKey          String?  // API Key de Resend (encriptada en producción)
   emailRemitente        String?  // Email del remitente
   emailNombreRemitente  String?  // Nombre del remitente
-  // SMTP por farmacia (opcional; si no se define, se usa ConfiguracionPlataforma o env)
   smtpHost              String?
   smtpPort              Int?
   smtpSecure            Boolean  @default(false)
@@ -344,53 +270,13 @@ model Configuracion {
 
   createdAt             DateTime @default(now())
   updatedAt             DateTime @updatedAt
-
-  // Relación
-  farmacia Farmacia @relation(fields: [farmaciaId], references: [id], onDelete: Cascade)
-
-  @@index([farmaciaId])
 }
 
 // ==========================================
-// MODELO DE SOLICITUD DE CITA (desde página pública)
-// ==========================================
-// NOTA: Los campos nombreCliente, emailCliente y telefonoCliente están ENCRIPTADOS con AES-256-GCM
-// Para búsquedas por email usar emailClienteHash (SHA-256)
-model SolicitudCita {
-  id               String   @id @default(cuid())
-  farmaciaId       String   // Cada solicitud pertenece a una farmacia
-  nombreCliente    String   // ENCRIPTADO: nombre del cliente
-  emailCliente     String   // ENCRIPTADO: email del cliente
-  emailClienteHash String   // SHA-256 del email (para búsquedas exactas)
-  telefonoCliente  String   // ENCRIPTADO: teléfono del cliente
-  tipo             String   // "dermo", "bio", "consulta", "seguimiento"
-  fecha            String   // Fecha en formato ISO
-  hora             String   // Formato "HH:mm"
-  estado           String   @default("pendiente") // "pendiente", "aprobada", "rechazada"
-  notas            String?  // Mensaje opcional del cliente
-  pacienteId       String?  // Si el cliente ya existe en BD
-  citaId           String?  // Si se convierte en cita aprobada
-  createdAt        DateTime @default(now())
-  updatedAt        DateTime @updatedAt
-
-  // Relaciones
-  farmacia Farmacia  @relation(fields: [farmaciaId], references: [id], onDelete: Cascade)
-  paciente Paciente? @relation(fields: [pacienteId], references: [id], onDelete: SetNull)
-  cita     Cita?     @relation(fields: [citaId], references: [id], onDelete: SetNull)
-
-  @@index([farmaciaId])
-  @@index([fecha])
-  @@index([estado])
-  @@index([tipo])
-  @@index([emailClienteHash])
-}
-
-// ==========================================
-// MODELO DE CONFIGURACIÓN DE CALENDARIO (por Farmacia)
+// MODELO DE CONFIGURACIÓN DE CALENDARIO (singleton, una fila por instalación)
 // ==========================================
 model ConfiguracionCalendario {
-  id                String   @id @default(cuid())
-  farmaciaId        String   @unique // Relación 1:1 con Farmacia
+  id                String   @id @default("singleton")
   horariosPorTipo   String   @default("{}") // JSON: { "dermo": { "lunes": ["09:00-14:00"], ... }, "bio": {...} }
   fechasBloqueadas  String   @default("[]") // JSON: ["2026-01-20", "2026-01-21"]
   horasBloqueadas   String   @default("{}") // JSON: { "2026-01-20": ["10:00", "11:00"] }
@@ -398,11 +284,6 @@ model ConfiguracionCalendario {
   duracionPorTipo   String   @default("{}") // JSON: { "dermo": 45, "bio": 20, "evento": 60 } (minutos)
   createdAt         DateTime @default(now())
   updatedAt         DateTime @updatedAt
-
-  // Relación
-  farmacia Farmacia @relation(fields: [farmaciaId], references: [id], onDelete: Cascade)
-
-  @@index([farmaciaId])
 }
 
 // ==========================================
@@ -410,7 +291,6 @@ model ConfiguracionCalendario {
 // ==========================================
 model Evento {
   id                String   @id @default(cuid())
-  farmaciaId        String   // Cada evento pertenece a una farmacia
   nombre            String   // Ej: "Taller de automaquillaje"
   activo            Boolean  @default(true) // Si está activo y visible para solicitudes
   fechas            String   @default("[]") // JSON: ["2026-01-20", "2026-01-21", "2026-01-22"] - fechas específicas disponibles
@@ -421,10 +301,6 @@ model Evento {
   createdAt         DateTime @default(now())
   updatedAt         DateTime @updatedAt
 
-  // Relación
-  farmacia Farmacia @relation(fields: [farmaciaId], references: [id], onDelete: Cascade)
-
-  @@index([farmaciaId])
   @@index([activo])
   @@index([nombre])
 }
@@ -433,11 +309,10 @@ model Evento {
 // SISTEMA DE EMAILS
 // ==========================================
 
-// Modelo de Plantilla de Email (por Farmacia)
+// Modelo de Plantilla de Email
 model PlantillaEmail {
   id             String   @id @default(cuid())
-  farmaciaId     String   // Cada plantilla pertenece a una farmacia
-  tipo           String   // "confirmacion", "recordatorio", "cancelacion", "modificacion"
+  tipo           String   @unique // "confirmacion", "recordatorio", "cancelacion", "modificacion"
   nombre         String   // Nombre descriptivo de la plantilla
   asunto         String   // Asunto del email (soporta variables como {{nombrePaciente}})
   contenidoHtml  String   // HTML completo de la plantilla
@@ -446,32 +321,7 @@ model PlantillaEmail {
   createdAt      DateTime @default(now())
   updatedAt      DateTime @updatedAt
 
-  // Relación
-  farmacia Farmacia @relation(fields: [farmaciaId], references: [id], onDelete: Cascade)
-
-  @@unique([farmaciaId, tipo]) // Una plantilla de cada tipo por farmacia
-  @@index([farmaciaId])
-  @@index([tipo])
   @@index([activa])
-}
-
-// Modelo de Token para Acciones de Cita (confirmar, modificar, cancelar)
-model TokenAccionCita {
-  id        String    @id @default(cuid())
-  citaId    String
-  token     String    @unique // Token único generado (UUID o similar)
-  tipo      String    // "confirmar", "modificar", "cancelar"
-  expiraEn  DateTime  // Fecha de expiración del token
-  usado     Boolean   @default(false)
-  usadoEn   DateTime? // Fecha en que se usó el token
-  createdAt DateTime  @default(now())
-
-  // Relación con Cita
-  cita Cita @relation(fields: [citaId], references: [id], onDelete: Cascade)
-
-  @@index([token])
-  @@index([citaId])
-  @@index([expiraEn])
 }
 
 // Token de invitación para que un nuevo usuario establezca su contraseña

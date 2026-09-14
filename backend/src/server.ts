@@ -9,12 +9,9 @@ import { serviciosRouter } from './routes/servicios.js';
 import { configuracionRouter } from './routes/configuracion.js';
 import { estadisticasRouter } from './routes/estadisticas.js';
 import { notificacionesRouter } from './routes/notificaciones.js';
-import { publicRouter } from './routes/public.js';
-import { solicitudesRouter } from './routes/solicitudes.js';
 import { eventosRouter } from './routes/eventos.js';
 import { authRouter } from './routes/auth.js';
 import { plantillasEmailRouter } from './routes/plantillasEmail.js';
-import adminRouter from './routes/admin.js';
 import { verificarToken } from './middleware/auth.js';
 
 // Cargar variables de entorno
@@ -51,20 +48,8 @@ const authRateLimit = rateLimit({
   message: { error: 'Demasiados intentos', mensaje: 'Por favor espera 15 minutos antes de intentarlo de nuevo.' },
 });
 
-// Rate limiting para rutas públicas (formulario de solicitudes)
-const publicRateLimit = rateLimit({
-  windowMs: 60 * 1000, // 1 minuto
-  max: 30,
-  standardHeaders: true,
-  legacyHeaders: false,
-  message: { error: 'Demasiadas peticiones', mensaje: 'Por favor espera un momento antes de continuar.' },
-});
-
 // Rutas de autenticación (siempre disponibles, con rate limit en login)
 app.use('/api/auth', authRateLimit, authRouter);
-
-// Rutas públicas (sin autenticación, con rate limit)
-app.use('/api/public', publicRateLimit, publicRouter);
 
 // Rutas protegidas de la API (requieren autenticación)
 app.use('/api/pacientes', verificarToken, pacientesRouter);
@@ -73,13 +58,8 @@ app.use('/api/servicios', verificarToken, serviciosRouter);
 app.use('/api/configuracion', verificarToken, configuracionRouter);
 app.use('/api/estadisticas', verificarToken, estadisticasRouter);
 app.use('/api/notificaciones', verificarToken, notificacionesRouter);
-app.use('/api/solicitudes', verificarToken, solicitudesRouter);
 app.use('/api/eventos', verificarToken, eventosRouter);
 app.use('/api/plantillas-email', verificarToken, plantillasEmailRouter);
-
-// Rutas de administración de plataforma (superadmin)
-// Nota: el router ya incluye verificarToken + superadminMiddleware
-app.use('/api/admin', adminRouter);
 
 // Ruta de salud
 app.get('/api/health', (req, res) => {

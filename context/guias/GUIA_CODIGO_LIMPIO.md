@@ -1,4 +1,4 @@
-# Guía de Código Limpio - Farmacia Pontevea
+# Guía de Código Limpio - Formula Care
 
 ## 🎯 Principios Fundamentales
 

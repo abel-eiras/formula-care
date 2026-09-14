@@ -19,7 +19,6 @@ import { useToast } from "@/hooks/use-toast";
 import { useCitas, useCrearCita, useEliminarCita } from "@/hooks/useCitas";
 import { usePacientes } from "@/hooks/usePacientes";
 import { useEventos } from "@/hooks/useEventos";
-import { useSolicitudes } from "@/hooks/useSolicitudes";
 import { LoadingSpinner } from "@/components/ui/LoadingSpinner";
 import type { Cita } from "@/types";
 
@@ -61,7 +60,6 @@ export default function Calendario() {
   const { data: todasLasCitas = [], isLoading: isLoadingCitas } = useCitas();
   const { data: pacientes = [], isLoading: isLoadingPacientes } = usePacientes();
   const { data: eventos = [] } = useEventos();
-  const { data: solicitudesPendientes = [] } = useSolicitudes('pendiente');
   const crearCitaMutation = useCrearCita();
   const eliminarCitaMutation = useEliminarCita();
 
@@ -96,27 +94,10 @@ export default function Calendario() {
       .sort((a, b) => a.hora.localeCompare(b.hora));
   }, [todasLasCitas, date]);
 
-  // Filtrar solicitudes pendientes del día seleccionado
-  const solicitudesDelDia = useMemo(() => {
-    if (!date || !solicitudesPendientes.length) return [];
-    
-    return solicitudesPendientes
-      .filter((sol) => {
-        const fechaSol = parseISO(sol.fecha);
-        return isSameDay(fechaSol, date);
-      })
-      .sort((a, b) => a.hora.localeCompare(b.hora));
-  }, [solicitudesPendientes, date]);
-
   // Obtener fechas con citas para marcar en el calendario
   const diasConCitas = useMemo(() => {
     return todasLasCitas.map((cita) => parseISO(cita.fecha));
   }, [todasLasCitas]);
-
-  // Obtener fechas con solicitudes pendientes
-  const diasConSolicitudes = useMemo(() => {
-    return solicitudesPendientes.map((sol) => parseISO(sol.fecha));
-  }, [solicitudesPendientes]);
 
   // Obtener cumpleaños de pacientes en el mes actual
   const cumpleanosMesActual = useMemo(() => {
@@ -542,12 +523,10 @@ export default function Calendario() {
                   modifiers={{
                     hasEvent: diasConCitas,
                     hasBirthday: diasConCumpleanos,
-                    hasPending: diasConSolicitudes
                   }}
                   modifiersClassNames={{
                     hasEvent: "bg-primary/20 font-bold",
                     hasBirthday: "bg-pink-200 font-bold ring-2 ring-pink-400",
-                    hasPending: "bg-amber-200 font-bold ring-2 ring-amber-400"
                   }}
                 />
               </CardContent>
@@ -654,44 +633,6 @@ export default function Calendario() {
                   )}
                 </CardContent>
               </Card>
-
-              {/* Solicitudes pendientes del día */}
-              {solicitudesDelDia.length > 0 && (
-                <Card className="border-amber-200 bg-amber-50/50">
-                  <CardHeader className="pb-2">
-                    <CardTitle className="flex items-center gap-2 text-amber-700">
-                      <Clock className="h-5 w-5" />
-                      Solicitudes Pendientes
-                    </CardTitle>
-                    <CardDescription>
-                      {solicitudesDelDia.length} solicitud(es) esperando aprobación
-                    </CardDescription>
-                  </CardHeader>
-                  <CardContent className="space-y-2">
-                    {solicitudesDelDia.map((sol) => (
-                      <div
-                        key={sol.id}
-                        className="p-3 rounded-lg bg-white border border-amber-200 flex items-center justify-between"
-                      >
-                        <div>
-                          <p className="font-medium text-sm">{sol.nombreCliente}</p>
-                          <p className="text-xs text-muted-foreground">
-                            {sol.hora} - {sol.tipo === 'dermo' ? 'Dermocosmética' : sol.tipo === 'bio' ? 'Bioquímica' : 'Evento'}
-                          </p>
-                        </div>
-                        <Button
-                          size="sm"
-                          variant="outline"
-                          className="text-amber-700 border-amber-300 hover:bg-amber-100"
-                          onClick={() => window.location.href = '/solicitudes'}
-                        >
-                          Gestionar
-                        </Button>
-                      </div>
-                    ))}
-                  </CardContent>
-                </Card>
-              )}
             </div>
           </div>
         </TabsContent>

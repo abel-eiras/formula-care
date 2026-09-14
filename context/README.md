@@ -1,8 +1,8 @@
-# Contexto del proyecto - Farmacia Pontevea
+# Contexto del proyecto - Formula Care
 
 Esta carpeta concentra la documentación de referencia para trabajar en el proyecto, especialmente pensada para **agentes de IA** y desarrolladores que necesiten contexto rápido.
 
-**Hosting en producción:** Frontend en Vercel, backend en Render, base de datos en Supabase. Detalle en [STACK.md](STACK.md#hosting-producción).
+**Arquitectura:** app de escritorio local-first (Tauri + SQLite), software libre (MIT). Sin backend en la nube ni multi-tenancy. Detalle en [STACK.md](STACK.md). Hay un servicio opcional aparte para reserva pública de citas en [../booking-web/](../booking-web/).
 
 ## Uso para agentes
 
@@ -34,6 +34,6 @@ Esta carpeta concentra la documentación de referencia para trabajar en el proye
 El proyecto incluye skills en `.cursor/skills/` para Cursor:
 
 - **react-codigo-limpio** – Código limpio y buenas prácticas React (waterfalls, bundle, memoización).
-- **stack-farmacia-pontevea** – Stack y estructura del proyecto.
+- **stack-formula-care** – Stack y estructura del proyecto.
 
 Úsalos cuando escribas o revises código en este repositorio.

@@ -1,1 +1,112 @@
-bmFtZTogQnVpbGQgYXBwIGRlIGVzY3JpdG9yaW8KCiMgQ29tcGlsYSBsb3MgaW5zdGFsYWRvcmVzIG5hdGl2b3MgZGUgRm9ybXVsYSBDYXJlIGVuIExpbnV4LCBXaW5kb3dzIHkgbWFjT1MuCiMKIyAtIENvbiB1biB0YWcgInYqIiAocC4gZWouIHYwLjIuMCk6IGNvbXBpbGEgbGFzIHRyZXMgcGxhdGFmb3JtYXMgeSBjcmVhIHVuCiMgICBib3JyYWRvciBkZSByZWxlYXNlIGVuIEdpdEh1YiBjb24gbG9zIGluc3RhbGFkb3JlcyBhZGp1bnRvcy4KIyAtIE1hbnVhbCAod29ya2Zsb3dfZGlzcGF0Y2gpOiBjb21waWxhIGxhcyB0cmVzIHBsYXRhZm9ybWFzIHNpbiBwdWJsaWNhcgojICAgbmluZ8O6biByZWxlYXNlLCBzb2xvIHBhcmEgY29tcHJvYmFyIHF1ZSBlbCBidWlsZCBzaWd1ZSBmdW5jaW9uYW5kby4KIwojIE5vIGhhY2UgZmFsdGEgbmluZ8O6biBzZWNyZXRvIHBhcmEgcXVlIGVzdG8gZnVuY2lvbmUgKHVzYSBlbCBHSVRIVUJfVE9LRU4KIyBxdWUgQWN0aW9ucyBpbnllY3RhIGF1dG9tw6F0aWNhbWVudGUpLiBGaXJtYXIgbG9zIGJpbmFyaW9zIGRlIFdpbmRvd3MvbWFjT1MKIyBwYXJhIHF1ZSBlbCBzaXN0ZW1hIG9wZXJhdGl2byBubyBtdWVzdHJlIGF2aXNvcyBkZSAiZWRpdG9yIGRlc2Nvbm9jaWRvIgojIHF1ZWRhIGZ1ZXJhIGRlIGFsY2FuY2UgZGUgZXN0ZSB3b3JrZmxvdyDigJQgdmVyIGxhIG5vdGEgYWwgZmluYWwuCgpvbjoKICBwdXNoOgogICAgdGFnczoKICAgICAgLSAidioiCiAgd29ya2Zsb3dfZGlzcGF0Y2g6Cgpqb2JzOgogIGJ1aWxkOgogICAgc3RyYXRlZ3k6CiAgICAgIGZhaWwtZmFzdDogZmFsc2UKICAgICAgbWF0cml4OgogICAgICAgIGluY2x1ZGU6CiAgICAgICAgICAtIHBsYXRmb3JtOiB1YnVudHUtMjIuMDQKICAgICAgICAgIC0gcGxhdGZvcm06IHdpbmRvd3MtbGF0ZXN0CiAgICAgICAgICAtIHBsYXRmb3JtOiBtYWNvcy1sYXRlc3QKCiAgICBydW5zLW9uOiAke3sgbWF0cml4LnBsYXRmb3JtIH19CgogICAgc3RlcHM6CiAgICAgIC0gdXNlczogYWN0aW9ucy9jaGVja291dEB2NAoKICAgICAgLSBuYW1lOiBJbnN0YWxhciBkZXBlbmRlbmNpYXMgbmF0aXZhcyBkZSBUYXVyaSAoTGludXgpCiAgICAgICAgaWY6IG1hdHJpeC5wbGF0Zm9ybSA9PSAndWJ1bnR1LTIyLjA0JwogICAgICAgIHJ1bjogfAogICAgICAgICAgc3VkbyBhcHQtZ2V0IHVwZGF0ZQogICAgICAgICAgc3VkbyBhcHQtZ2V0IGluc3RhbGwgLXkgXAogICAgICAgICAgICBsaWJ3ZWJraXQyZ3RrLTQuMS1kZXYgXAogICAgICAgICAgICBsaWJndGstMy1kZXYgXAogICAgICAgICAgICBsaWJheWF0YW5hLWFwcGluZGljYXRvcjMtZGV2IFwKICAgICAgICAgICAgbGlicnN2ZzItZGV2IFwKICAgICAgICAgICAgcGF0Y2hlbGYgXAogICAgICAgICAgICBidWlsZC1lc3NlbnRpYWwKCiAgICAgIC0gbmFtZTogSW5zdGFsYXIgUnVzdAogICAgICAgIHVzZXM6IGR0b2xuYXkvcnVzdC10b29sY2hhaW5Ac3RhYmxlCgogICAgICAtIG5hbWU6IENhY2hlYXIgZWwgYnVpbGQgZGUgUnVzdAogICAgICAgIHVzZXM6IHN3YXRpbmVtL3J1c3QtY2FjaGVAdjIKICAgICAgICB3aXRoOgogICAgICAgICAgd29ya3NwYWNlczogc3JjLXRhdXJpCgogICAgICAtIG5hbWU6IEluc3RhbGFyIE5vZGUuanMKICAgICAgICB1c2VzOiBhY3Rpb25zL3NldHVwLW5vZGVAdjQKICAgICAgICB3aXRoOgogICAgICAgICAgbm9kZS12ZXJzaW9uOiAyMAogICAgICAgICAgY2FjaGU6IG5wbQoKICAgICAgLSBuYW1lOiBJbnN0YWxhciBkZXBlbmRlbmNpYXMgZGVsIGZyb250ZW5kCiAgICAgICAgcnVuOiBucG0gY2kKCiAgICAgIC0gbmFtZTogSW5zdGFsYXIgZGVwZW5kZW5jaWFzIGRlbCBiYWNrZW5kCiAgICAgICAgcnVuOiBucG0gLS1wcmVmaXggYmFja2VuZCBjaQoKICAgICAgLSBuYW1lOiBDb21waWxhciBiYWNrZW5kIHkgZ2VuZXJhciBsYSBwbGFudGlsbGEgZGUgYmFzZSBkZSBkYXRvcwogICAgICAgIHdvcmtpbmctZGlyZWN0b3J5OiBiYWNrZW5kCiAgICAgICAgcnVuOiBucG0gcnVuIGJ1aWxkOmRlc2t0b3AKICAgICAgICBlbnY6CiAgICAgICAgICAjIFNvbG8gaGFjZSBmYWx0YSBwYXJhIHF1ZSBgcHJpc21hIGdlbmVyYXRlYCB0ZW5nYSB1biB2YWxvciBkZQogICAgICAgICAgIyBEQVRBQkFTRV9VUkwgdsOhbGlkbyBhbCBsZWVyIGVsIHNjaGVtYTsgZWwgc2NyaXB0IGRlIGxhIHBsYW50aWxsYQogICAgICAgICAgIyB1c2Egc3UgcHJvcGlvIGZpY2hlcm8gdGVtcG9yYWwgaW50ZXJuYW1lbnRlLgogICAgICAgICAgREFUQUJBU0VfVVJMOiAiZmlsZTouL2NpLXBsYWNlaG9sZGVyLmRiIgoKICAgICAgLSBuYW1lOiBEZXNjYXJnYXIgZWwgcnVudGltZSBkZSBOb2RlLmpzIGNvbW8gc2lkZWNhcgogICAgICAgIHJ1bjogbnBtIHJ1biBwcmVkZXNrdG9wOm5vZGUtc2lkZWNhcgoKICAgICAgLSBuYW1lOiBDb21waWxhciB5IGVtcGFxdWV0YXIgbGEgYXBwIGRlIGVzY3JpdG9yaW8KICAgICAgICB1c2VzOiB0YXVyaS1hcHBzL3RhdXJpLWFjdGlvbkB2MAogICAgICAgIGVudjoKICAgICAgICAgIEdJVEhVQl9UT0tFTjogJHt7IHNlY3JldHMuR0lUSFVCX1RPS0VOIH19CiAgICAgICAgd2l0aDoKICAgICAgICAgIHRhZ05hbWU6ICR7eyBnaXRodWIucmVmX25hbWUgfX0KICAgICAgICAgIHJlbGVhc2VOYW1lOiAiRm9ybXVsYSBDYXJlICR7eyBnaXRodWIucmVmX25hbWUgfX0iCiAgICAgICAgICByZWxlYXNlQm9keTogfAogICAgICAgICAgICBJbnN0YWxhZG9yZXMgZ2VuZXJhZG9zIGF1dG9tw6F0aWNhbWVudGUgcGFyYSBlc3RhIHZlcnNpw7NuLgogICAgICAgICAgICBEZXNjYXJnYSBlbCBxdWUgY29ycmVzcG9uZGEgYSB0dSBzaXN0ZW1hIG9wZXJhdGl2by4KICAgICAgICAgIHJlbGVhc2VEcmFmdDogdHJ1ZQogICAgICAgICAgcHJlcmVsZWFzZTogZmFsc2UKICAgICAgICAgICMgU29sbyBjcmVhL2FjdHVhbGl6YSBlbCByZWxlYXNlIHNpIGVsIHdvcmtmbG93IHNlIGRpc3BhcsOzIHBvciB1bgogICAgICAgICAgIyB0YWc7IGVuIHdvcmtmbG93X2Rpc3BhdGNoIHNpbXBsZW1lbnRlIGNvbXBpbGEgeSBzdWJlIGxvcwogICAgICAgICAgIyBpbnN0YWxhZG9yZXMgY29tbyBhcnRlZmFjdG9zIGRlbCBwcm9waW8gcnVuICh2ZXIgcGFzbyBzaWd1aWVudGUpLgogICAgICAgICAgaW5jbHVkZVVwZGF0ZXJKc29uOiBmYWxzZQoKICAgICAgLSBuYW1lOiBTdWJpciBpbnN0YWxhZG9yZXMgY29tbyBhcnRlZmFjdG8gZGVsIHJ1biAod29ya2Zsb3dfZGlzcGF0Y2gpCiAgICAgICAgaWY6IGdpdGh1Yi5ldmVudF9uYW1lID09ICd3b3JrZmxvd19kaXNwYXRjaCcKICAgICAgICB1c2VzOiBhY3Rpb25zL3VwbG9hZC1hcnRpZmFjdEB2NAogICAgICAgIHdpdGg6CiAgICAgICAgICBuYW1lOiBmb3JtdWxhLWNhcmUtJHt7IG1hdHJpeC5wbGF0Zm9ybSB9fQogICAgICAgICAgcGF0aDogfAogICAgICAgICAgICBzcmMtdGF1cmkvdGFyZ2V0L3JlbGVhc2UvYnVuZGxlL2RlYi8qLmRlYgogICAgICAgICAgICBzcmMtdGF1cmkvdGFyZ2V0L3JlbGVhc2UvYnVuZGxlL3JwbS8qLnJwbQogICAgICAgICAgICBzcmMtdGF1cmkvdGFyZ2V0L3JlbGVhc2UvYnVuZGxlL2FwcGltYWdlLyouQXBwSW1hZ2UKICAgICAgICAgICAgc3JjLXRhdXJpL3RhcmdldC9yZWxlYXNlL2J1bmRsZS9tc2kvKi5tc2kKICAgICAgICAgICAgc3JjLXRhdXJpL3RhcmdldC9yZWxlYXNlL2J1bmRsZS9uc2lzLyouZXhlCiAgICAgICAgICAgIHNyYy10YXVyaS90YXJnZXQvcmVsZWFzZS9idW5kbGUvZG1nLyouZG1nCiAgICAgICAgICBpZi1uby1maWxlcy1mb3VuZDogaWdub3JlCg==
+name: Build app de escritorio
+
+# Compila los instaladores nativos de Formula Care en Linux, Windows y macOS.
+#
+# - Con un tag "v*" (p. ej. v0.2.0): compila las tres plataformas y crea un
+#   borrador de release en GitHub con los instaladores adjuntos.
+# - Manual (workflow_dispatch): compila las tres plataformas sin publicar
+#   ningún release, solo para comprobar que el build sigue funcionando.
+#
+# No hace falta ningún secreto para que esto funcione (usa el GITHUB_TOKEN
+# que Actions inyecta automáticamente). Firmar los binarios de Windows/macOS
+# para que el sistema operativo no muestre avisos de "editor desconocido"
+# queda fuera de alcance de este workflow — ver la nota al final.
+
+on:
+  push:
+    tags:
+      - "v*"
+  workflow_dispatch:
+
+jobs:
+  build:
+    permissions:
+      # Hace falta contents:write para que tauri-action pueda crear/actualizar
+      # el borrador de release y subirle los instaladores en un push de tag.
+      # El GITHUB_TOKEN por defecto en este repo es de solo lectura.
+      contents: write
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - platform: ubuntu-22.04
+          - platform: windows-latest
+          - platform: macos-latest
+
+    runs-on: ${{ matrix.platform }}
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Instalar dependencias nativas de Tauri (Linux)
+        if: matrix.platform == 'ubuntu-22.04'
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y \
+            libwebkit2gtk-4.1-dev \
+            libgtk-3-dev \
+            libayatana-appindicator3-dev \
+            librsvg2-dev \
+            patchelf \
+            build-essential
+
+      - name: Instalar Rust
+        uses: dtolnay/rust-toolchain@stable
+
+      - name: Cachear el build de Rust
+        uses: swatinem/rust-cache@v2
+        with:
+          workspaces: src-tauri
+
+      - name: Instalar Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: 20
+          cache: npm
+
+      - name: Instalar dependencias del frontend
+        run: npm ci
+
+      - name: Instalar dependencias del backend
+        run: npm --prefix backend ci
+
+      - name: Compilar backend y generar la plantilla de base de datos
+        working-directory: backend
+        run: npm run build:desktop
+        env:
+          # Solo hace falta para que `prisma generate` tenga un valor de
+          # DATABASE_URL válido al leer el schema; el script de la plantilla
+          # usa su propio fichero temporal internamente.
+          DATABASE_URL: "file:./ci-placeholder.db"
+
+      - name: Descargar el runtime de Node.js como sidecar
+        run: npm run predesktop:node-sidecar
+
+      - name: Compilar y empaquetar la app de escritorio
+        uses: tauri-apps/tauri-action@v0
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        with:
+          # tagName vacío en workflow_dispatch le indica a tauri-action que
+          # compile sin crear ni tocar ningún release (solo en un push de
+          # tag "v*" hay tagName real y se crea el borrador).
+          tagName: ${{ startsWith(github.ref, 'refs/tags/') && github.ref_name || '' }}
+          releaseName: "Formula Care ${{ github.ref_name }}"
+          releaseBody: |
+            Instaladores generados automáticamente para esta versión.
+            Descarga el que corresponda a tu sistema operativo.
+          releaseDraft: true
+          prerelease: false
+          includeUpdaterJson: false
+
+      - name: Subir instaladores como artefacto del run (workflow_dispatch)
+        if: github.event_name == 'workflow_dispatch'
+        uses: actions/upload-artifact@v4
+        with:
+          name: formula-care-${{ matrix.platform }}
+          path: |
+            src-tauri/target/release/bundle/appimage/*.AppImage
+            src-tauri/target/release/bundle/msi/*.msi
+            src-tauri/target/release/bundle/nsis/*.exe
+            src-tauri/target/release/bundle/dmg/*.dmg
+          if-no-files-found: ignore

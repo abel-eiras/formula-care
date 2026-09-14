@@ -2,20 +2,18 @@ import { Request, Response } from 'express';
 import { z } from 'zod';
 import { prisma } from '../lib/prisma.js';
 import { getQueryString, getParamString, getQueryNumber, getQueryLimit } from '../lib/queryHelpers.js';
-import { obtenerFarmaciaIdRequerido, obtenerFarmaciaIdOpcional } from '../middleware/tenant.js';
+import { decryptPacienteData } from '../services/encryptionService.js';
 
 /**
  * Obtener notificaciones no leídas
  */
 export async function obtenerNotificaciones(req: Request, res: Response) {
   try {
-    const farmaciaId = obtenerFarmaciaIdOpcional(req);
     const leidas = getQueryString(req.query.leidas);
     const limite = getQueryLimit(req.query.limit, 50, 200);
 
     const notificaciones = await prisma.notificacion.findMany({
       where: {
-        ...(farmaciaId ? { farmaciaId } : {}),
         leida: leidas === 'true' ? true : leidas === 'false' ? false : undefined,
       },
       include: {
@@ -42,7 +40,12 @@ export async function obtenerNotificaciones(req: Request, res: Response) {
       take: limite,
     });
 
-    res.json(notificaciones);
+    const resultado = notificaciones.map((n) => ({
+      ...n,
+      paciente: n.paciente ? decryptPacienteData(n.paciente) : n.paciente,
+    }));
+
+    res.json(resultado);
   } catch (error) {
     console.error('Error al obtener notificaciones:', error);
     res.status(500).json({ error: 'Error al obtener notificaciones' });
@@ -116,8 +119,6 @@ export async function obtenerContadorNotificaciones(req: Request, res: Response)
  */
 export async function crearNotificacion(req: Request, res: Response) {
   try {
-    const farmaciaId = obtenerFarmaciaIdRequerido(req);
-    
     const schema = z.object({
       tipo: z.enum(['cita', 'revision', 'recordatorio', 'alerta']),
       pacienteId: z.string().optional(),
@@ -133,7 +134,6 @@ export async function crearNotificacion(req: Request, res: Response) {
     const notificacion = await prisma.notificacion.create({
       data: {
         ...datos,
-        farmaciaId,
       },
       include: {
         paciente: {
@@ -145,7 +145,10 @@ export async function crearNotificacion(req: Request, res: Response) {
       },
     });
 
-    res.status(201).json(notificacion);
+    res.status(201).json({
+      ...notificacion,
+      paciente: notificacion.paciente ? decryptPacienteData(notificacion.paciente) : notificacion.paciente,
+    });
   } catch (error) {
     if (error instanceof z.ZodError) {
       return res.status(400).json({
