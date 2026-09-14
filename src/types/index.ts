@@ -117,6 +117,7 @@ export interface AnalisisBio {
   // Medidas corporales
   weight?: number;
   height?: number;
+  perimetroAbdominal?: number;
   imc?: number; // Calculado automáticamente
   // Observaciones y recomendaciones
   observaciones?: string;
@@ -127,6 +128,48 @@ export interface AnalisisBio {
   paciente?: Paciente;
   // Campo legacy para compatibilidad
   glucose?: number;
+}
+
+export interface RutinaDia {
+  higiene?: string;
+  contornoOjos?: string;
+  productoIntensivo?: string;
+  hidratacion?: string;
+  proteccionSolar?: string;
+}
+
+export interface RutinaNoche {
+  limpieza?: string;
+  contornoOjos?: string;
+  productoIntensivo?: string;
+  hidratacion?: string;
+}
+
+export interface CuidadosSemanales {
+  exfoliante?: string;
+  mascarilla?: string;
+}
+
+export interface AnalisisDermo {
+  id: string;
+  pacienteId: string;
+  fecha: string;
+  motivoConsulta?: string;
+  valoracionPiel: string[];
+  habitos: string[];
+  medicacionHabitual?: string;
+  patologias?: string;
+  etapaHormonal?: string; // Solo para mujeres
+  rutinaDia?: RutinaDia | null;
+  rutinaNoche?: RutinaNoche | null;
+  cuidadosSemanales?: CuidadosSemanales | null;
+  suplementacionOral?: string;
+  proximaRevision?: string;
+  farmaceutico?: string;
+  createdAt?: string;
+  updatedAt?: string;
+  // Relación
+  paciente?: Paciente;
 }
 
 export interface Paciente {
@@ -143,6 +186,16 @@ export interface Paciente {
   origen?: 'manual' | 'autoregistro'; // "manual" = registrado por farmacia, "autoregistro" = formulario público
   createdAt?: string;
   updatedAt?: string;
+  // Relaciones: presentes solo en el detalle (GET /pacientes/:id), no en el listado
+  analisisDermo?: AnalisisDermo[];
+  analisisBio?: AnalisisBio[];
+  citas?: Cita[];
+  // Presente solo en el listado (GET /pacientes): recuento de relaciones, sin los datos completos
+  _count?: {
+    analisisDermo: number;
+    analisisBio: number;
+    citas: number;
+  };
 }
 
 export interface Notificacion {

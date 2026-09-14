@@ -2,6 +2,7 @@ import { Request, Response } from 'express';
 import { z } from 'zod';
 import { prisma } from '../lib/prisma.js';
 import { getQueryString, getParamString, getQueryNumber, getQueryLimit } from '../lib/queryHelpers.js';
+import { decryptPacienteData } from '../services/encryptionService.js';
 
 /**
  * Obtener notificaciones no leídas
@@ -39,7 +40,12 @@ export async function obtenerNotificaciones(req: Request, res: Response) {
       take: limite,
     });
 
-    res.json(notificaciones);
+    const resultado = notificaciones.map((n) => ({
+      ...n,
+      paciente: n.paciente ? decryptPacienteData(n.paciente) : n.paciente,
+    }));
+
+    res.json(resultado);
   } catch (error) {
     console.error('Error al obtener notificaciones:', error);
     res.status(500).json({ error: 'Error al obtener notificaciones' });
@@ -139,7 +145,10 @@ export async function crearNotificacion(req: Request, res: Response) {
       },
     });
 
-    res.status(201).json(notificacion);
+    res.status(201).json({
+      ...notificacion,
+      paciente: notificacion.paciente ? decryptPacienteData(notificacion.paciente) : notificacion.paciente,
+    });
   } catch (error) {
     if (error instanceof z.ZodError) {
       return res.status(400).json({
