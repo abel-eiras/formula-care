@@ -31,15 +31,16 @@ Esto:
 
 1. Tauri (Rust, `src-tauri/src/lib.rs`) genera un `JWT_SECRET` y una `ENCRYPTION_KEY` aleatorios y los guarda en `secrets.json`, en el directorio de datos del usuario del sistema operativo (p. ej. `~/.local/share/com.abeleiras.formulacare/` en Linux).
 2. Copia la base de datos plantilla (`desktop-template.db`, empaquetada como recurso) a ese mismo directorio como `formula-care.db`, si no existe ya una.
-3. Lanza el backend (Node, empaquetado como recurso junto a `node_modules`) apuntando a esa base de datos, en un puerto local fijo.
-4. Como la base de datos plantilla no trae ningún usuario, la app muestra el formulario de "crear cuenta de administrador" (`GET /api/auth/necesita-setup`) en vez del login.
-5. Al cerrar la ventana, Tauri termina el proceso del backend.
+3. Aplica las migraciones de Prisma pendientes contra esa base de datos (`prisma migrate deploy`, usando el CLI ya empaquetado en `backend/node_modules` — no hace falta Node ni Prisma instalados en el sistema). En una instalación recién creada esto no hace nada (la plantilla ya está al día); en una actualización, pone al día el esquema sin tocar los datos existentes. Si falla, se registra en `migrate-error.log` (mismo directorio) y la app intenta arrancar igualmente.
+4. Lanza el backend (Node, empaquetado como recurso junto a `node_modules`) apuntando a esa base de datos, en un puerto local fijo.
+5. Como la base de datos plantilla no trae ningún usuario, la app muestra el formulario de "crear cuenta de administrador" (`GET /api/auth/necesita-setup`) en vez del login.
+6. Al cerrar la ventana, Tauri termina el proceso del backend.
 
 No hace falta configurar variables de entorno a mano para un usuario final: todo se genera y persiste automáticamente en su equipo.
 
 ## Actualizar una instalación existente
 
-Instalar una versión nueva del paquete reemplaza el binario y los recursos empaquetados, pero **no toca** el directorio de datos del usuario (`formula-care.db`, `secrets.json`), así que los datos de pacientes persisten entre actualizaciones. Si el `schema.prisma` cambia entre versiones, añade una migración de Prisma normal (`npx prisma migrate dev --name ...`) — queda pendiente automatizar cómo se aplican esas migraciones a una base de datos ya existente en el directorio de datos del usuario en el arranque (hoy solo se copia la plantilla si el fichero no existe todavía).
+Instalar una versión nueva del paquete reemplaza el binario y los recursos empaquetados, pero **no toca** el directorio de datos del usuario (`formula-care.db`, `secrets.json`), así que los datos de pacientes persisten entre actualizaciones. Si el `schema.prisma` cambia entre versiones, añade una migración de Prisma normal (`npx prisma migrate dev --name ...`, generada con una base de datos de desarrollo) y quedará empaquetada junto a las demás en `backend/prisma/migrations/`; el propio arranque de la app la aplicará sola contra la base de datos del usuario (paso 3 de arriba) — no hace falta ningún paso manual adicional.
 
 ## El servicio opcional de reserva pública (`booking-web/`)
 
