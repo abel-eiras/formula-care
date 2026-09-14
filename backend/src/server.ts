@@ -12,7 +12,9 @@ import { notificacionesRouter } from './routes/notificaciones.js';
 import { eventosRouter } from './routes/eventos.js';
 import { authRouter } from './routes/auth.js';
 import { plantillasEmailRouter } from './routes/plantillasEmail.js';
+import { backupsRouter } from './routes/backups.js';
 import { verificarToken } from './middleware/auth.js';
+import { verificarYEjecutarBackupProgramado } from './services/backupService.js';
 
 // Cargar variables de entorno
 dotenv.config();
@@ -60,6 +62,7 @@ app.use('/api/estadisticas', verificarToken, estadisticasRouter);
 app.use('/api/notificaciones', verificarToken, notificacionesRouter);
 app.use('/api/eventos', verificarToken, eventosRouter);
 app.use('/api/plantillas-email', verificarToken, plantillasEmailRouter);
+app.use('/api/backups', verificarToken, backupsRouter);
 
 // Ruta de salud
 app.get('/api/health', (req, res) => {
@@ -79,4 +82,13 @@ app.use((err: Error, req: express.Request, res: express.Response, next: express.
 app.listen(PORT, () => {
   console.log(`🚀 Servidor corriendo en http://localhost:${PORT}`);
   console.log(`📡 CORS habilitado para: ${CORS_ORIGINS.join(', ')}`);
+
+  // Copias de seguridad automáticas: se comprueba al arrancar (por si la app
+  // llevaba tiempo cerrada) y cada hora mientras esté abierta, para no
+  // depender de que el proceso siga vivo exactamente en el instante del
+  // aniversario de la periodicidad configurada.
+  void verificarYEjecutarBackupProgramado();
+  setInterval(() => {
+    void verificarYEjecutarBackupProgramado();
+  }, 60 * 60 * 1000);
 });
