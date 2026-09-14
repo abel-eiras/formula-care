@@ -1,18 +1,43 @@
 use std::fs;
 use std::io::Write;
 use std::path::Path;
-use std::process::{Child, Command, Stdio};
+use std::process::{Command, Stdio};
 use std::sync::Mutex;
 
 use rand::RngCore;
 use serde::{Deserialize, Serialize};
 use tauri::Manager;
+use tauri_plugin_shell::process::{CommandChild, CommandEvent};
+use tauri_plugin_shell::ShellExt;
 
 /// Puerto en el que escucha el backend embebido cuando la app corre empaquetada.
 /// En desarrollo el backend usa su propio backend/.env (por defecto 3000).
 const EMBEDDED_BACKEND_PORT: u16 = 4577;
 
-struct BackendProcess(Mutex<Option<Child>>);
+/// En desarrollo el backend se lanza con `npm run dev` (usa el Node.js del
+/// sistema, como el resto de herramientas de desarrollo). En producción se
+/// lanza con el runtime de Node.js empaquetado como sidecar (ver
+/// `spawn_backend_release`), para no depender de que el usuario final tenga
+/// Node.js instalado.
+enum BackendChild {
+    Dev(std::process::Child),
+    Sidecar(CommandChild),
+}
+
+impl BackendChild {
+    fn kill(self) {
+        match self {
+            BackendChild::Dev(mut child) => {
+                let _ = child.kill();
+            }
+            BackendChild::Sidecar(child) => {
+                let _ = child.kill();
+            }
+        }
+    }
+}
+
+struct BackendProcess(Mutex<Option<BackendChild>>);
 
 #[derive(Serialize, Deserialize)]
 struct LocalSecrets {
@@ -54,9 +79,11 @@ fn ensure_local_secrets(app_data_dir: &Path) -> std::io::Result<LocalSecrets> {
 /// instalación. Se ejecuta en cada arranque, tanto en una instalación nueva
 /// (recién copiada desde la plantilla, ya al día — no hace nada) como en una
 /// ya existente que se actualiza a una versión con cambios de esquema.
-/// Usa el CLI de `prisma` ya empaquetado en backend/node_modules, sin
-/// depender de que el sistema tenga Node global fuera del que trae la app.
+/// Usa el CLI de `prisma` ya empaquetado en backend/node_modules, ejecutado
+/// con el runtime de Node.js empaquetado como sidecar (no requiere Node.js
+/// instalado en el sistema del usuario final).
 fn run_pending_migrations(
+    app: &tauri::AppHandle,
     backend_dir: &Path,
     db_path: &Path,
 ) -> Result<(), Box<dyn std::error::Error>> {
@@ -67,20 +94,31 @@ fn run_pending_migrations(
         .join("index.js");
     let schema_path = backend_dir.join("prisma").join("schema.prisma");
 
-    let output = Command::new("node")
+    let (mut rx, _child) = app
+        .shell()
+        .sidecar("node")?
         .arg(&prisma_cli)
         .arg("migrate")
         .arg("deploy")
         .arg(format!("--schema={}", schema_path.display()))
         .current_dir(backend_dir)
         .env("DATABASE_URL", format!("file:{}", db_path.display()))
-        .output()?;
+        .spawn()?;
 
-    if !output.status.success() {
+    let mut stderr = String::new();
+    let mut exit_code: Option<i32> = None;
+    while let Some(event) = rx.blocking_recv() {
+        match event {
+            CommandEvent::Stderr(bytes) => stderr.push_str(&String::from_utf8_lossy(&bytes)),
+            CommandEvent::Terminated(payload) => exit_code = payload.code,
+            _ => {}
+        }
+    }
+
+    if exit_code != Some(0) {
         return Err(format!(
-            "prisma migrate deploy falló ({}):\n{}",
-            output.status,
-            String::from_utf8_lossy(&output.stderr)
+            "prisma migrate deploy falló (código {:?}):\n{}",
+            exit_code, stderr
         )
         .into());
     }
@@ -88,9 +126,10 @@ fn run_pending_migrations(
     Ok(())
 }
 
-fn spawn_backend_dev() -> std::io::Result<Child> {
+fn spawn_backend_dev() -> std::io::Result<std::process::Child> {
     // En desarrollo, backend/.env ya define DATABASE_URL (SQLite local) y un
-    // JWT_SECRET de desarrollo — basta con levantar el backend tal cual.
+    // JWT_SECRET de desarrollo — basta con levantar el backend tal cual con
+    // el Node.js del sistema (igual que el resto de las herramientas de dev).
     let backend_dir = std::env::current_dir()?.join("..").join("backend");
 
     Command::new("npm")
@@ -101,7 +140,9 @@ fn spawn_backend_dev() -> std::io::Result<Child> {
         .spawn()
 }
 
-fn spawn_backend_release(app: &tauri::AppHandle) -> Result<Child, Box<dyn std::error::Error>> {
+fn spawn_backend_release(
+    app: &tauri::AppHandle,
+) -> Result<CommandChild, Box<dyn std::error::Error>> {
     let resource_dir = app.path().resource_dir()?;
     let backend_dir = resource_dir.join("backend");
     let server_entry = backend_dir.join("dist").join("server.js");
@@ -123,15 +164,21 @@ fn spawn_backend_release(app: &tauri::AppHandle) -> Result<Child, Box<dyn std::e
     // constancia en un log y se intenta arrancar igualmente: es preferible
     // que la app abra (aunque falle alguna petición) a que no abra en
     // absoluto por un problema de migración que el usuario no puede depurar.
-    if let Err(e) = run_pending_migrations(&backend_dir, &db_path) {
+    if let Err(e) = run_pending_migrations(app, &backend_dir, &db_path) {
         let log_path = app_data_dir.join("migrate-error.log");
         let _ = fs::write(&log_path, format!("{}\n", e));
-        eprintln!("⚠️  Error aplicando migraciones (ver {}): {}", log_path.display(), e);
+        eprintln!(
+            "⚠️  Error aplicando migraciones (ver {}): {}",
+            log_path.display(),
+            e
+        );
     }
 
     let secrets = ensure_local_secrets(&app_data_dir)?;
 
-    let child = Command::new("node")
+    let (mut rx, child) = app
+        .shell()
+        .sidecar("node")?
         .arg(&server_entry)
         .current_dir(&backend_dir)
         .env("NODE_ENV", "production")
@@ -140,9 +187,19 @@ fn spawn_backend_release(app: &tauri::AppHandle) -> Result<Child, Box<dyn std::e
         .env("JWT_SECRET", secrets.jwt_secret)
         .env("ENCRYPTION_KEY", secrets.encryption_key)
         .env("CORS_ORIGIN", "tauri://localhost,http://tauri.localhost")
-        .stdout(Stdio::inherit())
-        .stderr(Stdio::inherit())
         .spawn()?;
+
+    // Reenvía stdout/stderr del backend a la salida de la app (equivalente al
+    // Stdio::inherit() que se usaba con std::process::Command).
+    tauri::async_runtime::spawn(async move {
+        while let Some(event) = rx.recv().await {
+            match event {
+                CommandEvent::Stdout(bytes) => print!("{}", String::from_utf8_lossy(&bytes)),
+                CommandEvent::Stderr(bytes) => eprint!("{}", String::from_utf8_lossy(&bytes)),
+                _ => {}
+            }
+        }
+    });
 
     Ok(child)
 }
@@ -150,14 +207,15 @@ fn spawn_backend_release(app: &tauri::AppHandle) -> Result<Child, Box<dyn std::e
 fn kill_backend(app: &tauri::AppHandle) {
     let state = app.state::<BackendProcess>();
     let taken = state.0.lock().unwrap().take();
-    if let Some(mut child) = taken {
-        let _ = child.kill();
+    if let Some(child) = taken {
+        child.kill();
     }
 }
 
 #[cfg_attr(mobile, tauri::mobile_entry_point)]
 pub fn run() {
     tauri::Builder::default()
+        .plugin(tauri_plugin_shell::init())
         .manage(BackendProcess(Mutex::new(None)))
         .setup(|app| {
             if cfg!(debug_assertions) {
@@ -169,9 +227,9 @@ pub fn run() {
             }
 
             let child = if cfg!(debug_assertions) {
-                spawn_backend_dev()?
+                BackendChild::Dev(spawn_backend_dev()?)
             } else {
-                spawn_backend_release(app.handle())?
+                BackendChild::Sidecar(spawn_backend_release(app.handle())?)
             };
 
             app.state::<BackendProcess>()

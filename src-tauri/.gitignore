@@ -2,3 +2,7 @@
 # will have compiled files and executables
 /target/
 /gen/schemas
+
+# Runtime de Node.js descargado por scripts/fetch-node-sidecar.mjs para
+# empaquetarlo como sidecar (ver tauri.conf.json -> bundle.externalBin).
+/binaries/
