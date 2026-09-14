@@ -1,8 +1,16 @@
 # Formula Care
 
-Aplicación de escritorio, libre y de código abierto, para la gestión de servicios asistenciales de farmacia: análisis dermocosmético y bioquímico, gestión de pacientes y calendario de citas.
+**Adiós Excel. Hola cordura.**
 
-Formula Care corre **de forma local en tu ordenador**: los datos de tus pacientes se guardan en una base de datos SQLite en tu propio equipo, sin depender de ningún servidor en la nube ni de conexión a internet para funcionar.
+Formula Care gestiona los servicios asistenciales de tu farmacia — análisis dermocosmético y bioquímico, fichas de paciente, citas — todo en un sitio, todo local. Nada de módulos que nunca vas a usar.
+
+Corre **en tu ordenador, no en la nube de nadie**: los datos de tus pacientes viven en una base de datos SQLite en tu propio equipo. Ni servidor que mantener, ni conexión a internet para el día a día (solo hace falta para instalar).
+
+Gratis. Y libre, código incluido — sin letra pequeña, sin límite de pacientes convertido en muro de pago, sin "en beta gratis y luego pagas".
+
+## 🤔 Por qué existe esto
+
+Esta es la versión de escritorio, libre y de código abierto, de [Fórmula Care](https://formulafarma.com/formula-care/) — la herramienta que nació porque no encontraba software que sirviera de verdad en el día a día de una farmacia, así que la construí yo mismo. La promesa siempre fue que el código se haría público en cuanto estuviera listo. Esto es eso.
 
 ## 💾 Descargar e instalar
 
@@ -309,7 +317,7 @@ Este proyecto sigue principios de **código limpio y simple**:
 
 ## 🤝 Contribución
 
-Formula Care es software libre y las contribuciones son bienvenidas.
+Formula Care es software libre. Contribuye si te apetece — programa mucho o programa poco, pero conoce bien el problema que resuelves.
 
 1. Haz un fork del repositorio y crea una rama para tu cambio: `git checkout -b feature/nueva-funcionalidad`
 2. Sigue la [Guía de Código Limpio](context/guias/GUIA_CODIGO_LIMPIO.md) y la estructura existente del proyecto
@@ -330,7 +338,7 @@ Formula Care es software libre y las contribuciones son bienvenidas.
 
 ## 🐛 Problemas Conocidos
 
-- Los instaladores de Windows y macOS se generan vía CI ([`.github/workflows/desktop-release.yml`](.github/workflows/desktop-release.yml)) pero no se han podido ejecutar/probar en esos sistemas operativos todavía (este entorno de desarrollo es Linux); en Linux se han verificado `.deb`/`.rpm` instalados y ejecutados. Ninguno de los tres está firmado digitalmente, así que Windows/macOS mostrarán un aviso de "editor no verificado" al abrirlos.
+- Los tres instaladores se generan y compilan vía CI ([`.github/workflows/desktop-release.yml`](.github/workflows/desktop-release.yml)) en su propio sistema operativo (Linux, Windows, macOS). El de Linux además se ha ejecutado e instalado de verdad en este entorno de desarrollo; Windows y macOS de momento solo están verificados por la propia compilación en CI, no por un arranque manual en esos sistemas — sin letra pequeña, es lo que hay. Ninguno de los tres está firmado digitalmente, así que Windows/macOS mostrarán un aviso de "editor no verificado" al abrirlos (ver [Descargar e instalar](#-descargar-e-instalar)).
 - `booking-web/` (reserva pública opcional) no sincroniza automáticamente sus citas con la base de datos local de la app de escritorio — ver su propio README para el alcance exacto.
 - Falta sistema de copia de seguridad automática de la base de datos local.
 
