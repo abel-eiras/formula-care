@@ -122,7 +122,7 @@ Cambia esta contraseña en cuanto inicies sesión. En una instalación de escrit
 npm run tauri:build
 ```
 
-Esto compila el frontend, empaqueta el backend (Node + Prisma) como recurso de la app, y genera el instalador nativo de tu sistema operativo en `src-tauri/target/release/bundle/` (`.deb`/`.rpm`/AppImage en Linux, `.msi`/`.exe` en Windows, `.dmg`/`.app` en macOS). Cada plataforma debe compilarse en su propio sistema operativo.
+Esto compila el frontend, empaqueta el backend (Node + Prisma) como recurso de la app junto con un runtime de Node.js propio (descargado automáticamente la primera vez, ver `scripts/fetch-node-sidecar.mjs`), y genera el instalador nativo de tu sistema operativo en `src-tauri/target/release/bundle/` (`.deb`/`.rpm`/AppImage en Linux, `.msi`/`.exe` en Windows, `.dmg`/`.app` en macOS). Como el instalador incluye su propio Node.js, la máquina del usuario final no necesita tenerlo instalado. Cada plataforma debe compilarse en su propio sistema operativo.
 
 Para generar los tres a la vez sin tener las tres máquinas, usa el workflow de GitHub Actions [`desktop-release.yml`](.github/workflows/desktop-release.yml): dispáralo a mano desde la pestaña *Actions* (deja los instaladores como artefactos del run) o haz push de un tag `v*` (crea además un borrador de release con los seis instaladores adjuntos). Detalle en [context/guias/GUIA_DESPLIEGUE.md](context/guias/GUIA_DESPLIEGUE.md).
 

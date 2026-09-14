@@ -74,6 +74,9 @@ jobs:
           # usa su propio fichero temporal internamente.
           DATABASE_URL: "file:./ci-placeholder.db"
 
+      - name: Descargar el runtime de Node.js como sidecar
+        run: npm run predesktop:node-sidecar
+
       - name: Compilar y empaquetar la app de escritorio
         uses: tauri-apps/tauri-action@v0
         env:

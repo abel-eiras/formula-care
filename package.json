@@ -16,7 +16,8 @@
     "tauri": "tauri",
     "tauri:dev": "tauri dev",
     "predesktop:backend": "npm --prefix backend run build:desktop",
-    "tauri:build": "npm run predesktop:backend && tauri build"
+    "predesktop:node-sidecar": "node scripts/fetch-node-sidecar.mjs",
+    "tauri:build": "npm run predesktop:backend && npm run predesktop:node-sidecar && tauri build"
   },
   "dependencies": {
     "@hookform/resolvers": "^3.10.0",
