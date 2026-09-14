@@ -4,6 +4,44 @@ Aplicación de escritorio, libre y de código abierto, para la gestión de servi
 
 Formula Care corre **de forma local en tu ordenador**: los datos de tus pacientes se guardan en una base de datos SQLite en tu propio equipo, sin depender de ningún servidor en la nube ni de conexión a internet para funcionar.
 
+## 💾 Descargar e instalar
+
+Ve a la página de [**Releases**](https://github.com/abel-eiras/formula-care/releases) y descarga el instalador de la última versión que corresponda a tu sistema operativo.
+
+> **Nota:** los instaladores no están firmados digitalmente (firmar cuesta dinero, y este es software gratuito y de código abierto), así que Windows y macOS mostrarán un aviso de "editor desconocido" la primera vez — ver más abajo cómo continuar. La instalación necesita conexión a internet.
+
+### 🪟 Windows
+
+Descarga el `.exe` (instalador NSIS) — o el `.msi` si prefieres un paquete MSI — y ejecútalo.
+
+- Windows SmartScreen mostrará **"Windows protegió tu PC"**: haz clic en **"Más información"** y luego en **"Ejecutar de todas formas"**.
+- Si tu Windows no trae ya instalado el runtime Microsoft Edge WebView2 (poco habitual en Windows 10/11 actualizados), el propio instalador lo descarga automáticamente — por eso hace falta internet durante la instalación.
+
+### 🍎 macOS
+
+Descarga el `.dmg`, ábrelo y arrastra **Formula Care** a la carpeta Aplicaciones.
+
+- Como la app no está notarizada por Apple, Gatekeeper bloqueará la primera ejecución. Haz **clic derecho (o Ctrl+clic)** sobre la app → **"Abrir"** → confirma **"Abrir"** en el aviso. (Alternativa: Preferencias del Sistema → Privacidad y Seguridad → "Abrir de todas formas".)
+
+### 🐧 Linux
+
+La forma más rápida es el instalador de un solo comando — descarga el AppImage de la última versión y lo deja listo en el menú de aplicaciones, sin generar paquetes `.deb`/`.rpm` ni tocar tu gestor de paquetes:
+
+```bash
+curl -fsSL https://raw.githubusercontent.com/abel-eiras/formula-care/main/scripts/install-linux.sh | sh
+```
+
+Si prefieres hacerlo a mano: descarga el `.AppImage` desde Releases, dale permisos de ejecución y ejecútalo:
+
+```bash
+chmod +x "Formula Care_*.AppImage"
+./"Formula Care_*.AppImage"
+```
+
+(El AppImage funciona en cualquier distribución x86_64 sin instalación a nivel de sistema. Si tu distro no trae FUSE, instala `libfuse2` — por ejemplo `sudo apt install libfuse2` en Debian/Ubuntu.)
+
+---
+
 ## 📋 Estado del Proyecto
 
 ### ✅ Completado
@@ -48,7 +86,6 @@ Formula Care corre **de forma local en tu ordenador**: los datos de tus paciente
 ### 🚧 En Desarrollo
 - Mejoras de rendimiento
 - Tests automatizados
-- Firma de código para los instaladores de Windows/macOS (ya se compilan vía CI, ver [Compilar la app de escritorio](#-compilar-la-app-de-escritorio), pero sin firmar el sistema operativo avisa de "editor no verificado")
 
 ### 📝 Planificado
 Ver la carpeta [context/](context/) para documentación (guías activas e histórica).
@@ -122,9 +159,9 @@ Cambia esta contraseña en cuanto inicies sesión. En una instalación de escrit
 npm run tauri:build
 ```
 
-Esto compila el frontend, empaqueta el backend (Node + Prisma) como recurso de la app junto con un runtime de Node.js propio (descargado automáticamente la primera vez, ver `scripts/fetch-node-sidecar.mjs`), y genera el instalador nativo de tu sistema operativo en `src-tauri/target/release/bundle/` (`.deb`/`.rpm`/AppImage en Linux, `.msi`/`.exe` en Windows, `.dmg`/`.app` en macOS). Como el instalador incluye su propio Node.js, la máquina del usuario final no necesita tenerlo instalado. Cada plataforma debe compilarse en su propio sistema operativo.
+Esto compila el frontend, empaqueta el backend (Node + Prisma) como recurso de la app junto con un runtime de Node.js propio (descargado automáticamente la primera vez, ver `scripts/fetch-node-sidecar.mjs`), y genera el instalador nativo de tu sistema operativo en `src-tauri/target/release/bundle/` (AppImage en Linux, `.msi`/`.exe` en Windows, `.dmg`/`.app` en macOS — no se generan `.deb`/`.rpm`, ver [Descargar e instalar](#-descargar-e-instalar)). Como el instalador incluye su propio Node.js, la máquina del usuario final no necesita tenerlo instalado. Cada plataforma debe compilarse en su propio sistema operativo.
 
-Para generar los tres a la vez sin tener las tres máquinas, usa el workflow de GitHub Actions [`desktop-release.yml`](.github/workflows/desktop-release.yml): dispáralo a mano desde la pestaña *Actions* (deja los instaladores como artefactos del run) o haz push de un tag `v*` (crea además un borrador de release con los seis instaladores adjuntos). Detalle en [context/guias/GUIA_DESPLIEGUE.md](context/guias/GUIA_DESPLIEGUE.md).
+Para generar las tres a la vez sin tener las tres máquinas, usa el workflow de GitHub Actions [`desktop-release.yml`](.github/workflows/desktop-release.yml): dispáralo a mano desde la pestaña *Actions* (deja los instaladores como artefactos del run) o haz push de un tag `v*` (crea además un borrador de release en GitHub con los instaladores adjuntos — publícalo manualmente desde la pestaña *Releases* cuando quieras que sea público).
 
 En el primer arranque de un paquete instalado, la app genera automáticamente un `JWT_SECRET`/clave de cifrado aleatorios y una base de datos SQLite propia en el directorio de datos del usuario del sistema operativo, y aplica las migraciones pendientes en cada arranque (también en actualizaciones futuras) — no hace falta configurar ni migrar nada a mano.
 

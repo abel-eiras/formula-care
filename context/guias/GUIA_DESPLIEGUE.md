@@ -1,9 +1,14 @@
 # Guía de Distribución de la App de Escritorio
 
 Formula Care ya no se despliega como servicio web (SaaS). Se distribuye como
-app de escritorio: cada usuario instala un paquete nativo (`.deb`/`.rpm`/AppImage
-en Linux, `.msi`/`.exe` en Windows, `.dmg` en macOS) y todo corre localmente en
-su equipo. No hay "servidor de producción" que mantener para la app en sí.
+app de escritorio: cada usuario instala un paquete nativo (AppImage en Linux,
+`.msi`/`.exe` en Windows, `.dmg` en macOS) y todo corre localmente en su
+equipo. No hay "servidor de producción" que mantener para la app en sí.
+
+En Linux deliberadamente solo se genera AppImage (no `.deb`/`.rpm`): un único
+binario portable que funciona en cualquier distribución x86_64 sin tocar el
+gestor de paquetes del sistema. Ver [`scripts/install-linux.sh`](../../scripts/install-linux.sh)
+y la sección "Descargar e instalar" del [README](../../README.md).
 
 > La guía de despliegue de la antigua arquitectura SaaS (Vercel/Render/Supabase,
 > Raiola con GitHub Actions, MySQL/PostgreSQL) se conserva como referencia
@@ -31,10 +36,10 @@ Esto:
 
 [`.github/workflows/desktop-release.yml`](../../.github/workflows/desktop-release.yml) compila Linux, Windows y macOS en paralelo usando [`tauri-apps/tauri-action`](https://github.com/tauri-apps/tauri-action):
 
-- **Al hacer push de un tag `v*`** (p. ej. `git tag v0.2.0 && git push origin v0.2.0`): compila las tres plataformas y crea un **borrador** de release en GitHub con los seis instaladores adjuntos (`.deb`, `.rpm`, `.AppImage`, `.msi`, `.exe`, `.dmg`). El borrador te deja revisar las notas y publicarlo a mano.
+- **Al hacer push de un tag `v*`** (p. ej. `git tag v0.2.0 && git push origin v0.2.0`): compila las tres plataformas y crea un **borrador** de release en GitHub con los instaladores adjuntos (AppImage, `.msi`, `.exe`, `.dmg`). El borrador no es público hasta que lo publicas a mano desde la pestaña *Releases*, así que puedes revisar las notas y los archivos antes.
 - **Manual** (pestaña *Actions* → *Build app de escritorio* → *Run workflow*): compila las tres plataformas y deja los instaladores como artefactos descargables del run, sin crear ningún release — útil para comprobar que el build sigue funcionando sin necesidad de etiquetar una versión.
 
-No requiere ningún secreto adicional: usa el `GITHUB_TOKEN` que Actions inyecta automáticamente. Lo que **no** hace este workflow —y queda fuera de alcance por ahora— es firmar los binarios: sin firma, Windows (SmartScreen) y macOS (Gatekeeper) muestran un aviso de "editor no verificado/desconocido" la primera vez que alguien abre el instalador. Firmarlos requiere un certificado de firma de código (de pago) por plataforma; ver la [documentación de Tauri sobre firma de código](https://v2.tauri.app/distribute/sign/) si se decide dar ese paso.
+No requiere ningún secreto adicional: usa el `GITHUB_TOKEN` que Actions inyecta automáticamente. Este workflow **no firma** los binarios — decisión deliberada: firmar Windows/macOS requiere un certificado de pago por plataforma, y no tiene sentido para software gratuito y de código abierto. Sin firma, Windows (SmartScreen) y macOS (Gatekeeper) muestran un aviso de "editor no verificado/desconocido" la primera vez que alguien abre el instalador — ver la sección "Descargar e instalar" del [README](../../README.md) para el paso a paso de cómo continuar. Si en el futuro se decide firmar de todos modos, ver la [documentación de Tauri sobre firma de código](https://v2.tauri.app/distribute/sign/).
 
 ## Qué pasa en el primer arranque de un paquete instalado
 
