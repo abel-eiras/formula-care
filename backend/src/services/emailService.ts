@@ -332,23 +332,13 @@ export interface DatosFarmaciaParaEmail {
 async function obtenerDatosFarmacia(): Promise<DatosFarmaciaParaEmail> {
   const config = await prisma.configuracion.findUnique({ where: { id: CONFIG_ID } });
 
-  const baseUrl = process.env.APP_URL || 'http://localhost:5173';
   const direccion = config?.farmaciaDireccion || '';
   const ciudad = config?.farmaciaCiudad || '';
   const telefono = config?.farmaciaTelefono || '';
   const whatsapp = config?.farmaciaWhatsapp || '';
-  const farmaciaLogo = config?.farmaciaLogo || '';
 
-  // Logo: data: base64 se usa tal cual; ruta relativa se convierte en URL absoluta
-  let logoFarmacia = '';
-  if (farmaciaLogo) {
-    if (farmaciaLogo.startsWith('data:')) {
-      logoFarmacia = farmaciaLogo;
-    } else {
-      const path = farmaciaLogo.startsWith('/') ? farmaciaLogo : `/microcaya/${farmaciaLogo}`;
-      logoFarmacia = `${baseUrl}${path}`;
-    }
-  }
+  // El logo se guarda siempre como data: URI (base64) desde el formulario de Configuración
+  const logoFarmacia = config?.farmaciaLogo || '';
 
   // URL solicitar cita: usa la web configurada de la farmacia (no hay reserva pública en este backend)
   const urlSolicitarCita = config?.farmaciaWeb || '';
