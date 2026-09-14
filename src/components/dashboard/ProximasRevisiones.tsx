@@ -3,18 +3,8 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { ChevronRight, Calendar, Clock, User } from "lucide-react";
 import { Link } from "react-router-dom";
-import { useProximasRevisiones } from "@/hooks/useEstadisticas";
+import { useProximasRevisiones, type RevisionProxima } from "@/hooks/useEstadisticas";
 import { LoadingSpinner } from "@/components/ui/LoadingSpinner";
-
-// Tipo para revisión próxima
-interface RevisionProxima {
-  id: string;
-  pacienteId: string;
-  proximaRevision: string;
-  paciente?: {
-    name: string;
-  };
-}
 
 const formatearFecha = (fecha: string): string => {
   try {
@@ -63,7 +53,9 @@ export function ProximasRevisiones() {
       <CardContent className="space-y-3">
         {revisiones.length > 0 ? (
           revisiones.map((revision: RevisionProxima) => {
-            const fechaRevision = new Date(revision.proximaRevision);
+            // El backend solo devuelve análisis con proximaRevision definida
+            // (filtro `proximaRevision: { not: null }`), de ahí la aserción.
+            const fechaRevision = new Date(revision.proximaRevision!);
             const diasRestantes = Math.ceil(
               (fechaRevision.getTime() - new Date().getTime()) / (1000 * 60 * 60 * 24)
             );

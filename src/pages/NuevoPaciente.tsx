@@ -89,7 +89,6 @@ export default function NuevoPaciente() {
         birthDate: formData.birthDate || undefined,
         address: formData.address || undefined,
         notes: formData.notes || undefined,
-        services: [],
       };
 
       await crearPaciente.mutateAsync(nuevoPaciente);

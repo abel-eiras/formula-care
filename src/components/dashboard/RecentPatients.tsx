@@ -8,12 +8,6 @@ import { usePacientesRecientes } from "@/hooks/useEstadisticas";
 import { LoadingSpinner } from "@/components/ui/LoadingSpinner";
 import type { Paciente } from "@/types";
 
-// Tipo extendido para paciente con análisis
-interface PacienteConAnalisis extends Paciente {
-  analisisDermo?: { fecha: string }[];
-  analisisBio?: { fecha: string }[];
-}
-
 const getInitials = (name: string) => {
   return name.split(" ").map(n => n[0]).slice(0, 2).join("").toUpperCase();
 };
@@ -45,7 +39,7 @@ const formatLastVisit = (fecha: string | undefined): string => {
   }
 };
 
-const getLastService = (paciente: PacienteConAnalisis): { type: "dermo" | "bio" | null; fecha: string | null } => {
+const getLastService = (paciente: Paciente): { type: "dermo" | "bio" | null; fecha: string | null } => {
   const ultimoDermo = paciente.analisisDermo?.[0];
   const ultimoBio = paciente.analisisBio?.[0];
 
@@ -103,7 +97,7 @@ export function RecentPatients() {
       </CardHeader>
       <CardContent className="space-y-1">
         {pacientes && pacientes.length > 0 ? (
-          pacientes.map((paciente: PacienteConAnalisis) => {
+          pacientes.map((paciente: Paciente) => {
             const lastService = getLastService(paciente);
             const lastVisit = formatLastVisit(lastService.fecha || paciente.createdAt);
 

@@ -27,19 +27,18 @@ const getInitials = (name: string) => {
 };
 
 /**
- * Determina los servicios de un paciente basado en sus análisis
+ * Determina los servicios de un paciente a partir del recuento de análisis
+ * que devuelve el listado (GET /pacientes incluye _count, no los arrays completos)
  */
 const getServices = (paciente: Paciente): ("dermo" | "bio")[] => {
   const services: ("dermo" | "bio")[] = [];
-  // Si tiene análisis dermo, agregar "dermo"
-  if (paciente.analisisDermo && paciente.analisisDermo.length > 0) {
+  if ((paciente._count?.analisisDermo ?? 0) > 0) {
     services.push("dermo");
   }
-  // Si tiene análisis bio, agregar "bio"
-  if (paciente.analisisBio && paciente.analisisBio.length > 0) {
+  if ((paciente._count?.analisisBio ?? 0) > 0) {
     services.push("bio");
   }
-  return services.length > 0 ? services : paciente.services || [];
+  return services;
 };
 
 export default function Pacientes() {
