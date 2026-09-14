@@ -5,6 +5,7 @@ import {
   PARAMETROS_BIO_CONFIG_DEFAULT,
   PARAMETROS_REFERENCIA_DEFAULT,
 } from '../config/parametrosBioDefault.js';
+import { derivarClaveCifrado } from '../services/backupService.js';
 
 // ID fijo de la fila única de configuración (instalación local de una sola farmacia)
 const CONFIG_ID = 'singleton';
@@ -90,6 +91,14 @@ const configuracionCalendarioSchema = z.object({
 const bloquearFechaHoraSchema = z.object({
   fecha: fechaYYYYMMDD,
   hora: horaHHmm.optional(),
+});
+
+// Esquema para configuración de copias de seguridad
+const configBackupSchema = z.object({
+  backupPeriodicidad: z.enum(['diaria', 'semanal', 'mensual', 'desactivada']).optional(),
+  backupCifrado: z.boolean().optional(),
+  // Solo necesaria al activar el cifrado por primera vez o al cambiar la contraseña
+  password: z.string().min(4).optional(),
 });
 
 /**
@@ -674,5 +683,88 @@ export async function actualizarRgpd(req: Request, res: Response) {
 
     console.error('Error al actualizar configuración RGPD:', error);
     res.status(500).json({ error: 'Error al actualizar configuración RGPD' });
+  }
+}
+
+/**
+ * Obtener la configuración de copias de seguridad
+ * GET /api/configuracion/backup
+ */
+export async function obtenerConfigBackup(req: Request, res: Response) {
+  try {
+    const config = await prisma.configuracion.findUnique({
+      where: { id: CONFIG_ID },
+      select: {
+        backupPeriodicidad: true,
+        backupCifrado: true,
+        backupUltimaEjecucion: true,
+      },
+    });
+
+    res.json({
+      backupPeriodicidad: config?.backupPeriodicidad || 'diaria',
+      backupCifrado: config?.backupCifrado ?? false,
+      backupUltimaEjecucion: config?.backupUltimaEjecucion ?? null,
+    });
+  } catch (error) {
+    console.error('Error al obtener configuración de copias de seguridad:', error);
+    res.status(500).json({ error: 'Error al obtener configuración de copias de seguridad' });
+  }
+}
+
+/**
+ * Actualizar la configuración de copias de seguridad
+ * PUT /api/configuracion/backup
+ */
+export async function actualizarConfigBackup(req: Request, res: Response) {
+  try {
+    const datos = configBackupSchema.parse(req.body);
+    const { password, ...resto } = datos;
+
+    const dataParaPrisma: Record<string, unknown> = { ...resto };
+
+    if (resto.backupCifrado) {
+      if (password) {
+        const { clave, salt } = derivarClaveCifrado(password);
+        dataParaPrisma.backupCifradoClave = clave;
+        dataParaPrisma.backupCifradoSalt = salt;
+      } else {
+        const actual = await prisma.configuracion.findUnique({
+          where: { id: CONFIG_ID },
+          select: { backupCifradoClave: true },
+        });
+        if (!actual?.backupCifradoClave) {
+          return res.status(400).json({
+            error: 'Datos inválidos',
+            mensaje: 'Hace falta una contraseña para activar el cifrado de copias de seguridad',
+          });
+        }
+      }
+    } else if (resto.backupCifrado === false) {
+      dataParaPrisma.backupCifradoClave = null;
+      dataParaPrisma.backupCifradoSalt = null;
+    }
+
+    const config = await prisma.configuracion.upsert({
+      where: { id: CONFIG_ID },
+      create: { id: CONFIG_ID, ...dataParaPrisma },
+      update: dataParaPrisma,
+    });
+
+    res.json({
+      backupPeriodicidad: config.backupPeriodicidad,
+      backupCifrado: config.backupCifrado,
+      backupUltimaEjecucion: config.backupUltimaEjecucion,
+    });
+  } catch (error) {
+    if (error instanceof z.ZodError) {
+      return res.status(400).json({
+        error: 'Datos inválidos',
+        detalles: error.errors,
+      });
+    }
+
+    console.error('Error al actualizar configuración de copias de seguridad:', error);
+    res.status(500).json({ error: 'Error al actualizar configuración de copias de seguridad' });
   }
 }

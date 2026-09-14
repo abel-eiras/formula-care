@@ -13,13 +13,14 @@ import { Calendar } from "@/components/ui/calendar";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
 import { Textarea } from "@/components/ui/textarea";
-import { ArrowLeft, Save, Settings, Building2, FlaskConical, Calendar as CalendarIcon, Plus, Trash2, GripVertical, Eye, EyeOff, Pencil, Shield, FileText, AlertTriangle, Mail, Palette } from "lucide-react";
+import { ArrowLeft, Save, Settings, Building2, FlaskConical, Calendar as CalendarIcon, Plus, Trash2, GripVertical, Eye, EyeOff, Pencil, Shield, FileText, AlertTriangle, Mail, Palette, DatabaseBackup } from "lucide-react";
 import { Link } from "react-router-dom";
 import { toast } from "sonner";
 import { useConfiguracion, useActualizarFarmacia, useActualizarParametrosReferencia, useActualizarValoracionBio, useActualizarParametrosBioConfig, useConfiguracionCalendario, useActualizarConfiguracionCalendario, useConfiguracionRgpd, useActualizarRgpd } from "@/hooks/useConfiguracion";
 import { useEventos, useCrearEvento, useActualizarEvento, useEliminarEvento } from "@/hooks/useEventos";
 import { usePlantillasEmail, useVariablesPlantilla, useActualizarPlantilla, useRestaurarPlantilla } from "@/hooks/usePlantillasEmail";
 import { EditorPlantillaEmail } from "@/components/configuracion/EditorPlantillaEmail";
+import { BackupTab } from "@/components/configuracion/BackupTab";
 import type { Evento, ParametroBioConfig, ConfiguracionRgpd, PlantillaEmail } from "@/types";
 import { cn } from "@/lib/utils";
 import { TEMAS_PRECONFIGURADOS, getColoresParaConfig } from "@/lib/coloresMarca";
@@ -240,7 +241,7 @@ export default function Configuracion() {
       </div>
 
       <Tabs defaultValue="farmacia" className="space-y-6">
-        <TabsList className="grid w-full grid-cols-6">
+        <TabsList className="grid w-full grid-cols-7">
           <TabsTrigger value="farmacia" className="gap-2">
             <Building2 className="h-4 w-4" />
             <span className="hidden sm:inline">Datos de la Farmacia</span>
@@ -269,6 +270,11 @@ export default function Configuracion() {
             <Shield className="h-4 w-4" />
             <span className="hidden sm:inline">RGPD y Legal</span>
             <span className="sm:hidden">RGPD</span>
+          </TabsTrigger>
+          <TabsTrigger value="backup" className="gap-2">
+            <DatabaseBackup className="h-4 w-4" />
+            <span className="hidden sm:inline">Copias de Seguridad</span>
+            <span className="sm:hidden">Copias</span>
           </TabsTrigger>
         </TabsList>
 
@@ -702,6 +708,11 @@ export default function Configuracion() {
         {/* Tab: RGPD y Legal */}
         <TabsContent value="rgpd">
           <RgpdTab />
+        </TabsContent>
+
+        {/* Tab: Copias de Seguridad */}
+        <TabsContent value="backup">
+          <BackupTab />
         </TabsContent>
 
       </Tabs>
