@@ -7,6 +7,7 @@ use std::sync::Mutex;
 use rand::RngCore;
 use serde::{Deserialize, Serialize};
 use tauri::Manager;
+use tauri_plugin_dialog::{DialogExt, MessageDialogKind};
 use tauri_plugin_shell::process::{CommandChild, CommandEvent};
 use tauri_plugin_shell::ShellExt;
 
@@ -126,6 +127,33 @@ fn run_pending_migrations(
     Ok(())
 }
 
+/// Guarda una copia de la base de datos antes de migrarla a una versión nueva
+/// de la app. Si la migración saliera mal, los datos anteriores siguen ahí
+/// (se puede restaurar desde Configuración → Copias de seguridad → Importar).
+/// Solo copia cuando cambia la versión; devuelve la ruta de la copia.
+fn copia_antes_de_actualizar(
+    app_data_dir: &Path,
+    db_path: &Path,
+    version_actual: &str,
+) -> std::io::Result<Option<std::path::PathBuf>> {
+    let fichero_version = app_data_dir.join("ultima-version.txt");
+    let version_anterior = fs::read_to_string(&fichero_version)
+        .map(|v| v.trim().to_string())
+        .unwrap_or_default();
+
+    let mut copia = None;
+    if version_anterior != version_actual && db_path.exists() {
+        let carpeta = app_data_dir.join("copias-actualizacion");
+        fs::create_dir_all(&carpeta)?;
+        let origen = if version_anterior.is_empty() { "anterior" } else { &version_anterior };
+        let destino = carpeta.join(format!("formula-care-{}-antes-de-{}.db", origen, version_actual));
+        fs::copy(db_path, &destino)?;
+        copia = Some(destino);
+    }
+    fs::write(&fichero_version, version_actual)?;
+    Ok(copia)
+}
+
 fn spawn_backend_dev() -> std::io::Result<std::process::Child> {
     // En desarrollo, backend/.env ya define DATABASE_URL (SQLite local) y un
     // JWT_SECRET de desarrollo — basta con levantar el backend tal cual con
@@ -153,10 +181,23 @@ fn spawn_backend_release(
     // La base de datos de esta instalación vive en el directorio de datos del
     // usuario, no junto al binario, para que sobreviva a actualizaciones.
     let db_path = app_data_dir.join("formula-care.db");
-    if !db_path.exists() {
+    let instalacion_nueva = !db_path.exists();
+    if instalacion_nueva {
         let template_db = backend_dir.join("prisma").join("desktop-template.db");
         fs::copy(&template_db, &db_path)?;
     }
+
+    let version = app.package_info().version.to_string();
+    let copia = if instalacion_nueva {
+        // Nada que proteger: solo se anota la versión
+        let _ = fs::write(app_data_dir.join("ultima-version.txt"), &version);
+        None
+    } else {
+        copia_antes_de_actualizar(&app_data_dir, &db_path, &version).unwrap_or_else(|e| {
+            eprintln!("⚠️  No se pudo copiar la base de datos antes de actualizar: {}", e);
+            None
+        })
+    };
 
     // Pone la base de datos al día con el esquema de esta versión. En una
     // instalación recién creada (plantilla ya migrada) esto es un no-op; en
@@ -172,6 +213,20 @@ fn spawn_backend_release(
             log_path.display(),
             e
         );
+        // Aviso visible: sin él, la app abriría y fallarían peticiones sin explicación
+        let copia_txt = copia
+            .as_ref()
+            .map(|c| format!("\n\nTus datos anteriores están a salvo en:\n{}", c.display()))
+            .unwrap_or_default();
+        app.dialog()
+            .message(format!(
+                "No se ha podido actualizar la base de datos a esta versión. Algunas pantallas pueden fallar.{}\n\nDetalle del error en:\n{}",
+                copia_txt,
+                log_path.display()
+            ))
+            .title("Formula Care: error al actualizar")
+            .kind(MessageDialogKind::Error)
+            .show(|_| {});
     }
 
     let secrets = ensure_local_secrets(&app_data_dir)?;
@@ -186,6 +241,9 @@ fn spawn_backend_release(
         .env("DATABASE_URL", format!("file:{}", db_path.display()))
         .env("JWT_SECRET", secrets.jwt_secret)
         .env("CORS_ORIGIN", "tauri://localhost,http://tauri.localhost")
+        // El backend comprueba este PID y se cierra si la app ya no existe
+        // (cierre forzoso o caída): así no queda ocupando el puerto
+        .env("PID_APP", std::process::id().to_string())
         .spawn()?;
 
     // Reenvía stdout/stderr del backend a la salida de la app (equivalente al
@@ -213,7 +271,20 @@ fn kill_backend(app: &tauri::AppHandle) {
 
 #[cfg_attr(mobile, tauri::mobile_entry_point)]
 pub fn run() {
-    tauri::Builder::default()
+    let builder = tauri::Builder::default();
+
+    // Debe ser el primer plugin: si la app ya está abierta, la segunda
+    // apertura solo enfoca la ventana existente (dos backends chocarían en el puerto)
+    #[cfg(desktop)]
+    let builder = builder.plugin(tauri_plugin_single_instance::init(|app, _args, _cwd| {
+        if let Some(ventana) = app.get_webview_window("main") {
+            let _ = ventana.unminimize();
+            let _ = ventana.show();
+            let _ = ventana.set_focus();
+        }
+    }));
+
+    builder
         .plugin(tauri_plugin_shell::init())
         .plugin(tauri_plugin_dialog::init())
         .plugin(tauri_plugin_process::init())

@@ -89,12 +89,49 @@ app.use((err: Error, req: express.Request, res: express.Response, next: express.
   });
 });
 
-// Iniciar servidor
-app.listen(PORT, () => {
-  console.log(`🚀 Servidor corriendo en http://localhost:${PORT}`);
-  console.log(`📡 CORS habilitado para: ${CORS_ORIGINS.join(', ')}`);
+// Solo este equipo: la API no debe ser accesible desde otros ordenadores de
+// la red de la farmacia (HOST permite cambiarlo en desarrollo si hiciera falta)
+const HOST = process.env.HOST || '127.0.0.1';
+const REINTENTOS_PUERTO = 10;
 
-  // Copias de seguridad, avisos y recordatorios (al arrancar y cada hora)
-  iniciarTareasPeriodicas();
-  if (RESERVA_ONLINE_DISPONIBLE) iniciarSincronizacionReservaOnline();
-});
+/**
+ * Arranca el servidor. Si el puerto sigue ocupado (p. ej. el backend de una
+ * sesión anterior que aún se está cerrando), reintenta unos segundos.
+ */
+function arrancar(intento = 1) {
+  const servidor = app.listen(Number(PORT), HOST, () => {
+    console.log(`🚀 Servidor corriendo en http://${HOST}:${PORT}`);
+    console.log(`📡 CORS habilitado para: ${CORS_ORIGINS.join(', ')}`);
+
+    // Copias de seguridad, avisos y recordatorios (al arrancar y cada hora)
+    iniciarTareasPeriodicas();
+    if (RESERVA_ONLINE_DISPONIBLE) iniciarSincronizacionReservaOnline();
+  });
+  servidor.on('error', (error: NodeJS.ErrnoException) => {
+    if (error.code === 'EADDRINUSE' && intento < REINTENTOS_PUERTO) {
+      console.warn(`⚠️  Puerto ${PORT} ocupado, reintentando (${intento}/${REINTENTOS_PUERTO})…`);
+      setTimeout(() => arrancar(intento + 1), 1000);
+      return;
+    }
+    console.error('❌ No se pudo arrancar el servidor:', error);
+    process.exit(1);
+  });
+}
+
+arrancar();
+
+// En la app de escritorio: si el proceso de la app desaparece (cierre forzoso
+// o caída), este backend se cierra también para no quedarse con el puerto
+const pidApp = Number(process.env.PID_APP);
+if (pidApp > 0) {
+  setInterval(() => {
+    try {
+      process.kill(pidApp, 0); // Solo comprueba que existe
+    } catch (error) {
+      // EPERM: existe pero es de otro usuario (no es nuestro caso, pero no es una caída)
+      if ((error as NodeJS.ErrnoException).code === 'EPERM') return;
+      console.log('La app de escritorio se ha cerrado: cerrando el backend');
+      process.exit(0);
+    }
+  }, 5000).unref();
+}
