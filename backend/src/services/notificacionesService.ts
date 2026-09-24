@@ -1,6 +1,7 @@
 import { prisma } from '../lib/prisma.js';
 import { hoyISO } from '../lib/fechas.js';
 import { enviarRecordatorioCita } from './emailService.js';
+import { obtenerReservaOnline, urlCancelacion } from './reservaOnline/configuracion.js';
 
 /**
  * Avisos automáticos que antes dependían del servidor web (tareas periódicas).
@@ -118,6 +119,8 @@ export async function enviarRecordatoriosCitas(): Promise<number> {
     include: { paciente: { select: { name: true, email: true } } },
   });
 
+  // Las citas de la reserva online llevan también su enlace para cancelar
+  const { urlPublica } = await obtenerReservaOnline();
   let enviados = 0;
   for (const cita of citas) {
     if (!cita.paciente.email) continue;
@@ -127,6 +130,7 @@ export async function enviarRecordatoriosCitas(): Promise<number> {
       fecha: cita.fecha,
       hora: cita.hora,
       nombreCliente: cita.paciente.name,
+      urlCancelar: urlCancelacion(urlPublica, cita.tokenCancelacion),
     });
     if (ok) enviados++;
   }

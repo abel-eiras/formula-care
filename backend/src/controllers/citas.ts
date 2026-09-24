@@ -4,6 +4,7 @@ import { z } from 'zod';
 import { getQueryString, getParamString } from '../lib/queryHelpers.js';
 import { enviarCancelacionCita, enviarConfirmacionCita, enviarModificacionCita } from '../services/emailService.js';
 import { hoyISO } from '../lib/fechas.js';
+import { avisarCambioAgenda } from '../services/reservaOnline/sincronizacion.js';
 
 // Esquema de validación para crear cita
 const crearCitaSchema = z.object({
@@ -11,7 +12,8 @@ const crearCitaSchema = z.object({
   pacienteId: z.string().min(1, 'El ID del paciente es requerido'),
   fecha: z.string(), // Fecha en formato ISO
   hora: z.string().regex(/^([0-1]?[0-9]|2[0-3]):[0-5][0-9]$/, 'Formato de hora inválido (HH:mm)'),
-  tipo: z.enum(['dermo', 'bio', 'nutricion', 'consulta', 'seguimiento']),
+  // Servicio o "evento:<id>" (inscripciones a talleres, p. ej. desde la reserva online)
+  tipo: z.union([z.enum(['dermo', 'bio', 'nutricion', 'consulta', 'seguimiento']), z.string().regex(/^evento:[\w-]+$/)]),
   notas: z.string().optional(),
 });
 
@@ -129,6 +131,7 @@ export async function crearCita(req: Request, res: Response) {
         .catch((err) => console.error('⚠️  Error al enviar email de confirmación:', err));
     }
 
+    avisarCambioAgenda();
     res.status(201).json(cita);
   } catch (error) {
     if (error instanceof z.ZodError) {
@@ -211,6 +214,7 @@ export async function actualizarCita(req: Request, res: Response) {
       }).catch((err) => console.error('Error al enviar email de modificación:', err));
     }
 
+    avisarCambioAgenda();
     res.json(cita);
   } catch (error) {
     if (error instanceof z.ZodError) {
@@ -240,6 +244,7 @@ export async function eliminarCita(req: Request, res: Response) {
       where: { id },
       include: { paciente: { select: { name: true, email: true } } },
     });
+    avisarCambioAgenda();
 
     // Avisar al paciente si la cita era futura (en segundo plano: borrar no
     // espera al servidor de correo)

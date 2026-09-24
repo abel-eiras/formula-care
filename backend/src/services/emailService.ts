@@ -29,6 +29,7 @@ interface DatosEmail {
   colorSecundario?: string;
   colorAcento?: string;
   motivoRechazo?: string;
+  urlCancelar?: string; // Enlace "cancelar mi cita" (solo citas de la reserva online)
   [key: string]: string | undefined; // Para variables adicionales
 }
 
@@ -214,11 +215,40 @@ async function obtenerPlantilla(tipo: string) {
  * Reemplaza variables en el contenido de la plantilla
  * Variables soportadas: {{nombrePaciente}}, {{fechaCita}}, etc.
  */
-function reemplazarVariables(contenido: string, datos: DatosEmail): string {
-  let resultado = contenido;
+/** Escapa texto para insertarlo en HTML (los datos del paciente pueden venir de la web) */
+function escaparHtml(texto: string | undefined): string {
+  return (texto ?? '')
+    .replace(/&/g, '&amp;')
+    .replace(/</g, '&lt;')
+    .replace(/>/g, '&gt;')
+    .replace(/"/g, '&quot;')
+    .replace(/'/g, '&#39;');
+}
 
-  // Lista de todas las variables disponibles (incluye las de datos + extras)
-  const variables: Record<string, string | undefined> = {
+/** Copia de los datos con todos los textos escapados (para las plantillas generadas en código) */
+function escaparDatos(datos: DatosEmail): DatosEmail {
+  return Object.fromEntries(
+    Object.entries(datos).map(([clave, valor]) => [clave, valor === undefined ? undefined : escaparHtml(valor)])
+  ) as DatosEmail;
+}
+
+/** Botón de enlace con el estilo de los emails (vacío si no hay URL) */
+function botonEnlace(url: string | undefined, texto: string, color: string | undefined): string {
+  if (!url) return '';
+  return `<a href="${escaparHtml(url)}" style="display: inline-block; background-color: ${escaparHtml(color || '#79438f')}; color: white; padding: 12px 24px; text-decoration: none; border-radius: 6px; font-weight: bold;">${texto}</a>`;
+}
+
+function bloqueCancelar(datos: DatosEmail): string {
+  if (!datos.urlCancelar) return '';
+  return `<p style="font-size: 14px; color: #666;">¿No puedes venir? <a href="${escaparHtml(datos.urlCancelar)}">Cancela tu cita aquí</a> para que otra persona pueda aprovechar el hueco.</p>`;
+}
+
+function reemplazarVariables(contenido: string, datos: DatosEmail, esHtml = true): string {
+  let resultado = contenido;
+  const escapar = esHtml ? escaparHtml : (texto: string | undefined) => (texto ?? '').replace(/[\r\n]+/g, ' ');
+
+  // Texto y URLs se escapan; los "bloque*" ya son HTML construido aquí
+  const textos: Record<string, string | undefined> = {
     nombrePaciente: datos.nombrePaciente,
     fechaCita: datos.fechaCita,
     horaCita: datos.horaCita,
@@ -232,21 +262,30 @@ function reemplazarVariables(contenido: string, datos: DatosEmail): string {
     urlWhatsapp: datos.urlWhatsapp,
     urlTelefono: datos.urlTelefono,
     logoFarmacia: datos.logoFarmacia,
-    bloqueLogo: datos.logoFarmacia && datos.nombreFarmacia
-      ? `<img src="${datos.logoFarmacia}" alt="${(datos.nombreFarmacia || '').replace(/"/g, '&quot;')}" style="max-height: 60px; display: block; margin: 0 auto;" />`
-      : '',
-    bloqueWhatsapp: datos.urlWhatsapp
-      ? ` | <a href="${datos.urlWhatsapp}" style="color: #25d366;">Contactar por WhatsApp</a>`
-      : '',
-    bloqueTelefono: datos.urlTelefono
-      ? ` | <a href="${datos.urlTelefono}">Llamar</a>`
-      : '',
     colorPrimario: datos.colorPrimario,
     colorSecundario: datos.colorSecundario,
     colorAcento: datos.colorAcento,
     motivoRechazo: datos.motivoRechazo,
+    urlCancelar: datos.urlCancelar,
     anioActual: new Date().getFullYear().toString(),
   };
+  const variables: Record<string, string> = Object.fromEntries(
+    Object.entries(textos).map(([clave, valor]) => [clave, escapar(valor)])
+  );
+  Object.assign(variables, {
+    bloqueLogo: datos.logoFarmacia && datos.nombreFarmacia
+      ? `<img src="${escaparHtml(datos.logoFarmacia)}" alt="${escaparHtml(datos.nombreFarmacia)}" style="max-height: 60px; display: block; margin: 0 auto;" />`
+      : '',
+    bloqueWhatsapp: datos.urlWhatsapp
+      ? ` | <a href="${escaparHtml(datos.urlWhatsapp)}" style="color: #25d366;">Contactar por WhatsApp</a>`
+      : '',
+    bloqueTelefono: datos.urlTelefono ? ` | <a href="${escaparHtml(datos.urlTelefono)}">Llamar</a>` : '',
+    bloqueCancelar: bloqueCancelar(datos),
+    bloqueSolicitarCita: botonEnlace(datos.urlSolicitarCita, 'Solicitar nueva cita', datos.colorPrimario),
+    bloqueMotivo: datos.motivoRechazo
+      ? `<p style="margin: 10px 0 0 0;"><strong>Motivo:</strong> ${escaparHtml(datos.motivoRechazo)}</p>`
+      : '',
+  });
 
   // Reemplazar cada variable
   for (const [key, value] of Object.entries(variables)) {
@@ -304,7 +343,7 @@ const TEMAS_PRECONFIGURADOS: Record<string, { primario: string; secundario: stri
 /**
  * Obtiene los colores de marca según tema y colores personalizados
  */
-function obtenerColoresMarca(config: {
+export function obtenerColoresMarca(config: {
   temaActivo?: string | null;
   coloresMarca?: string | null;
 } | null): { primario: string; secundario: string; acento: string } {
@@ -360,8 +399,9 @@ async function obtenerDatosFarmacia(): Promise<DatosFarmaciaParaEmail> {
   // El logo se guarda siempre como data: URI (base64) desde el formulario de Configuración
   const logoFarmacia = config?.farmaciaLogo || '';
 
-  // URL solicitar cita: usa la web configurada de la farmacia (no hay reserva pública en este backend)
-  const urlSolicitarCita = config?.farmaciaWeb || '';
+  // URL para pedir cita: la página de reserva online si está activa; si no, la web de la farmacia
+  const reserva = await prisma.reservaOnline.findUnique({ where: { id: 'singleton' }, select: { activa: true, urlPublica: true } });
+  const urlSolicitarCita = (reserva?.activa && reserva.urlPublica) || config?.farmaciaWeb || '';
 
   // WhatsApp: https://wa.me/34XXXXXXXXX (sin + ni espacios)
   const urlWhatsapp = whatsapp
@@ -396,7 +436,8 @@ async function obtenerDatosFarmacia(): Promise<DatosFarmaciaParaEmail> {
  * Formatea la fecha para mostrar en el email
  */
 function formatearFecha(fecha: string): string {
-  const fechaObj = new Date(fecha);
+  // Mediodía local: new Date("YYYY-MM-DD") es medianoche UTC y puede caer en el día anterior
+  const fechaObj = new Date(/^\d{4}-\d{2}-\d{2}$/.test(fecha) ? `${fecha}T12:00:00` : fecha);
   const opciones: Intl.DateTimeFormatOptions = {
     weekday: 'long',
     year: 'numeric',
@@ -409,6 +450,13 @@ function formatearFecha(fecha: string): string {
 /**
  * Obtiene el nombre del tipo de servicio en español
  */
+/** Nombre del servicio; para "evento:<id>" busca el nombre del evento */
+async function nombreServicioOEvento(tipo: string): Promise<string> {
+  if (!tipo.startsWith('evento:')) return obtenerNombreTipoServicio(tipo);
+  const evento = await prisma.evento.findUnique({ where: { id: tipo.slice(7) }, select: { nombre: true } });
+  return evento?.nombre ?? 'Evento';
+}
+
 function obtenerNombreTipoServicio(tipo: string): string {
   const nombres: Record<string, string> = {
     dermo: 'Dermocosmética',
@@ -427,13 +475,14 @@ interface DatosCitaBase {
   hora: string;
   tipo: string;
   motivoRechazo?: string;
+  urlCancelar?: string;
 }
 
 /**
  * Construye DatosEmail completos con logo, colores y enlaces (WhatsApp, teléfono, solicitar cita).
  */
 async function obtenerDatosEmailCompletos(datosCita: DatosCitaBase): Promise<DatosEmail> {
-  const datosFarmacia = await obtenerDatosFarmacia();
+  const [datosFarmacia, tipoServicio] = await Promise.all([obtenerDatosFarmacia(), nombreServicioOEvento(datosCita.tipo)]);
 
   const direccionCompleta = [datosFarmacia.direccion, datosFarmacia.ciudad].filter(Boolean).join(', ');
 
@@ -441,7 +490,7 @@ async function obtenerDatosEmailCompletos(datosCita: DatosCitaBase): Promise<Dat
     nombrePaciente: datosCita.nombreCliente,
     fechaCita: formatearFecha(datosCita.fecha),
     horaCita: datosCita.hora,
-    tipoServicio: obtenerNombreTipoServicio(datosCita.tipo),
+    tipoServicio,
     nombreFarmacia: datosFarmacia.nombre,
     direccionFarmacia: direccionCompleta,
     telefonoFarmacia: datosFarmacia.telefono,
@@ -455,6 +504,7 @@ async function obtenerDatosEmailCompletos(datosCita: DatosCitaBase): Promise<Dat
     colorSecundario: datosFarmacia.colorSecundario,
     colorAcento: datosFarmacia.colorAcento,
     motivoRechazo: datosCita.motivoRechazo,
+    urlCancelar: datosCita.urlCancelar,
   };
 }
 
@@ -939,6 +989,7 @@ export async function enviarConfirmacionCita(
     fecha: string;
     hora: string;
     nombreCliente: string;
+    urlCancelar?: string;
   }
 ): Promise<boolean> {
   try {
@@ -952,10 +1003,10 @@ export async function enviarConfirmacionCita(
 
     if (plantilla) {
       html = reemplazarVariables(plantilla.contenidoHtml, datos);
-      asunto = reemplazarVariables(plantilla.asunto, datos);
+      asunto = reemplazarVariables(plantilla.asunto, datos, false);
     } else {
       // Plantilla por defecto si no existe en BD
-      html = generarPlantillaConfirmacionDefault(datos);
+      html = generarPlantillaConfirmacionDefault(escaparDatos(datos));
       asunto = `Confirmación de cita - ${datos.tipoServicio}`;
     }
 
@@ -987,6 +1038,7 @@ export async function enviarRecordatorioCita(
     fecha: string;
     hora: string;
     nombreCliente: string;
+    urlCancelar?: string;
   }
 ): Promise<boolean> {
   try {
@@ -999,9 +1051,9 @@ export async function enviarRecordatorioCita(
 
     if (plantilla) {
       html = reemplazarVariables(plantilla.contenidoHtml, datos);
-      asunto = reemplazarVariables(plantilla.asunto, datos);
+      asunto = reemplazarVariables(plantilla.asunto, datos, false);
     } else {
-      html = generarPlantillaRecordatorioDefault(datos);
+      html = generarPlantillaRecordatorioDefault(escaparDatos(datos));
       asunto = `Recordatorio: Tu cita es mañana - ${datos.tipoServicio}`;
     }
 
@@ -1045,15 +1097,40 @@ export async function enviarCancelacionCita(
 
     if (plantilla) {
       html = reemplazarVariables(plantilla.contenidoHtml, datos);
-      asunto = reemplazarVariables(plantilla.asunto, datos);
+      asunto = reemplazarVariables(plantilla.asunto, datos, false);
     } else {
-      html = generarPlantillaCancelacionDefault(datos);
+      html = generarPlantillaCancelacionDefault(escaparDatos(datos));
       asunto = `Cita cancelada - ${datos.tipoServicio}`;
     }
 
     return await enviarEmail(emailDestinatario, asunto, html);
   } catch (error) {
     console.error('❌ Error al enviar cancelación:', error);
+    return false;
+  }
+}
+
+/**
+ * Email a quien pidió cita por la reserva online y no se le ha podido dar
+ */
+export async function enviarRechazoSolicitud(
+  emailDestinatario: string,
+  datosSolicitud: { tipo: string; fecha: string; hora: string; nombreCliente: string; motivoRechazo?: string }
+): Promise<boolean> {
+  try {
+    const datos = await obtenerDatosEmailCompletos(datosSolicitud);
+    const plantilla = await obtenerPlantilla('rechazo');
+
+    const html = plantilla
+      ? reemplazarVariables(plantilla.contenidoHtml, datos)
+      : generarPlantillaRechazoDefault(escaparDatos(datos));
+    const asunto = plantilla
+      ? reemplazarVariables(plantilla.asunto, datos, false)
+      : `No hemos podido confirmar tu cita - ${datos.tipoServicio}`;
+
+    return await enviarEmail(emailDestinatario, asunto, html);
+  } catch (error) {
+    console.error('❌ Error al enviar el rechazo de la solicitud:', error);
     return false;
   }
 }
@@ -1081,9 +1158,9 @@ export async function enviarModificacionCita(
 
     if (plantilla) {
       html = reemplazarVariables(plantilla.contenidoHtml, datos);
-      asunto = reemplazarVariables(plantilla.asunto, datos);
+      asunto = reemplazarVariables(plantilla.asunto, datos, false);
     } else {
-      html = generarPlantillaModificacionDefault(datos);
+      html = generarPlantillaModificacionDefault(escaparDatos(datos));
       asunto = `Tu cita ha sido modificada - ${datos.tipoServicio}`;
     }
 
@@ -1135,9 +1212,9 @@ export async function enviarFelicitacionCumpleanos(emailDestinatario: string, no
 
     const html = existente
       ? reemplazarVariables(existente.contenidoHtml, datos)
-      : generarPlantillaCumpleanosDefault(datos);
+      : generarPlantillaCumpleanosDefault(escaparDatos(datos));
     const asunto = existente
-      ? reemplazarVariables(existente.asunto, datos)
+      ? reemplazarVariables(existente.asunto, datos, false)
       : `¡Feliz cumpleaños, ${nombrePaciente}!`;
 
     return await enviarEmail(emailDestinatario, asunto, html);
@@ -1194,8 +1271,7 @@ function generarPlantillaConfirmacionDefault(datos: DatosEmail): string {
     
     <p>Por favor, llegue con unos minutos de antelación.</p>
     
-    <div style="text-align: center; margin: 30px 0;">
-    </div>
+    ${datos.urlCancelar ? `<p style="font-size: 14px; color: #666;">¿No puedes venir? <a href="${datos.urlCancelar}">Cancela tu cita aquí</a> para que otra persona pueda aprovechar el hueco.</p>` : ''}
     
     <hr style="border: none; border-top: 1px solid #eee; margin: 30px 0;">
     
@@ -1246,8 +1322,7 @@ function generarPlantillaRecordatorioDefault(datos: DatosEmail): string {
     
     <p>Por favor, llegue con unos minutos de antelación. Si no puedes asistir, te agradecemos que nos lo comuniques.</p>
     
-    <div style="text-align: center; margin: 30px 0;">
-    </div>
+    ${datos.urlCancelar ? `<p style="font-size: 14px; color: #666;">¿No puedes venir? <a href="${datos.urlCancelar}">Cancela tu cita aquí</a> para que otra persona pueda aprovechar el hueco.</p>` : ''}
     
     <hr style="border: none; border-top: 1px solid #eee; margin: 30px 0;">
     
@@ -1269,6 +1344,43 @@ function generarPlantillaRecordatorioDefault(datos: DatosEmail): string {
 /**
  * Genera plantilla HTML de cancelación por defecto
  */
+function generarPlantillaRechazoDefault(datos: DatosEmail): string {
+  const { logo, whatsapp, telefono, color } = bloquesDesdeDatos(datos);
+  const boton = datos.urlSolicitarCita
+    ? `<div style="text-align: center; margin: 30px 0;"><a href="${datos.urlSolicitarCita}" style="display: inline-block; background-color: ${color}; color: white; padding: 12px 24px; text-decoration: none; border-radius: 6px; font-weight: bold;">Elegir otro horario</a></div>`
+    : '';
+  return `
+<!DOCTYPE html>
+<html lang="es">
+<head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1.0"><title>Solicitud de cita</title></head>
+<body style="font-family: 'Segoe UI', Arial, sans-serif; line-height: 1.6; color: #333; max-width: 600px; margin: 0 auto; padding: 20px; background-color: #f5f5f5;">
+  ${logo}
+  <div style="background-color: ${color}; color: white; padding: 30px 20px; text-align: center; border-radius: 10px 10px 0 0;">
+    <h1 style="margin: 0; font-size: 24px;">Solicitud de cita</h1>
+  </div>
+  <div style="background-color: white; padding: 30px; border-radius: 0 0 10px 10px; box-shadow: 0 2px 10px rgba(0,0,0,0.1);">
+    <p style="font-size: 16px;">Hola <strong>${datos.nombrePaciente}</strong>,</p>
+    <p>Sentimos no poder confirmar la cita que solicitaste:</p>
+    <div style="background-color: #f8f4fa; padding: 20px; margin: 20px 0; border-left: 4px solid ${color}; border-radius: 0 8px 8px 0;">
+      <p style="margin: 5px 0;"><strong>📅 Fecha:</strong> ${datos.fechaCita}</p>
+      <p style="margin: 5px 0;"><strong>🕐 Hora:</strong> ${datos.horaCita}</p>
+      <p style="margin: 5px 0;"><strong>💊 Servicio:</strong> ${datos.tipoServicio}</p>
+      ${datos.motivoRechazo ? `<p style="margin: 10px 0 0 0;"><strong>Motivo:</strong> ${datos.motivoRechazo}</p>` : ''}
+    </div>
+    <p>Puedes pedir otro horario o ponerte en contacto con nosotros.</p>
+    ${boton}
+    <hr style="border: none; border-top: 1px solid #eee; margin: 30px 0;">
+    <div style="color: #666; font-size: 14px;">
+      <p><strong>${datos.nombreFarmacia}</strong></p>
+      <p style="margin: 3px 0;">${datos.direccionFarmacia}</p>
+      <p style="margin: 3px 0;">📞 ${datos.telefonoFarmacia || ''}${whatsapp}${telefono}</p>
+      <p style="margin: 3px 0;">✉️ ${datos.emailFarmacia || ''}</p>
+    </div>
+  </div>
+</body>
+</html>`;
+}
+
 function generarPlantillaCancelacionDefault(datos: DatosEmail): string {
   const { logo, whatsapp, telefono, color } = bloquesDesdeDatos(datos);
   const urlSolicitar = datos.urlSolicitarCita || datos.webFarmacia || '#';
@@ -1354,8 +1466,7 @@ function generarPlantillaModificacionDefault(datos: DatosEmail): string {
     
     <p>Por favor, llegue con unos minutos de antelación.</p>
     
-    <div style="text-align: center; margin: 30px 0;">
-    </div>
+    ${datos.urlCancelar ? `<p style="font-size: 14px; color: #666;">¿No puedes venir? <a href="${datos.urlCancelar}">Cancela tu cita aquí</a> para que otra persona pueda aprovechar el hueco.</p>` : ''}
     
     <hr style="border: none; border-top: 1px solid #eee; margin: 30px 0;">
     
