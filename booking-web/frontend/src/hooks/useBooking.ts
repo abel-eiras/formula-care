@@ -1,147 +1,71 @@
-import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
+import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { api } from '@/lib/api';
+import { cifrarSolicitud, type ClavePublicaFarmacia, type DatosPersonales } from '@/lib/cifrado';
 
-export interface FarmaciaPublica {
-  nombre: string | null;
-  logo: string | null;
-  direccion: string | null;
-  ciudad: string | null;
-  telefono: string | null;
-  email: string | null;
-  whatsapp: string | null;
-  web: string | null;
-  colorPrimario: string;
-  recaptchaSiteKey: string | null;
+/** Plazas libres por hora: { "09:00": 1 } */
+export type HuecosDia = Record<string, number>;
+
+export interface Reserva {
+  farmacia: {
+    nombre: string | null;
+    direccion: string | null;
+    ciudad: string | null;
+    telefono: string | null;
+    email: string | null;
+    whatsapp: string | null;
+    web: string | null;
+    logo: string | null;
+    colorPrimario: string;
+  };
+  servicios: { id: string; nombre: string; duracion: number }[];
+  eventos: { id: string; nombre: string; descripcion: string | null; duracion: number }[];
+  clavePublica: ClavePublicaFarmacia;
+  /** tipo → fecha → hora → plazas */
+  huecos: Record<string, Record<string, HuecosDia>>;
+  hayTextosLegales: { avisoLegal: boolean; privacidad: boolean; cookies: boolean };
+  captcha: string | null;
+  actualizadaEn: string;
 }
 
-export interface EventoPublico {
-  id: string;
-  nombre: string;
-  descripcion: string | null;
-  fechas: string[];
-  horas: string[];
-}
-
-/** Datos públicos de branding/contacto de la (única) farmacia de este despliegue. */
-export function useFarmaciaPublica() {
+/** Todo lo que necesita la página: marca, servicios y huecos libres publicados por la farmacia */
+export function useReserva() {
   return useQuery({
-    queryKey: ['farmacia-publica'],
-    queryFn: () => api.get<FarmaciaPublica>('/public/farmacia'),
-    staleTime: 5 * 60 * 1000,
-    retry: 1,
-  });
-}
-
-/** Eventos activos (talleres, jornadas, etc.). */
-export function useEventosPublicos() {
-  return useQuery({
-    queryKey: ['eventos-publicos'],
-    queryFn: () => api.get<EventoPublico[]>('/public/eventos'),
-    staleTime: 5 * 60 * 1000,
-    retry: 1,
-  });
-}
-
-/** Disponibilidad para un tipo de servicio (o evento) en una fecha. */
-export function useDisponibilidad(tipo: string | null, fecha: string | null, eventoId?: string | null) {
-  return useQuery({
-    queryKey: ['disponibilidad', tipo, fecha, eventoId],
-    queryFn: async () => {
-      if (!tipo || !fecha) return { disponible: false, horasDisponibles: [] as string[] };
-      let url = `/public/disponibilidad?tipo=${tipo}&fecha=${fecha}`;
-      if (eventoId) url += `&eventoId=${eventoId}`;
-      return api.get<{ disponible: boolean; horasDisponibles: string[] }>(url);
-    },
-    enabled: !!tipo && !!fecha,
+    queryKey: ['reserva'],
+    queryFn: () => api.get<Reserva>('/public/reserva'),
     staleTime: 60 * 1000,
-    refetchOnWindowFocus: false,
     retry: 1,
   });
 }
 
-export interface SolicitarCitaInput {
-  nombreCliente: string;
-  emailCliente: string;
-  telefonoCliente: string;
-  tipo: 'dermo' | 'bio' | 'consulta' | 'seguimiento' | 'evento';
-  eventoId?: string;
-  fecha: string;
-  hora: string;
-  notas?: string;
+export interface NuevaSolicitud {
+  cita: { tipo: string; fecha: string; hora: string };
+  datos: DatosPersonales;
+  clavePublica: ClavePublicaFarmacia;
   captchaToken?: string;
 }
 
-export interface SolicitarCitaResultado {
-  id: string;
-  estado: 'pendiente' | 'aprobada' | 'rechazada';
-  mensaje: string;
-  cita: { id: string; fecha: string; hora: string } | null;
-}
-
-export function useSolicitarCita() {
+/** Cifra los datos personales en el navegador y envía la solicitud */
+export function useEnviarSolicitud() {
   const queryClient = useQueryClient();
   return useMutation({
-    mutationFn: (datos: SolicitarCitaInput) => api.post<SolicitarCitaResultado>('/public/solicitar-cita', datos),
-    onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ['disponibilidad'] });
+    mutationFn: async ({ cita, datos, clavePublica, captchaToken }: NuevaSolicitud) => {
+      const sobre = await cifrarSolicitud(datos, clavePublica, cita);
+      return api.post<{ id: string }>('/public/solicitudes', { ...cita, sobre, captchaToken });
     },
+    // Tanto si sale bien como si el hueco ya estaba cogido, refrescar huecos
+    onSettled: () => queryClient.invalidateQueries({ queryKey: ['reserva'] }),
   });
-}
-
-export interface TextoLegalResponse {
-  farmacia: { nombre: string | null };
-  tipo: string;
-  titulo: string;
-  contenido: string | null;
 }
 
 export function useTextoLegal(tipo: string | null) {
   return useQuery({
-    queryKey: ['legal-publico', tipo],
-    queryFn: () => api.get<TextoLegalResponse>(`/public/legal/${tipo}`),
+    queryKey: ['legal', tipo],
+    queryFn: () => api.get<{ titulo: string; farmacia: string | null; contenido: string | null }>(`/public/legal/${tipo}`),
     enabled: !!tipo,
     staleTime: 5 * 60 * 1000,
   });
 }
 
-export interface DatosCitaToken {
-  valido: boolean;
-  error?: string;
-  tipo?: 'confirmar' | 'modificar' | 'cancelar';
-  cita?: {
-    id: string;
-    fecha: string;
-    hora: string;
-    tipo: string;
-    estado: string;
-    notas: string | null;
-  };
-  paciente?: { nombre: string; email?: string; telefono?: string };
-}
-
-export function verificarTokenCita(token: string) {
-  return api.get<DatosCitaToken>(`/public/cita/verificar/${token}`);
-}
-
-export function confirmarCitaToken(token: string) {
-  return api.post<{ success: boolean; message: string }>(`/public/cita/confirmar/${token}`, {});
-}
-
-export function cancelarCitaToken(token: string, motivo?: string) {
-  return api.post<{ success: boolean; message: string }>(`/public/cita/cancelar/${token}`, { motivo });
-}
-
-export interface DatosModificacion {
-  valido: boolean;
-  error?: string;
-  cita?: { id: string; fecha: string; hora: string; tipo: string };
-  paciente?: { nombre: string };
-}
-
-export function obtenerDatosModificacion(token: string) {
-  return api.get<DatosModificacion>(`/public/cita/modificar/${token}`);
-}
-
-export function modificarCitaToken(token: string, fecha: string, hora: string) {
-  return api.post<{ success: boolean; message: string; error?: string }>(`/public/cita/modificar/${token}`, { fecha, hora });
+export function solicitarCancelacion(token: string) {
+  return api.post<{ recibida: boolean }>('/public/cancelaciones', { token });
 }

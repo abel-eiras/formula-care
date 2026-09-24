@@ -24,6 +24,7 @@ import { hoyISO, parsearFecha } from "@/lib/fechas";
 import { useEventos } from "@/hooks/useEventos";
 import { LoadingSpinner } from "@/components/ui/LoadingSpinner";
 import type { Cita } from "@/types";
+import { SolicitudesOnline } from "@/components/calendario/SolicitudesOnline";
 
 // Tipos para el formulario de nueva cita
 interface NuevaCitaForm {
@@ -36,7 +37,7 @@ interface NuevaCitaForm {
 }
 
 // Configuración de tipos de cita
-const tiposCita: Record<Cita["tipo"], { label: string; color: string }> = {
+const tiposCita: Record<string, { label: string; color: string }> = {
   dermo: { label: "Dermocosmética", color: "bg-secondary text-secondary-foreground" },
   bio: { label: "Bioquímica", color: "bg-primary text-primary-foreground" },
   nutricion: { label: "Nutrición", color: "bg-success text-white" },
@@ -70,12 +71,21 @@ export default function Calendario() {
 
   const hoy = startOfToday();
 
+  // Nombre y color del tipo de cita; las inscripciones a eventos muestran el nombre del evento
+  const etiquetaTipo = (tipo: string) => {
+    if (tipo.startsWith("evento:")) {
+      const evento = eventos.find((e) => e.id === tipo.slice(7));
+      return { label: evento?.nombre ?? "Evento", color: "bg-warning/20 text-foreground" };
+    }
+    return tiposCita[tipo] ?? { label: tipo, color: "" };
+  };
+
   // Obtener citas futuras ordenadas por fecha y hora
   const citasFuturas = useMemo(() => {
     return todasLasCitas
       .filter((cita) => {
         const fechaCita = parseISO(cita.fecha);
-        return isAfter(fechaCita, hoy) || isSameDay(fechaCita, hoy);
+        return cita.estado !== "cancelada" && (isAfter(fechaCita, hoy) || isSameDay(fechaCita, hoy));
       })
       .sort((a, b) => {
         const fechaA = parseISO(a.fecha);
@@ -101,7 +111,7 @@ export default function Calendario() {
 
   // Obtener fechas con citas para marcar en el calendario
   const diasConCitas = useMemo(() => {
-    return todasLasCitas.map((cita) => parseISO(cita.fecha));
+    return todasLasCitas.filter((cita) => cita.estado !== "cancelada").map((cita) => parseISO(cita.fecha));
   }, [todasLasCitas]);
 
   // Cumpleaños del mes visible (más una semana a cada lado para los días de
@@ -323,6 +333,9 @@ export default function Calendario() {
         </div>
       </div>
 
+      {/* Solicitudes de la reserva online pendientes de aceptar o rechazar */}
+      <SolicitudesOnline />
+
       {/* Tabs: Vista Calendario y Vista Lista */}
       <Tabs defaultValue="lista" className="space-y-4">
         <TabsList>
@@ -393,8 +406,8 @@ export default function Calendario() {
                             </span>
                           </TableCell>
                           <TableCell>
-                            <Badge className={cn("text-xs", tiposCita[cita.tipo]?.color || "")}>
-                              {tiposCita[cita.tipo]?.label || cita.tipo}
+                            <Badge className={cn("text-xs", etiquetaTipo(cita.tipo).color)}>
+                              {etiquetaTipo(cita.tipo).label}
                             </Badge>
                           </TableCell>
                           <TableCell className="max-w-[200px] truncate">
@@ -576,15 +589,17 @@ export default function Calendario() {
                         key={cita.id}
                         className={cn(
                           "p-4 rounded-lg border transition-all hover:shadow-md",
-                          "bg-card hover:bg-accent/5"
+                          "bg-card hover:bg-accent/5",
+                          cita.estado === "cancelada" && "opacity-60"
                         )}
                       >
                         <div className="flex items-start justify-between gap-2">
                           <div className="flex-1 min-w-0">
                             <div className="flex items-center gap-2 mb-1">
-                              <span className="font-semibold text-foreground truncate">
+                              <span className={cn("font-semibold text-foreground truncate", cita.estado === "cancelada" && "line-through")}>
                                 {cita.titulo}
                               </span>
+                              {cita.estado === "cancelada" && <Badge variant="outline">Cancelada</Badge>}
                             </div>
                             <div className="flex items-center gap-2 text-sm text-muted-foreground mb-2">
                               <Clock className="h-3.5 w-3.5" />
@@ -596,8 +611,8 @@ export default function Calendario() {
                             </div>
                           </div>
                           <div className="flex items-center gap-2">
-                            <Badge className={cn("flex-shrink-0 text-xs", tiposCita[cita.tipo]?.color || "")}>
-                              {tiposCita[cita.tipo]?.label || cita.tipo}
+                            <Badge className={cn("flex-shrink-0 text-xs", etiquetaTipo(cita.tipo).color)}>
+                              {etiquetaTipo(cita.tipo).label}
                             </Badge>
                             <Button
                               variant="ghost"

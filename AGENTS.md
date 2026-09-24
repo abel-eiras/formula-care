@@ -13,8 +13,10 @@
 Formula Care corre localmente como app de escritorio (backend Express embebido
 por Tauri). No es multi-tenant: no hay modelo `Farmacia` ni rol `superadmin`.
 La reserva pública de citas vive aparte, en [`booking-web/`](./booking-web/),
-un servicio opcional y autohospedable sin sincronización con la app de
-escritorio (ver su propio README).
+un servicio opcional y autohospedable que funciona como **buzón cifrado**: la
+app de escritorio (única fuente de verdad de la agenda) le publica los huecos
+libres y recoge las solicitudes, que llegan cifradas con la clave de la
+farmacia (ver su propio README).
 
 ## 🎯 Principios Fundamentales
 
@@ -112,7 +114,7 @@ const Dashboard = lazy(() => import('./pages/Dashboard'))
 │   └── types/        # TypeScript types
 ├── backend/          # API Node.js + Express + Prisma (SQLite, embebido en la app)
 ├── src-tauri/        # Empaquetado de escritorio (Tauri, Rust)
-├── booking-web/      # Servicio OPCIONAL y aparte: reserva pública de citas (sin sync)
+├── booking-web/      # Servicio OPCIONAL y aparte: reserva pública de citas (buzón cifrado)
 ├── context/          # Documentación para agentes (guías, old, integraciones)
 └── .cursor/skills/   # Skills de proyecto (react-codigo-limpio, stack-formula-care)
 ```
@@ -120,6 +122,10 @@ const Dashboard = lazy(() => import('./pages/Dashboard'))
 Al trabajar en `booking-web/`, ten en cuenta que es un proyecto independiente
 (su propio `package.json`, su propio `schema.prisma`, sin `farmaciaId` porque
 también es de una sola farmacia) — no comparte base de datos con `backend/`.
+Se comunica con la app solo por la API de sincronización (`/api/sync`), y el
+cifrado de las solicitudes está duplicado a propósito en
+`backend/src/services/reservaOnline/cifrado.ts` y
+`booking-web/frontend/src/lib/cifrado.ts`: si cambias uno, cambia el otro.
 
 ## 🧩 Skills de Proyecto
 
