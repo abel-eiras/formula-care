@@ -1,68 +1,50 @@
 import express from 'express';
 import cors from 'cors';
-import cookieParser from 'cookie-parser';
 import dotenv from 'dotenv';
 import rateLimit from 'express-rate-limit';
-import { publicRouter } from './routes/public.js';
-import { staffRouter } from './routes/staff.js';
+import { prisma } from './lib/prisma.js';
+import { rutasPublicas } from './rutas/publicas.js';
+import { rutasSincronizacion } from './rutas/sincronizacion.js';
 
 dotenv.config();
 
 const app = express();
 const PORT = process.env.PORT || 4000;
+const ORIGENES = process.env.CORS_ORIGIN ? process.env.CORS_ORIGIN.split(',').map((o) => o.trim()) : ['http://localhost:5174'];
 
-const CORS_ORIGINS = process.env.CORS_ORIGIN ? process.env.CORS_ORIGIN.split(',') : ['http://localhost:5174'];
+// Detrás de un proxy (Render, Fly.io, Nginx) para que el límite por IP use la IP real
+if (process.env.TRUST_PROXY) app.set('trust proxy', Number(process.env.TRUST_PROXY) || process.env.TRUST_PROXY);
+app.disable('x-powered-by');
 
-app.use(
-  cors({
-    origin: CORS_ORIGINS,
-    credentials: true,
-  })
-);
-app.use(express.json({ limit: '512kb' }));
-app.use(cookieParser());
+const limitar = (max: number) =>
+  rateLimit({
+    windowMs: 15 * 60 * 1000,
+    max,
+    standardHeaders: true,
+    legacyHeaders: false,
+    message: { error: 'Demasiados intentos. Inténtalo de nuevo en unos minutos.' },
+  });
 
-app.use((req, _res, next) => {
-  console.log(`${new Date().toISOString()} - ${req.method} ${req.path}`);
-  next();
-});
+// La app de escritorio no es un navegador: la API de sincronización no necesita CORS
+app.use('/api/sync', express.json({ limit: '3mb' }), limitar(300), rutasSincronizacion);
 
-// Rate limiting: rutas públicas de escritura (evitar spam de solicitudes) y login de staff
-const solicitarCitaRateLimit = rateLimit({
-  windowMs: 15 * 60 * 1000,
-  max: 30,
-  standardHeaders: true,
-  legacyHeaders: false,
-  message: { error: 'Demasiadas solicitudes. Inténtalo de nuevo en unos minutos.' },
-});
+app.use('/api/public', cors({ origin: ORIGENES }), express.json({ limit: '64kb' }));
+app.post('/api/public/solicitudes', limitar(10));
+app.post('/api/public/cancelaciones', limitar(20));
+app.use('/api/public', rutasPublicas);
 
-const staffLoginRateLimit = rateLimit({
-  windowMs: 15 * 60 * 1000,
-  max: 20,
-  standardHeaders: true,
-  legacyHeaders: false,
-  message: { error: 'Demasiados intentos', mensaje: 'Espera 15 minutos antes de volver a intentarlo.' },
-});
-
-app.post('/api/public/solicitar-cita', solicitarCitaRateLimit);
-app.post('/api/staff/login', staffLoginRateLimit);
-
-app.use('/api/public', publicRouter);
-app.use('/api/staff', staffRouter);
-
-app.get('/api/health', (_req, res) => {
-  res.json({ status: 'ok', message: 'booking-web backend funcionando' });
+app.get('/api/health', async (_req, res) => {
+  const pub = await prisma.publicacion.findUnique({ where: { id: 'singleton' }, select: { actualizadaEn: true } });
+  res.json({ status: 'ok', ultimaPublicacion: pub?.actualizadaEn ?? null });
 });
 
 app.use((err: Error, _req: express.Request, res: express.Response, _next: express.NextFunction) => {
   console.error('Error:', err);
-  res.status(500).json({
-    error: 'Error interno del servidor',
-    message: process.env.NODE_ENV === 'development' ? err.message : undefined,
-  });
+  res.status(500).json({ error: 'Error interno del servidor' });
 });
 
 app.listen(PORT, () => {
-  console.log(`🚀 booking-web backend corriendo en http://localhost:${PORT}`);
-  console.log(`📡 CORS habilitado para: ${CORS_ORIGINS.join(', ')}`);
+  console.log(`🚀 booking-web escuchando en http://localhost:${PORT}`);
+  console.log(`📡 CORS para: ${ORIGENES.join(', ')}`);
+  if (!process.env.SYNC_TOKEN) console.warn('⚠️  SYNC_TOKEN sin configurar: la app de escritorio no podrá sincronizar');
 });

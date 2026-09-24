@@ -42,8 +42,7 @@ const PLANTILLAS_DEFAULT = {
     
     <p>Por favor, llegue con unos minutos de antelación.</p>
     
-    <div style="text-align: center; margin: 30px 0;">
-    </div>
+    {{bloqueCancelar}}
     
     <hr style="border: none; border-top: 1px solid #eee; margin: 30px 0;">
     
@@ -90,8 +89,7 @@ const PLANTILLAS_DEFAULT = {
     
     <p>Por favor, llegue con unos minutos de antelación. Si no puedes asistir, te agradecemos que nos lo comuniques.</p>
     
-    <div style="text-align: center; margin: 30px 0;">
-    </div>
+    {{bloqueCancelar}}
     
     <hr style="border: none; border-top: 1px solid #eee; margin: 30px 0;">
     
@@ -139,7 +137,7 @@ const PLANTILLAS_DEFAULT = {
     <p>Si deseas reagendar tu cita, puedes contactarnos o visitar nuestra página de solicitud de citas.</p>
     
     <div style="text-align: center; margin: 30px 0;">
-      <a href="{{urlSolicitarCita}}" style="display: inline-block; background-color: {{colorPrimario}}; color: white; padding: 12px 24px; text-decoration: none; border-radius: 6px; font-weight: bold;">Solicitar nueva cita</a>
+      {{bloqueSolicitarCita}}
     </div>
     
     <hr style="border: none; border-top: 1px solid #eee; margin: 30px 0;">
@@ -187,7 +185,56 @@ const PLANTILLAS_DEFAULT = {
     
     <p>Por favor, llegue con unos minutos de antelación.</p>
     
+    {{bloqueCancelar}}
+    
+    <hr style="border: none; border-top: 1px solid #eee; margin: 30px 0;">
+    
+    <div style="color: #666; font-size: 14px;">
+      <p><strong>{{nombreFarmacia}}</strong></p>
+      <p style="margin: 3px 0;">{{direccionFarmacia}}</p>
+      <p style="margin: 3px 0;">📞 {{telefonoFarmacia}}{{bloqueWhatsapp}}{{bloqueTelefono}}</p>
+      <p style="margin: 3px 0;">✉️ {{emailFarmacia}}</p>
+    </div>
+  </div>
+  
+  <p style="text-align: center; color: #999; font-size: 12px; margin-top: 20px;">
+    © {{anioActual}} {{nombreFarmacia}}
+  </p>
+</body>
+</html>`,
+  },
+  rechazo: {
+    nombre: 'Solicitud online no disponible',
+    asunto: 'No hemos podido confirmar tu cita - {{tipoServicio}}',
+    contenidoHtml: `<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Solicitud de cita</title>
+</head>
+<body style="font-family: 'Segoe UI', Arial, sans-serif; line-height: 1.6; color: #333; max-width: 600px; margin: 0 auto; padding: 20px; background-color: #f5f5f5;">
+  {{bloqueLogo}}
+  <div style="background-color: {{colorPrimario}}; color: white; padding: 30px 20px; text-align: center; border-radius: 10px 10px 0 0;">
+    <h1 style="margin: 0; font-size: 24px;">Solicitud de cita</h1>
+  </div>
+  
+  <div style="background-color: white; padding: 30px; border-radius: 0 0 10px 10px; box-shadow: 0 2px 10px rgba(0,0,0,0.1);">
+    <p style="font-size: 16px;">Hola <strong>{{nombrePaciente}}</strong>,</p>
+    
+    <p>Sentimos no poder confirmar la cita que solicitaste:</p>
+    
+    <div style="background-color: #f8f4fa; padding: 20px; margin: 20px 0; border-left: 4px solid {{colorPrimario}}; border-radius: 0 8px 8px 0;">
+      <p style="margin: 5px 0;"><strong>📅 Fecha:</strong> {{fechaCita}}</p>
+      <p style="margin: 5px 0;"><strong>🕐 Hora:</strong> {{horaCita}}</p>
+      <p style="margin: 5px 0;"><strong>💊 Servicio:</strong> {{tipoServicio}}</p>
+      {{bloqueMotivo}}
+    </div>
+    
+    <p>Puedes pedir otro horario o ponerte en contacto con nosotros.</p>
+    
     <div style="text-align: center; margin: 30px 0;">
+      {{bloqueSolicitarCita}}
     </div>
     
     <hr style="border: none; border-top: 1px solid #eee; margin: 30px 0;">
@@ -257,6 +304,11 @@ export const VARIABLES_DISPONIBLES = [
   { nombre: 'bloqueLogo', descripcion: 'Bloque HTML con logo (vacío si no hay logo)' },
   { nombre: 'bloqueWhatsapp', descripcion: 'Enlace WhatsApp o vacío (para pie de contacto)' },
   { nombre: 'bloqueTelefono', descripcion: 'Enlace llamar o vacío (para pie de contacto)' },
+  { nombre: 'bloqueCancelar', descripcion: 'Enlace "cancelar mi cita" (solo citas de la reserva online; vacío si no aplica)' },
+  { nombre: 'bloqueSolicitarCita', descripcion: 'Botón "Solicitar nueva cita" (vacío si no hay página de reserva ni web)' },
+  { nombre: 'bloqueMotivo', descripcion: 'Motivo del rechazo o cancelación, si se indicó' },
+  { nombre: 'motivoRechazo', descripcion: 'Motivo del rechazo (texto)' },
+  { nombre: 'urlCancelar', descripcion: 'URL para cancelar la cita (solo reserva online)' },
   { nombre: 'colorPrimario', descripcion: 'Color primario del tema de la farmacia' },
   { nombre: 'colorSecundario', descripcion: 'Color secundario del tema' },
   { nombre: 'colorAcento', descripcion: 'Color de acento' },

@@ -6,6 +6,7 @@ import {
   PARAMETROS_REFERENCIA_DEFAULT,
 } from '../config/parametrosBioDefault.js';
 import { derivarClaveCifrado } from '../services/backupService.js';
+import { avisarCambioAgenda } from '../services/reservaOnline/sincronizacion.js';
 
 // ID fijo de la fila única de configuración (instalación local de una sola farmacia)
 const CONFIG_ID = 'singleton';
@@ -400,6 +401,7 @@ export async function actualizarConfiguracionCalendario(req: Request, res: Respo
         where: { id: CONFIG_ID },
         data: datosActualizar,
       });
+      avisarCambioAgenda();
     }
 
     // Parsear JSON para respuesta
@@ -496,6 +498,7 @@ export async function bloquearFechaHora(req: Request, res: Response) {
         horasBloqueadas: JSON.stringify(horasBloqueadas),
       },
     });
+    avisarCambioAgenda();
 
     res.json({
       mensaje: hora ? `Hora ${hora} del ${fecha} bloqueada` : `Fecha ${fecha} bloqueada`,
@@ -577,6 +580,7 @@ export async function desbloquearFechaHora(req: Request, res: Response) {
         horasBloqueadas: JSON.stringify(horasBloqueadas),
       },
     });
+    avisarCambioAgenda();
 
     res.json({
       mensaje: hora ? `Hora ${hora} del ${fecha} desbloqueada` : `Fecha ${fecha} desbloqueada`,

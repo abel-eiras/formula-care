@@ -51,7 +51,7 @@ model Paciente {
   birthDate   String
   address     String?
   notes       String?
-  origen      String   @default("manual") // "manual" = registrado por farmacia, "autoregistro" = formulario público
+  origen      String   @default("manual") // "manual" = registrado por farmacia, "autoregistro" = llegó por la reserva online
   createdAt   DateTime @default(now())
   updatedAt   DateTime @updatedAt
 
@@ -352,6 +352,8 @@ model Cita {
   notas      String?
   recordatorioEnviado Boolean @default(false) // Si se ha enviado recordatorio
   confirmacionEnviada Boolean @default(false) // Si se ha enviado email de confirmación
+  // Solo citas de la reserva online: secreto del enlace "cancelar mi cita" del email
+  tokenCancelacion String? @unique
   createdAt  DateTime @default(now())
   updatedAt  DateTime @updatedAt
 
@@ -516,4 +518,50 @@ model PlantillaEmail {
   updatedAt      DateTime @updatedAt
 
   @@index([activa])
+}
+
+// ==========================================
+// RESERVA ONLINE (buzón cifrado con booking-web)
+// ==========================================
+// booking-web publica los huecos que calcula esta app y recoge solicitudes
+// cifradas con la clave pública de la farmacia; solo esta app puede leerlas.
+// Ver booking-web/README.md.
+model ReservaOnline {
+  id                    String    @id @default("singleton")
+  activa                Boolean   @default(false)
+  urlPublica            String?   // Página de reserva (para los enlaces de los emails)
+  urlApi                String?   // API de booking-web (…/api)
+  tokenSincronizacion   String?   // Secreto compartido con booking-web (SYNC_TOKEN)
+  clavePublica          String?   // JWK ECDH P-256 que usan los navegadores para cifrar
+  clavePrivada          String?   // JWK privada: nunca sale de este equipo
+  diasVista             Int       @default(60) // Días que se publican hacia delante
+  antelacionMinimaHoras Int       @default(24) // No se ofrecen huecos antes de este margen
+  ultimaSincronizacion  DateTime?
+  ultimoError           String?
+  createdAt             DateTime  @default(now())
+  updatedAt             DateTime  @updatedAt
+}
+
+// Solicitud recibida por la reserva online, ya descifrada, a la espera de que
+// el personal la acepte (crea paciente/cita) o la rechace.
+model SolicitudOnline {
+  id              String    @id // El mismo id que tenía en booking-web
+  tipo            String    // "dermo", "bio", "nutricion", "consulta" o "evento:<id>"
+  fecha           String    // YYYY-MM-DD
+  hora            String    // HH:mm
+  nombre          String
+  email           String
+  telefono        String
+  fechaNacimiento String?   // YYYY-MM-DD
+  sexo            String?   // "M", "F" u "O" (para dar de alta al paciente)
+  notas           String?
+  estado          String    @default("pendiente") // "pendiente", "aceptada", "rechazada"
+  motivoRechazo   String?
+  pacienteId      String?
+  citaId          String?
+  recibidaEn      DateTime  @default(now())
+  resueltaEn      DateTime?
+
+  @@index([estado])
+  @@index([fecha])
 }
