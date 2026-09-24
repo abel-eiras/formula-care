@@ -43,17 +43,20 @@ app.use((req, res, next) => {
   next();
 });
 
-// Rate limiting para rutas de autenticación (login)
+// Límite de intentos solo donde se prueban contraseñas. Cuenta únicamente los
+// fallos: /me se consulta en cada carga y la gestión de usuarios no debe agotarlo.
 const authRateLimit = rateLimit({
   windowMs: 15 * 60 * 1000, // 15 minutos
   max: 20,
+  skipSuccessfulRequests: true,
   standardHeaders: true,
   legacyHeaders: false,
   message: { error: 'Demasiados intentos', mensaje: 'Por favor espera 15 minutos antes de intentarlo de nuevo.' },
 });
 
-// Rutas de autenticación (siempre disponibles, con rate limit en login)
-app.use('/api/auth', authRateLimit, authRouter);
+// Rutas de autenticación (siempre disponibles)
+app.use(['/api/auth/login', '/api/auth/setup-inicial', '/api/auth/password'], authRateLimit);
+app.use('/api/auth', authRouter);
 
 // Rutas protegidas de la API (requieren autenticación)
 app.use('/api/pacientes', verificarToken, pacientesRouter);

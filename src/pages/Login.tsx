@@ -43,7 +43,7 @@ export default function Login() {
       .finally(() => setComprobandoSetup(false));
   }, []);
 
-  // Mensaje al llegar desde establecer-contrasena
+  // Mensaje recibido al navegar hasta aquí (p. ej. tras cambiar la contraseña)
   useEffect(() => {
     const mensaje = (location.state as { mensaje?: string } | null)?.mensaje;
     if (mensaje) {
@@ -215,6 +215,12 @@ export default function Login() {
                   'Iniciar Sesión'
                 )}
               </Button>
+              {!necesitaSetup && (
+                <p className="text-center text-xs text-muted-foreground">
+                  ¿Has olvidado tu contraseña? Pide a un administrador de la farmacia que la restablezca desde
+                  Configuración → Usuarios.
+                </p>
+              )}
 
               {/* Enlaces legales */}
               <div className="text-center text-xs text-muted-foreground space-y-2">

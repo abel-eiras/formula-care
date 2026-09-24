@@ -9,8 +9,6 @@ import {
   registro,
   obtenerUsuarioActual,
   cambiarPassword,
-  obtenerInvitacion,
-  establecerContrasenaInvitacion,
   listarUsuarios,
   actualizarUsuario,
   eliminarUsuario,
@@ -26,8 +24,6 @@ authRouter.get('/necesita-setup', necesitaSetup);
 authRouter.post('/setup-inicial', setupInicial);
 authRouter.post('/login', login);
 authRouter.post('/logout', logout);
-authRouter.get('/invitacion/:token', obtenerInvitacion);
-authRouter.post('/establecer-contrasena', establecerContrasenaInvitacion);
 
 // Rutas protegidas (requieren autenticación)
 authRouter.get('/me', verificarToken, obtenerUsuarioActual);
