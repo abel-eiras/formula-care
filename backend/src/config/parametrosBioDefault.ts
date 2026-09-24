@@ -16,9 +16,9 @@ export const PARAMETROS_BIO_CONFIG_DEFAULT = [
   { id: 'proteinaCReactiva', label: 'Proteína C Reactiva (PCR)', unit: 'mg/L', grupo: 'avanzados', activo: true, orden: 6 },
   { id: 'vitaminaD', label: 'Vitamina D', unit: 'ng/mL', grupo: 'avanzados', activo: true, orden: 7 },
   { id: 'ferritina', label: 'Ferritina', unit: 'ng/mL', grupo: 'avanzados', activo: true, orden: 8 },
-  { id: 'weight', label: 'Peso', unit: 'kg', grupo: 'corporales', activo: true, orden: 1 },
-  { id: 'height', label: 'Altura', unit: 'cm', grupo: 'corporales', activo: true, orden: 2 },
-  { id: 'perimetroAbdominal', label: 'Perímetro Abdominal', unit: 'cm', grupo: 'corporales', activo: true, orden: 3 },
+  { id: 'peso', label: 'Peso', unit: 'kg', grupo: 'corporales', activo: true, orden: 1 },
+  { id: 'altura', label: 'Altura', unit: 'cm', grupo: 'corporales', activo: true, orden: 2 },
+  { id: 'cintura', label: 'Perímetro Abdominal', unit: 'cm', grupo: 'corporales', activo: true, orden: 3 },
   { id: 'imc', label: 'IMC', unit: 'kg/m²', grupo: 'corporales', activo: true, orden: 4 },
 ];
 
@@ -47,5 +47,5 @@ export const PARAMETROS_REFERENCIA_DEFAULT: Record<string, {
   vitaminaD: { normalMin: 30, normalMax: 100, advertenciaMin: 20, criticoMin: 10 },
   ferritina: { normalMin: 30, normalMax: 300 },
   imc: { normalMin: 18.5, normalMax: 24.9, advertenciaMax: 30, criticoMax: 40 },
-  perimetroAbdominal: { normalMin: 0, normalMax: 102 },
+  cintura: { normalMin: 0, normalMax: 102 },
 };

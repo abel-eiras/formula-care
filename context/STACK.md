@@ -17,7 +17,7 @@ con su propia base de datos SQLite local.
 
 En desarrollo: frontend en `localhost:5173`, backend en `localhost:3000`, BD en SQLite (`backend/prisma/dev.db`).
 
-Hay un componente **opcional y aparte**, [`booking-web/`](../booking-web/), para quien quiera ofrecer reserva pública de citas online; es un proyecto independiente (su propio backend/frontend/base de datos) sin sincronización con la app de escritorio. Ver [booking-web/README.md](../booking-web/README.md).
+Hay un componente **opcional y aparte**, [`booking-web/`](../booking-web/), para quien quiera ofrecer reserva pública de citas online; es un proyecto independiente (su propio backend/frontend/base de datos) que hace de buzón cifrado: la app de escritorio le publica los huecos libres y recoge las solicitudes con conexiones salientes. Ver [booking-web/README.md](../booking-web/README.md).
 
 ## Frontend (raíz del proyecto)
 

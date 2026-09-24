@@ -26,7 +26,6 @@ model Usuario {
   createdAt     DateTime  @default(now())
   updatedAt     DateTime  @updatedAt
 
-  tokensInvitacion TokenInvitacionUsuario[]
 
   @@index([email])
   @@index([rol])
@@ -35,32 +34,78 @@ model Usuario {
 // ==========================================
 // MODELO DE PACIENTE
 // ==========================================
-// NOTA: Los campos name, phone y email están ENCRIPTADOS con AES-256-GCM
-// Para búsquedas por email usar emailHash (SHA-256)
+// App local de una sola farmacia: los datos se guardan en claro. La
+// protección del fichero corresponde al equipo (cifrado de disco del sistema)
+// y a las copias de seguridad, que pueden cifrarse con contraseña.
 model Paciente {
   id          String   @id @default(cuid())
-  name        String   // ENCRIPTADO: nombre del paciente
-  age         Int
-  sex         String   // "M", "F", "O"
-  phone       String   // ENCRIPTADO: teléfono del paciente
-  email       String?  // ENCRIPTADO: email del paciente
-  emailHash   String?  // SHA-256 del email (para búsquedas exactas)
-  birthDate   String?  // Fecha en formato ISO
+  name        String
+  sex         String   // "M" (masculino), "F" (femenino), "O" (otro)
+  phone       String
+  email       String?
+  // Nombre, teléfono y email normalizados (minúsculas, sin tildes) para buscar
+  // desde la base de datos sin distinguir mayúsculas ni acentos
+  textoBusqueda String @default("")
+  // YYYY-MM-DD, obligatoria. La edad NO se guarda: se calcula siempre a partir
+  // de esta fecha para que nunca quede desfasada.
+  birthDate   String
   address     String?
   notes       String?
-  lastVisit   String?  // Fecha en formato ISO
-  origen      String   @default("manual") // "manual" = registrado por farmacia, "autoregistro" = formulario público
+  origen      String   @default("manual") // "manual" = registrado por farmacia, "autoregistro" = llegó por la reserva online
   createdAt   DateTime @default(now())
   updatedAt   DateTime @updatedAt
 
   // Relaciones
   analisisDermo AnalisisDermo[]
   analisisBio   AnalisisBio[]
+  programasNutricion ProgramaNutricion[]
+  mediciones    Medicion[]
+  felicitaciones FelicitacionCumpleanos[]
   citas         Cita[]
   notificaciones Notificacion[]
 
-  @@index([emailHash])
   @@index([origen])
+  @@index([birthDate]) // Filtros y orden por edad
+}
+
+// ==========================================
+// MEDICIONES (tabla única para todos los servicios)
+// ==========================================
+// Todas las medidas corporales y constantes del paciente (peso, perímetros,
+// bioimpedancia, tensión...) viven aquí, vengan del servicio que vengan, para
+// tener un único historial por paciente. Cada medición puede estar ligada al
+// registro que la originó (análisis Bio o visita de nutrición): si ese
+// registro se borra, su medición se borra con él.
+model Medicion {
+  id                String   @id @default(cuid())
+  pacienteId        String
+  fecha             String   // YYYY-MM-DD
+  origen            String   // "bio", "nutricion"
+  analisisBioId     String?  @unique
+  visitaNutricionId String?  @unique
+  // Antropometría
+  peso              Float?   // kg
+  altura            Float?   // cm
+  cintura           Float?   // cm (perímetro abdominal)
+  cadera            Float?   // cm
+  imc               Float?   // Calculado en el servidor
+  icc               Float?   // Índice cintura-cadera, calculado en el servidor
+  // Bioimpedancia
+  porcentajeGrasa   Float?
+  masaGrasa         Float?   // kg
+  masaMagra         Float?   // kg (masa libre de grasa)
+  // Constantes
+  systolic          Int?     // mmHg
+  diastolic         Int?     // mmHg
+  pulsaciones       Int?     // lpm
+  createdAt         DateTime @default(now())
+  updatedAt         DateTime @updatedAt
+
+  paciente        Paciente         @relation(fields: [pacienteId], references: [id], onDelete: Cascade)
+  analisisBio     AnalisisBio?     @relation(fields: [analisisBioId], references: [id], onDelete: Cascade)
+  visitaNutricion VisitaNutricion? @relation(fields: [visitaNutricionId], references: [id], onDelete: Cascade)
+
+  @@index([pacienteId, fecha])
 }
 
 // ==========================================
@@ -131,26 +176,166 @@ model AnalisisBio {
   proteinaCReactiva     Float?   // PCR
   vitaminaD             Float?
   ferritina             Float?
-  // Tensión arterial y pulsaciones
-  systolic              Int?
-  diastolic             Int?
-  pulsaciones           Int?
-  // Medidas corporales
-  weight                Float?
-  height                Float?
-  perimetroAbdominal    Float?   // Perímetro abdominal en cm
-  imc                   Float?   // Calculado automáticamente
+  // Las medidas corporales y la tensión se guardan en Medicion
   // Observaciones y recomendaciones
   observaciones         String?
   recomendaciones       String?
   createdAt             DateTime @default(now())
   updatedAt             DateTime @updatedAt
 
-  // Relación
-  paciente Paciente @relation(fields: [pacienteId], references: [id], onDelete: Cascade)
+  // Relaciones
+  paciente Paciente  @relation(fields: [pacienteId], references: [id], onDelete: Cascade)
+  medicion Medicion?
 
   @@index([pacienteId])
   @@index([fecha])
+}
+
+// ==========================================
+// SERVICIO DE NUTRICIÓN (con seguimiento GLP-1 opcional)
+// ==========================================
+// Un programa agrupa todo el proceso de un paciente: datos de partida
+// (motivo, antecedentes, historia GLP-1), las visitas y el registro de
+// alimentación. La visita más antigua es la "inicial" y sirve de referencia
+// para calcular la evolución de las siguientes.
+// Todas las fechas del módulo son texto "YYYY-MM-DD" (validado en la API),
+// así que ordenar y comparar como texto equivale a hacerlo por fecha.
+model ProgramaNutricion {
+  id                    String   @id @default(cuid())
+  pacienteId            String
+  fechaInicio           String   // YYYY-MM-DD
+  estado                String   @default("activo") // "activo", "pausado", "finalizado"
+  fechaFin              String?
+  // Motivación y objetivo
+  motivoConsulta        String?
+  objetivoPrincipal     String?
+  pesoObjetivo          Float?   // kg
+  dietasPrevias         String?  // Texto libre con las dietas intentadas (vacío = ninguna)
+  // Antecedentes
+  antecedentes          String   @default("[]") // JSON array de ids de catálogo: ["diabetes_2", "hipertension", ...]
+  otrosProblemasMedicos String?
+  antecedentesFamiliares String?
+  tabaco                String?  // "no", "exfumador", "si"
+  alcohol               String?  // "nunca", "ocasional", "semanal", "diario"
+  // Historia de tratamiento farmacológico para el peso
+  glp1Previo            Boolean  @default(false)
+  glp1PrevioFarmaco     String?
+  glp1PrevioMotivoAbandono String?
+  medicoPrescriptor     String?
+  otroTratamientoPeso   String?  // Tratamientos distintos a GLP-1 (orlistat, naltrexona/bupropión...)
+  farmaceutico          String?
+  createdAt             DateTime @default(now())
+  updatedAt             DateTime @updatedAt
+
+  paciente  Paciente               @relation(fields: [pacienteId], references: [id], onDelete: Cascade)
+  visitas   VisitaNutricion[]
+  registros RegistroAlimentacion[]
+
+  // Consultas habituales: programas de un paciente y su programa activo
+  @@index([pacienteId, estado])
+}
+
+// Visita del programa. La inicial y las de seguimiento comparten estructura
+// para que todos los datos sean comparables entre sesiones. El tipo
+// (inicial/seguimiento) NO se guarda: se deriva del orden por fecha, así no
+// puede quedar incoherente si se corrige la fecha de una visita.
+model VisitaNutricion {
+  id                    String   @id @default(cuid())
+  programaId            String
+  fecha                 String   // YYYY-MM-DD
+  // Evolución percibida (solo tiene sentido en seguimiento)
+  evolucionSubjetiva    String?  // "muy_buena", "buena", "regular", "dificultosa"
+  adherencia            Int?     // 0-10
+  motivacion            Int?     // 0-10
+  // Medicación
+  medicacionHabitual    String?
+  suplementacion        String?
+  // Tratamiento GLP-1 (sección opcional)
+  glp1Activo            Boolean  @default(false)
+  glp1Farmaco           String?  // id de catálogo (semaglutida_sc, tirzepatida...)
+  glp1Dosis             String?  // Texto: "0,5 mg semanal"
+  glp1FechaInicio       String?  // Inicio de la dosis actual
+  glp1DosisOlvidadas    Int?     // Desde la última visita
+  efectosSecundarios    String   @default("[]") // JSON: [{ id: "nauseas", intensidad: "leve" }]
+  toleranciaObservaciones String?
+  // Alimentación y hábitos
+  cambioDieteticoIniciado Boolean?
+  pautaDietetica        String?  // Estrategia, pauta, menú adaptado...
+  comidasDia            Int?
+  racionesProteinaDia   Int?
+  racionesFrutaVerduraDia Int?
+  picoteo               Boolean?
+  picoteoFrecuencia     String?  // "ocasional", "diario", "varias_diarias"
+  picoteoCausas         String   @default("[]") // JSON array de ids de catálogo
+  aguaLitros            Float?
+  suenoHoras            Float?
+  suenoCalidad          String?  // "buena", "regular", "mala"
+  estres                String?  // "bajo", "moderado", "alto"
+  // Actividad física
+  ejercicio             String?  // "no", "parcial", "si"
+  ejercicioTipos        String   @default("[]") // JSON array de ids de catálogo
+  ejercicioDiasSemana   Int?
+  ejercicioMinutosSesion Int?
+  ejercicioDetalle      String?
+  // Antropometría, bioimpedancia y tensión: en Medicion
+  // Valoración profesional
+  dificultades          String?
+  observaciones         String?
+  objetivosProximaSesion String?
+  recomendaciones       String?
+  proximaRevision       String?  // YYYY-MM-DD
+  farmaceutico          String?
+  createdAt             DateTime @default(now())
+  updatedAt             DateTime @updatedAt
+
+  programa ProgramaNutricion @relation(fields: [programaId], references: [id], onDelete: Cascade)
+  medicion Medicion?
+
+  @@index([programaId, fecha])
+}
+
+// Registro de alimentación: el paciente lo apunta en papel y el farmacéutico
+// lo transcribe. Cada fila es una ingesta (incluidos los picoteos).
+model RegistroAlimentacion {
+  id                    String   @id @default(cuid())
+  programaId            String
+  fecha                 String   // Día (YYYY-MM-DD)
+  hora                  String?  // "HH:mm"
+  momento               String   // "desayuno", "media_manana", "comida", "merienda", "cena", "recena", "picoteo"
+  descripcion           String
+  cantidad              String?  // "pequena", "normal", "grande"
+  hambreAntes           Int?     // 0-10
+  saciedadDespues       Int?     // 0-10
+  sensaciones           String   @default("[]") // JSON array de ids de catálogo
+  compania              String?  // "solo", "familia", "amigos", "trabajo"
+  lugar                 String?  // "casa", "trabajo", "fuera", "otro"
+  causaPicoteo          String?  // id de catálogo, solo si momento = "picoteo"
+  notas                 String?
+  createdAt             DateTime @default(now())
+  updatedAt             DateTime @updatedAt
+
+  programa ProgramaNutricion @relation(fields: [programaId], references: [id], onDelete: Cascade)
+
+  @@index([programaId, fecha])
+}
+
+// ==========================================
+// FELICITACIONES DE CUMPLEAÑOS
+// ==========================================
+// Los cumpleaños no se guardan como eventos: se calculan desde
+// Paciente.birthDate. Aquí solo se registra que ya se ha felicitado al
+// paciente en un año concreto (y por qué canal), para no repetirlo.
+model FelicitacionCumpleanos {
+  id         String   @id @default(cuid())
+  pacienteId String
+  anio       Int      // Año del cumpleaños felicitado
+  canal      String   // "whatsapp", "email", "llamada", "en_persona"
+  usuario    String?  // Quién lo registró
+  createdAt  DateTime @default(now())
+
+  paciente Paciente @relation(fields: [pacienteId], references: [id], onDelete: Cascade)
+
+  @@unique([pacienteId, anio])
 }
 
 // ==========================================
@@ -167,6 +352,8 @@ model Cita {
   notas      String?
   recordatorioEnviado Boolean @default(false) // Si se ha enviado recordatorio
   confirmacionEnviada Boolean @default(false) // Si se ha enviado email de confirmación
+  // Solo citas de la reserva online: secreto del enlace "cancelar mi cita" del email
+  tokenCancelacion String? @unique
   createdAt  DateTime @default(now())
   updatedAt  DateTime @updatedAt
 
@@ -333,19 +520,48 @@ model PlantillaEmail {
   @@index([activa])
 }
 
-// Token de invitación para que un nuevo usuario establezca su contraseña
-model TokenInvitacionUsuario {
-  id        String    @id @default(cuid())
-  usuarioId String
-  token     String    @unique
-  expiraEn  DateTime
-  usado     Boolean   @default(false)
-  usadoEn   DateTime?
-  createdAt DateTime  @default(now())
+// ==========================================
+// RESERVA ONLINE (buzón cifrado con booking-web)
+// ==========================================
+// booking-web publica los huecos que calcula esta app y recoge solicitudes
+// cifradas con la clave pública de la farmacia; solo esta app puede leerlas.
+// Ver booking-web/README.md.
+model ReservaOnline {
+  id                    String    @id @default("singleton")
+  activa                Boolean   @default(false)
+  urlPublica            String?   // Página de reserva (para los enlaces de los emails)
+  urlApi                String?   // API de booking-web (…/api)
+  tokenSincronizacion   String?   // Secreto compartido con booking-web (SYNC_TOKEN)
+  clavePublica          String?   // JWK ECDH P-256 que usan los navegadores para cifrar
+  clavePrivada          String?   // JWK privada: nunca sale de este equipo
+  diasVista             Int       @default(60) // Días que se publican hacia delante
+  antelacionMinimaHoras Int       @default(24) // No se ofrecen huecos antes de este margen
+  ultimaSincronizacion  DateTime?
+  ultimoError           String?
+  createdAt             DateTime  @default(now())
+  updatedAt             DateTime  @updatedAt
+}
 
-  usuario Usuario @relation(fields: [usuarioId], references: [id], onDelete: Cascade)
+// Solicitud recibida por la reserva online, ya descifrada, a la espera de que
+// el personal la acepte (crea paciente/cita) o la rechace.
+model SolicitudOnline {
+  id              String    @id // El mismo id que tenía en booking-web
+  tipo            String    // "dermo", "bio", "nutricion", "consulta" o "evento:<id>"
+  fecha           String    // YYYY-MM-DD
+  hora            String    // HH:mm
+  nombre          String
+  email           String
+  telefono        String
+  fechaNacimiento String?   // YYYY-MM-DD
+  sexo            String?   // "M", "F" u "O" (para dar de alta al paciente)
+  notas           String?
+  estado          String    @default("pendiente") // "pendiente", "aceptada", "rechazada"
+  motivoRechazo   String?
+  pacienteId      String?
+  citaId          String?
+  recibidaEn      DateTime  @default(now())
+  resueltaEn      DateTime?
 
-  @@index([token])
-  @@index([usuarioId])
-  @@index([expiraEn])
+  @@index([estado])
+  @@index([fecha])
 }

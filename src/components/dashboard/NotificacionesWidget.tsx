@@ -2,7 +2,7 @@ import { useState } from "react";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
-import { Bell, Check, CheckCheck, Calendar, AlertCircle, Clock } from "lucide-react";
+import { Bell, Check, CheckCheck, Calendar, AlertCircle, Clock, Gift } from "lucide-react";
 import { useNotificaciones, useContadorNotificaciones, useMarcarNotificacionLeida, useMarcarTodasLeidas } from "@/hooks/useNotificaciones";
 import { LoadingSpinner } from "@/components/ui/LoadingSpinner";
 import { cn } from "@/lib/utils";
@@ -17,6 +17,8 @@ const getIconByTipo = (tipo: string) => {
       return Clock;
     case "alerta":
       return AlertCircle;
+    case "cumpleanos":
+      return Gift;
     default:
       return Bell;
   }
@@ -30,6 +32,8 @@ const getColorByTipo = (tipo: string) => {
       return "bg-warning/10 text-warning border-warning/20";
     case "alerta":
       return "bg-destructive/10 text-destructive border-destructive/20";
+    case "cumpleanos":
+      return "bg-pink-100 text-pink-600 border-pink-200";
     default:
       return "bg-muted text-muted-foreground";
   }

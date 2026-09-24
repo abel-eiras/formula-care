@@ -1,6 +1,6 @@
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import { UserPlus, Sparkles, FlaskConical, Calendar } from "lucide-react";
+import { UserPlus, Sparkles, FlaskConical, Salad, Calendar } from "lucide-react";
 import { Link } from "react-router-dom";
 
 const actions = [
@@ -26,6 +26,13 @@ const actions = [
     variant: "default" as const,
   },
   {
+    title: "Nutrición",
+    description: "Visita de seguimiento",
+    icon: Salad,
+    href: "/servicios/nutricion",
+    variant: "default" as const,
+  },
+  {
     title: "Agendar Cita",
     description: "Nueva cita",
     icon: Calendar,
@@ -43,11 +50,14 @@ export function QuickActions() {
       </CardHeader>
       <CardContent>
         <div className="grid grid-cols-2 gap-3">
-          {actions.map((action) => (
+          {actions.map((action, i) => (
             <Button
               key={action.title}
               variant={action.variant === "primary" ? "default" : action.variant === "secondary" ? "secondary" : "outline"}
-              className="h-auto py-4 px-4 flex flex-col items-center gap-2 transition-all duration-200 hover:scale-[1.02]"
+              // Con un número impar de acciones, la última ocupa toda la fila
+              className={`h-auto py-4 px-4 flex flex-col items-center gap-2 transition-all duration-200 hover:scale-[1.02] ${
+                i === actions.length - 1 && actions.length % 2 === 1 ? "col-span-2" : ""
+              }`}
               disabled={action.disabled}
               asChild={!action.disabled}
             >

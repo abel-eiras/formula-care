@@ -2,8 +2,9 @@ import { Request, Response } from 'express';
 import { prisma } from '../lib/prisma.js';
 import { z } from 'zod';
 import { getQueryString, getParamString } from '../lib/queryHelpers.js';
-import { enviarConfirmacionCita, enviarModificacionCita } from '../services/emailService.js';
-import { decryptPacienteData } from '../services/encryptionService.js';
+import { enviarCancelacionCita, enviarConfirmacionCita, enviarModificacionCita } from '../services/emailService.js';
+import { hoyISO } from '../lib/fechas.js';
+import { avisarCambioAgenda } from '../services/reservaOnline/sincronizacion.js';
 
 // Esquema de validación para crear cita
 const crearCitaSchema = z.object({
@@ -11,7 +12,8 @@ const crearCitaSchema = z.object({
   pacienteId: z.string().min(1, 'El ID del paciente es requerido'),
   fecha: z.string(), // Fecha en formato ISO
   hora: z.string().regex(/^([0-1]?[0-9]|2[0-3]):[0-5][0-9]$/, 'Formato de hora inválido (HH:mm)'),
-  tipo: z.enum(['dermo', 'bio', 'consulta', 'seguimiento']),
+  // Servicio o "evento:<id>" (inscripciones a talleres, p. ej. desde la reserva online)
+  tipo: z.union([z.enum(['dermo', 'bio', 'nutricion', 'consulta', 'seguimiento']), z.string().regex(/^evento:[\w-]+$/)]),
   notas: z.string().optional(),
 });
 
@@ -45,13 +47,7 @@ export async function obtenerCitas(req: Request, res: Response) {
       ],
     });
 
-    // Desencriptar datos del paciente en cada cita
-    const citasDesencriptadas = citas.map(cita => ({
-      ...cita,
-      paciente: cita.paciente ? decryptPacienteData(cita.paciente) : null,
-    }));
-
-    res.json(citasDesencriptadas);
+    res.json(citas);
   } catch (error) {
     console.error('Error al obtener citas:', error);
     res.status(500).json({ error: 'Error al obtener citas' });
@@ -76,13 +72,7 @@ export async function obtenerCita(req: Request, res: Response) {
       return res.status(404).json({ error: 'Cita no encontrada' });
     }
 
-    // Desencriptar datos del paciente
-    const citaDesencriptada = {
-      ...cita,
-      paciente: cita.paciente ? decryptPacienteData(cita.paciente) : null,
-    };
-
-    res.json(citaDesencriptada);
+    res.json(cita);
   } catch (error) {
     console.error('Error al obtener cita:', error);
     res.status(500).json({ error: 'Error al obtener cita' });
@@ -97,11 +87,12 @@ export async function crearCita(req: Request, res: Response) {
     const datos = crearCitaSchema.parse(req.body);
 
     // Verificar que el paciente existe
-    const paciente = await prisma.paciente.findUnique({
+    const pacienteExistente = await prisma.paciente.findUnique({
       where: { id: datos.pacienteId },
+      select: { id: true },
     });
 
-    if (!paciente) {
+    if (!pacienteExistente) {
       return res.status(404).json({ error: 'Paciente no encontrado' });
     }
 
@@ -121,33 +112,27 @@ export async function crearCita(req: Request, res: Response) {
       },
     });
 
-    // Desencriptar datos del paciente para respuesta y email
-    const pacienteDesencriptado = cita.paciente ? decryptPacienteData(cita.paciente) : null;
+    const paciente = cita.paciente;
 
-    // Enviar email de confirmación si el paciente tiene email
-    if (pacienteDesencriptado?.email) {
-      try {
-        await enviarConfirmacionCita(pacienteDesencriptado.email, {
-          citaId: cita.id,
-          tipo: cita.tipo,
-          fecha: cita.fecha,
-          hora: cita.hora,
-          nombreCliente: pacienteDesencriptado.name,
-        });
-        console.log(`✅ Email de confirmación enviado a ${pacienteDesencriptado.email}`);
-      } catch (emailError) {
-        // No fallar la creación de cita por error de email
-        console.error('⚠️  Error al enviar email de confirmación:', emailError);
-      }
-    } else {
-      console.log('ℹ️  Cita creada sin email (paciente sin email registrado)');
+    // Email de confirmación en segundo plano: guardar la cita no espera al
+    // servidor de correo (sin conexión o sin correo configurado tardaría o fallaría)
+    if (paciente?.email) {
+      const email = paciente.email;
+      enviarConfirmacionCita(email, {
+        citaId: cita.id,
+        tipo: cita.tipo,
+        fecha: cita.fecha,
+        hora: cita.hora,
+        nombreCliente: paciente.name,
+      })
+        .then((enviado) =>
+          console.log(enviado ? `✅ Email de confirmación enviado a ${email}` : `⚠️  No se pudo enviar la confirmación a ${email}`)
+        )
+        .catch((err) => console.error('⚠️  Error al enviar email de confirmación:', err));
     }
 
-    // Devolver cita con paciente desencriptado
-    res.status(201).json({
-      ...cita,
-      paciente: pacienteDesencriptado,
-    });
+    avisarCambioAgenda();
+    res.status(201).json(cita);
   } catch (error) {
     if (error instanceof z.ZodError) {
       return res.status(400).json({
@@ -214,28 +199,23 @@ export async function actualizarCita(req: Request, res: Response) {
       },
     });
 
-    // Desencriptar datos del paciente
-    const pacienteDesencriptado = cita.paciente ? decryptPacienteData(cita.paciente) : null;
+    const paciente = cita.paciente;
 
     // Si se modificó fecha u hora, enviar email de modificación
     const fechaCambio = datos.fecha !== undefined && datos.fecha !== citaAnterior.fecha;
     const horaCambio = datos.hora !== undefined && datos.hora !== citaAnterior.hora;
-    if ((fechaCambio || horaCambio) && pacienteDesencriptado?.email) {
-      enviarModificacionCita(pacienteDesencriptado.email, {
+    if ((fechaCambio || horaCambio) && paciente?.email) {
+      enviarModificacionCita(paciente.email, {
         citaId: cita.id,
         tipo: cita.tipo,
         fecha: cita.fecha,
         hora: cita.hora,
-        nombreCliente: pacienteDesencriptado.name,
+        nombreCliente: paciente.name,
       }).catch((err) => console.error('Error al enviar email de modificación:', err));
     }
 
-    const citaDesencriptada = {
-      ...cita,
-      paciente: pacienteDesencriptado,
-    };
-
-    res.json(citaDesencriptada);
+    avisarCambioAgenda();
+    res.json(cita);
   } catch (error) {
     if (error instanceof z.ZodError) {
       return res.status(400).json({
@@ -260,9 +240,26 @@ export async function eliminarCita(req: Request, res: Response) {
   try {
     const id = getParamString(req.params.id);
 
-    await prisma.cita.delete({
+    const cita = await prisma.cita.delete({
       where: { id },
+      include: { paciente: { select: { name: true, email: true } } },
     });
+    avisarCambioAgenda();
+
+    // Avisar al paciente si la cita era futura (en segundo plano: borrar no
+    // espera al servidor de correo)
+    const email = cita.paciente.email;
+    if (email && cita.fecha.slice(0, 10) >= hoyISO() && cita.estado !== 'cancelada') {
+      enviarCancelacionCita(email, {
+        citaId: cita.id,
+        tipo: cita.tipo,
+        fecha: cita.fecha,
+        hora: cita.hora,
+        nombreCliente: cita.paciente.name,
+      })
+        .then((ok) => !ok && console.warn(`⚠️  No se pudo enviar la cancelación a ${email}`))
+        .catch((err) => console.error('⚠️  Error al enviar email de cancelación:', err));
+    }
 
     res.status(204).send();
   } catch (error) {

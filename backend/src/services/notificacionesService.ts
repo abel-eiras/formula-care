@@ -1,147 +1,138 @@
 import { prisma } from '../lib/prisma.js';
+import { hoyISO } from '../lib/fechas.js';
+import { enviarRecordatorioCita } from './emailService.js';
+import { obtenerReservaOnline, urlCancelacion } from './reservaOnline/configuracion.js';
 
 /**
- * Crear notificación de próxima revisión cuando se crea/actualiza un análisis dermo
+ * Avisos automáticos que antes dependían del servidor web (tareas periódicas).
+ * Se ejecutan al arrancar la app y cada hora (ver tareasProgramadas.ts); todos
+ * son idempotentes, así que repetirlos no duplica nada.
  */
-export async function crearNotificacionRevision(analisisId: string, pacienteId: string, fechaRevision: string) {
-  try {
-    // Verificar si ya existe una notificación para esta revisión
+
+/** Días de antelación con los que se avisa de una revisión */
+export const DIAS_AVISO_REVISION = 7;
+
+export interface RevisionProxima {
+  id: string;
+  servicio: 'dermo' | 'nutricion';
+  pacienteId: string;
+  proximaRevision: string;
+  paciente: { id: string; name: string; phone: string; email: string | null };
+}
+
+function sumarDias(fecha: string, dias: number): string {
+  const d = new Date(`${fecha}T12:00:00`);
+  d.setDate(d.getDate() + dias);
+  return hoyISO(d);
+}
+
+const SELECT_PACIENTE = { select: { id: true, name: true, phone: true, email: true } } as const;
+
+/**
+ * Revisiones programadas (Dermo y Nutrición) desde una fecha, las más próximas primero.
+ * Las fechas se comparan como texto "YYYY-MM-DD" (Dermo puede guardar fecha y hora).
+ */
+export async function obtenerRevisionesProximas(desde: string, hasta?: string, limite = 100): Promise<RevisionProxima[]> {
+  const rango = { gte: desde, ...(hasta ? { lte: `${hasta}￿` } : {}) };
+  const [dermo, visitas] = await Promise.all([
+    prisma.analisisDermo.findMany({
+      where: { proximaRevision: rango },
+      include: { paciente: SELECT_PACIENTE },
+      orderBy: { proximaRevision: 'asc' },
+      take: limite,
+    }),
+    prisma.visitaNutricion.findMany({
+      where: { proximaRevision: rango },
+      include: { programa: { select: { paciente: SELECT_PACIENTE } } },
+      orderBy: { proximaRevision: 'asc' },
+      take: limite,
+    }),
+  ]);
+
+  return [
+    ...dermo.map((a) => ({
+      id: a.id,
+      servicio: 'dermo' as const,
+      pacienteId: a.pacienteId,
+      proximaRevision: a.proximaRevision!.slice(0, 10),
+      paciente: a.paciente,
+    })),
+    ...visitas.map((v) => ({
+      id: v.id,
+      servicio: 'nutricion' as const,
+      pacienteId: v.programa.paciente.id,
+      proximaRevision: v.proximaRevision!.slice(0, 10),
+      paciente: v.programa.paciente,
+    })),
+  ]
+    .sort((a, b) => a.proximaRevision.localeCompare(b.proximaRevision))
+    .slice(0, limite);
+}
+
+/**
+ * Aviso interno por cada revisión que cae en los próximos días.
+ * Se identifica por registro y fecha: si se cambia la fecha, se avisa de nuevo.
+ */
+export async function generarAvisosRevisiones(): Promise<number> {
+  const hoy = hoyISO();
+  const revisiones = await obtenerRevisionesProximas(hoy, sumarDias(hoy, DIAS_AVISO_REVISION));
+  let creados = 0;
+
+  for (const r of revisiones) {
+    const fecha = new Date(`${r.proximaRevision}T12:00:00`).toLocaleDateString('es-ES');
+    const mensaje = `Revisión de ${r.servicio === 'dermo' ? 'dermocosmética' : 'nutrición'} de ${r.paciente.name} el ${fecha}`;
     const existe = await prisma.notificacion.findFirst({
-      where: {
-        tipo: 'revision',
-        analisisId,
-        pacienteId,
-        leida: false,
-      },
+      where: { tipo: 'revision', analisisId: r.id, mensaje },
+      select: { id: true },
     });
-
-    if (existe) {
-      return; // Ya existe, no crear duplicado
-    }
-
-    const paciente = await prisma.paciente.findUnique({
-      where: { id: pacienteId },
-      select: { name: true },
-    });
-
-    if (!paciente) {
-      console.error('Paciente no encontrado');
-      return;
-    }
+    if (existe) continue;
 
     await prisma.notificacion.create({
       data: {
         tipo: 'revision',
-        pacienteId,
-        analisisId,
-        titulo: 'Próxima revisión programada',
-        mensaje: `Revisión programada para ${paciente.name || 'el paciente'} el ${new Date(fechaRevision).toLocaleDateString('es-ES')}`,
+        pacienteId: r.pacienteId,
+        analisisId: r.id,
+        titulo: 'Revisión próxima',
+        mensaje,
         canal: 'interno',
       },
     });
-  } catch (error) {
-    console.error('Error al crear notificación de revisión:', error);
-    // No lanzar error para no interrumpir el flujo principal
+    creados++;
   }
+  return creados;
 }
 
 /**
- * Crear notificación de recordatorio de cita (24 horas antes)
+ * Email de recordatorio a los pacientes con cita mañana. Solo se marca como
+ * enviado si el envío funciona, así que se reintenta en la siguiente pasada
+ * (por ejemplo, si el correo aún no estaba configurado).
  */
-export async function crearNotificacionRecordatorioCita(citaId: string) {
-  try {
-    const cita = await prisma.cita.findUnique({
-      where: { id: citaId },
-      include: {
-        paciente: {
-          select: { name: true },
-        },
-      },
+export async function enviarRecordatoriosCitas(): Promise<number> {
+  const manana = sumarDias(hoyISO(), 1);
+  const citas = await prisma.cita.findMany({
+    where: {
+      fecha: { gte: manana, lte: `${manana}￿` },
+      estado: { not: 'cancelada' },
+      recordatorioEnviado: false,
+      paciente: { email: { not: null } },
+    },
+    include: { paciente: { select: { name: true, email: true } } },
+  });
+
+  // Las citas de la reserva online llevan también su enlace para cancelar
+  const { urlPublica } = await obtenerReservaOnline();
+  let enviados = 0;
+  for (const cita of citas) {
+    if (!cita.paciente.email) continue;
+    const ok = await enviarRecordatorioCita(cita.paciente.email, {
+      citaId: cita.id,
+      tipo: cita.tipo,
+      fecha: cita.fecha,
+      hora: cita.hora,
+      nombreCliente: cita.paciente.name,
+      urlCancelar: urlCancelacion(urlPublica, cita.tokenCancelacion),
     });
-
-    if (!cita || cita.recordatorioEnviado) {
-      return;
-    }
-
-    const fechaCita = new Date(cita.fecha);
-    const ahora = new Date();
-    const diffHoras = (fechaCita.getTime() - ahora.getTime()) / (1000 * 60 * 60);
-
-    // Crear notificación si la cita es en las próximas 24 horas
-    if (diffHoras > 0 && diffHoras <= 24) {
-      await prisma.notificacion.create({
-        data: {
-          tipo: 'recordatorio',
-          pacienteId: cita.pacienteId,
-          citaId: cita.id,
-          titulo: 'Recordatorio de cita',
-          mensaje: `Cita "${cita.titulo}" con ${cita.paciente.name} el ${fechaCita.toLocaleDateString('es-ES')} a las ${cita.hora}`,
-          canal: 'interno',
-        },
-      });
-
-      // Marcar como enviado
-      await prisma.cita.update({
-        where: { id: citaId },
-        data: { recordatorioEnviado: true },
-      });
-    }
-  } catch (error) {
-    console.error('Error al crear notificación de recordatorio:', error);
+    if (ok) enviados++;
   }
-}
-
-/**
- * Verificar y crear notificaciones de revisiones próximas (ejecutar periódicamente)
- */
-export async function verificarRevisionesProximas() {
-  try {
-    const hoy = new Date();
-    const en7Dias = new Date();
-    en7Dias.setDate(hoy.getDate() + 7);
-
-    // Buscar análisis con revisiones en los próximos 7 días
-    const analisisConRevision = await prisma.analisisDermo.findMany({
-      where: {
-        proximaRevision: {
-          not: null,
-          gte: hoy.toISOString().split('T')[0],
-          lte: en7Dias.toISOString().split('T')[0],
-        },
-      },
-      include: {
-        paciente: {
-          select: { name: true },
-        },
-      },
-    });
-
-    for (const analisis of analisisConRevision) {
-      if (!analisis.proximaRevision) continue;
-
-      // Verificar si ya existe notificación
-      const existe = await prisma.notificacion.findFirst({
-        where: {
-          tipo: 'revision',
-          analisisId: analisis.id,
-          pacienteId: analisis.pacienteId,
-        },
-      });
-
-      if (!existe) {
-        await prisma.notificacion.create({
-          data: {
-            tipo: 'revision',
-            pacienteId: analisis.pacienteId,
-            analisisId: analisis.id,
-            titulo: 'Revisión próxima',
-            mensaje: `Revisión programada para ${analisis.paciente.name} el ${new Date(analisis.proximaRevision).toLocaleDateString('es-ES')}`,
-            canal: 'interno',
-          },
-        });
-      }
-    }
-  } catch (error) {
-    console.error('Error al verificar revisiones próximas:', error);
-  }
+  return enviados;
 }

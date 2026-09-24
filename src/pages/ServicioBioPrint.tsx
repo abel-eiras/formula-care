@@ -4,6 +4,7 @@ import { useAnalisisBio } from "@/hooks/useAnalisisBio";
 import { usePacientes } from "@/hooks/usePacientes";
 import { useConfiguracion } from "@/hooks/useConfiguracion";
 import { getColoresParaConfig } from "@/lib/coloresMarca";
+import { textoSobre } from "@/lib/contraste";
 
 /**
  * Formatea una fecha ISO a formato dd/mm/aaaa
@@ -68,7 +69,6 @@ export default function ServicioBioPrint() {
   return (
     <div className="print-page">
       <style>{`
-        @import url('https://fonts.googleapis.com/css2?family=Montserrat:wght@300;400;600&display=swap');
         
         .print-page {
           font-family: 'Montserrat', sans-serif;
@@ -104,7 +104,7 @@ export default function ServicioBioPrint() {
         }
 
         .section-header {
-          color: white;
+          color: ${textoSobre(colores.secundario ?? "#4a7484")};
           background-color: ${colores.secundario};
           font-weight: 600;
           font-size: 0.9rem;
@@ -265,8 +265,8 @@ export default function ServicioBioPrint() {
           <div className="param-row">
             <span className="param-label">Glucemia</span>
             <span className="param-value">
-              {analisis.glucemia || analisis.glucose || ""}
-              {analisis.glucemia !== undefined || analisis.glucose !== undefined ? (
+              {analisis.glucemia ?? ""}
+              {analisis.glucemia != null ? (
                 <span className="param-unit">mg/dL</span>
               ) : null}
             </span>
@@ -275,28 +275,28 @@ export default function ServicioBioPrint() {
             <span className="param-label">Colesterol Total</span>
             <span className="param-value">
               {analisis.cholesterol || ""}
-              {analisis.cholesterol !== undefined ? <span className="param-unit">mg/dL</span> : null}
+              {analisis.cholesterol != null ? <span className="param-unit">mg/dL</span> : null}
             </span>
           </div>
           <div className="param-row">
             <span className="param-label">Colesterol HDL</span>
             <span className="param-value">
               {analisis.cholesterolHDL || ""}
-              {analisis.cholesterolHDL !== undefined ? <span className="param-unit">mg/dL</span> : null}
+              {analisis.cholesterolHDL != null ? <span className="param-unit">mg/dL</span> : null}
             </span>
           </div>
           <div className="param-row">
             <span className="param-label">Colesterol LDL</span>
             <span className="param-value">
               {analisis.cholesterolLDL || ""}
-              {analisis.cholesterolLDL !== undefined ? <span className="param-unit">mg/dL</span> : null}
+              {analisis.cholesterolLDL != null ? <span className="param-unit">mg/dL</span> : null}
             </span>
           </div>
           <div className="param-row">
             <span className="param-label">Triglicéridos</span>
             <span className="param-value">
               {analisis.triglycerides || ""}
-              {analisis.triglycerides !== undefined ? <span className="param-unit">mg/dL</span> : null}
+              {analisis.triglycerides != null ? <span className="param-unit">mg/dL</span> : null}
             </span>
           </div>
         </div>
@@ -308,28 +308,28 @@ export default function ServicioBioPrint() {
             <span className="param-label">Hemoglobina Glucosilada (HbA1c)</span>
             <span className="param-value">
               {analisis.hemoglobinaGlucosilada || ""}
-              {analisis.hemoglobinaGlucosilada !== undefined ? <span className="param-unit">%</span> : null}
+              {analisis.hemoglobinaGlucosilada != null ? <span className="param-unit">%</span> : null}
             </span>
           </div>
           <div className="param-row">
             <span className="param-label">Proteína C Reactiva (PCR)</span>
             <span className="param-value">
               {analisis.proteinaCReactiva || ""}
-              {analisis.proteinaCReactiva !== undefined ? <span className="param-unit">mg/L</span> : null}
+              {analisis.proteinaCReactiva != null ? <span className="param-unit">mg/L</span> : null}
             </span>
           </div>
           <div className="param-row">
             <span className="param-label">Vitamina D</span>
             <span className="param-value">
               {analisis.vitaminaD || ""}
-              {analisis.vitaminaD !== undefined ? <span className="param-unit">ng/mL</span> : null}
+              {analisis.vitaminaD != null ? <span className="param-unit">ng/mL</span> : null}
             </span>
           </div>
           <div className="param-row">
             <span className="param-label">Ferritina</span>
             <span className="param-value">
               {analisis.ferritina || ""}
-              {analisis.ferritina !== undefined ? <span className="param-unit">ng/mL</span> : null}
+              {analisis.ferritina != null ? <span className="param-unit">ng/mL</span> : null}
             </span>
           </div>
         </div>
@@ -342,14 +342,14 @@ export default function ServicioBioPrint() {
               <span className="param-label">Sistólica</span>
               <span className="param-value">
                 {analisis.systolic || ""}
-                {analisis.systolic !== undefined ? <span className="param-unit">mmHg</span> : null}
+                {analisis.systolic != null ? <span className="param-unit">mmHg</span> : null}
               </span>
             </div>
             <div className="param-row">
               <span className="param-label">Diastólica</span>
               <span className="param-value">
                 {analisis.diastolic || ""}
-                {analisis.diastolic !== undefined ? <span className="param-unit">mmHg</span> : null}
+                {analisis.diastolic != null ? <span className="param-unit">mmHg</span> : null}
               </span>
             </div>
           </div>
@@ -358,7 +358,7 @@ export default function ServicioBioPrint() {
               <span className="param-label">Pulsaciones</span>
               <span className="param-value">
                 {analisis.pulsaciones || ""}
-                {analisis.pulsaciones !== undefined ? <span className="param-unit">lpm</span> : null}
+                {analisis.pulsaciones != null ? <span className="param-unit">lpm</span> : null}
               </span>
             </div>
           </div>
@@ -371,24 +371,33 @@ export default function ServicioBioPrint() {
             <div className="param-row">
               <span className="param-label">Peso</span>
               <span className="param-value">
-                {analisis.weight || ""}
-                {analisis.weight !== undefined ? <span className="param-unit">kg</span> : null}
+                {analisis.peso || ""}
+                {analisis.peso != null ? <span className="param-unit">kg</span> : null}
               </span>
             </div>
             <div className="param-row">
               <span className="param-label">Altura</span>
               <span className="param-value">
-                {analisis.height || ""}
-                {analisis.height !== undefined ? <span className="param-unit">cm</span> : null}
+                {analisis.altura || ""}
+                {analisis.altura != null ? <span className="param-unit">cm</span> : null}
               </span>
             </div>
+            {analisis.cintura != null && (
+              <div className="param-row">
+                <span className="param-label">Perímetro abdominal</span>
+                <span className="param-value">
+                  {analisis.cintura}
+                  <span className="param-unit">cm</span>
+                </span>
+              </div>
+            )}
           </div>
           <div className="space-y-2">
             <div className="param-row">
               <span className="param-label">Índice de Masa Corporal (IMC)</span>
               <span className="param-value">
                 {analisis.imc || ""}
-                {analisis.imc !== undefined ? <span className="param-unit">kg/m²</span> : null}
+                {analisis.imc != null ? <span className="param-unit">kg/m²</span> : null}
               </span>
             </div>
             {analisis.imc && (

@@ -13,6 +13,7 @@ import { usePacientes } from "@/hooks/usePacientes";
 import { useCrearAnalisisDermo, useAnalisisDermo, useActualizarAnalisisDermo } from "@/hooks/useAnalisisDermo";
 import { DialogoNuevoPaciente } from "@/components/pacientes/DialogoNuevoPaciente";
 import type { AnalisisDermo, RutinaDia, RutinaNoche, CuidadosSemanales } from "@/types";
+import { imprimirRuta } from "@/lib/imprimir";
 // Importación dinámica para reducir el bundle inicial
 const loadPDFGenerator = () => import("@/lib/pdfGenerator");
 
@@ -268,8 +269,7 @@ export default function ServicioDermo() {
       return;
     }
     
-    // Abrir vista de impresión en nueva pestaña
-    window.open(`/servicios/dermo/print?id=${analisisId}`, "_blank");
+    imprimirRuta(`/servicios/dermo/print?id=${analisisId}`);
   };
 
   const handleDescargarPDF = async () => {
@@ -344,7 +344,7 @@ export default function ServicioDermo() {
       sessionStorage.removeItem('pdfDownload');
     } catch (error) {
       console.error("Error al descargar PDF:", error);
-      toast.error("Error al generar el PDF. Usa la opción de imprimir del navegador.");
+      toast.error("Error al generar el PDF. Prueba con Imprimir y elige «Guardar como PDF».");
       sessionStorage.removeItem('pdfDownload');
       // Limpiar iframe si existe
       const iframe = document.querySelector('iframe[style*="-9999px"]');
@@ -478,7 +478,7 @@ export default function ServicioDermo() {
 
           {/* Valoración de la piel */}
           <div>
-            <div className="bg-[#6495a8] text-white font-semibold text-sm py-2 px-4 rounded-sm mb-4 uppercase tracking-wide">
+            <div className="bg-secondary text-secondary-foreground font-semibold text-sm py-2 px-4 rounded-sm mb-4 uppercase tracking-wide">
               Valoración de la piel
             </div>
             <div className="grid grid-cols-3 gap-x-5 gap-y-3">
@@ -515,7 +515,7 @@ export default function ServicioDermo() {
 
           {/* Hábitos y Salud */}
           <div>
-            <div className="bg-[#6495a8] text-white font-semibold text-sm py-2 px-4 rounded-sm mb-4 uppercase tracking-wide">
+            <div className="bg-secondary text-secondary-foreground font-semibold text-sm py-2 px-4 rounded-sm mb-4 uppercase tracking-wide">
               Hábitos y Salud
             </div>
             <div className="grid grid-cols-3 gap-x-5 gap-y-3">
@@ -534,7 +534,7 @@ export default function ServicioDermo() {
             </div>
             <div className="grid grid-cols-2 gap-6 mt-6">
               <div className="space-y-2">
-                <Label className="text-xs font-semibold uppercase text-[#6495a8]">Medicación habitual</Label>
+                <Label className="text-xs font-semibold uppercase text-secondary">Medicación habitual</Label>
                 <Textarea
                   value={formData.medicacionHabitual}
                   onChange={(e) => setFormData((prev) => ({ ...prev, medicacionHabitual: e.target.value }))}
@@ -543,7 +543,7 @@ export default function ServicioDermo() {
                 />
               </div>
               <div className="space-y-2">
-                <Label className="text-xs font-semibold uppercase text-[#6495a8]">Patologías</Label>
+                <Label className="text-xs font-semibold uppercase text-secondary">Patologías</Label>
                 <Textarea
                   value={formData.patologias}
                   onChange={(e) => setFormData((prev) => ({ ...prev, patologias: e.target.value }))}
@@ -552,7 +552,7 @@ export default function ServicioDermo() {
                 />
               </div>
               <div className="col-span-2 space-y-2">
-                <Label className="text-xs font-semibold uppercase text-[#6495a8]">Mujer - Etapa Hormonal</Label>
+                <Label className="text-xs font-semibold uppercase text-secondary">Mujer - Etapa Hormonal</Label>
                 <Textarea
                   value={formData.etapaHormonal}
                   onChange={(e) => setFormData((prev) => ({ ...prev, etapaHormonal: e.target.value }))}
@@ -565,18 +565,18 @@ export default function ServicioDermo() {
 
           {/* Pauta Dermocosmética */}
           <div>
-            <div className="bg-[#6495a8] text-white font-semibold text-sm py-2 px-4 rounded-sm mb-4 uppercase tracking-wide">
+            <div className="bg-secondary text-secondary-foreground font-semibold text-sm py-2 px-4 rounded-sm mb-4 uppercase tracking-wide">
               Pauta Dermocosmética
             </div>
             <div className="grid grid-cols-2 gap-10">
               {/* Rutina de Día */}
               <div>
-                <div className="bg-[#79438f] text-white text-center py-2 text-sm font-normal uppercase mb-4">
+                <div className="bg-primary text-primary-foreground text-center py-2 text-sm font-normal uppercase mb-4">
                   Rutina de Día
                 </div>
                 <div className="space-y-4">
                   <div className="space-y-1">
-                    <Label className="text-xs font-semibold uppercase text-[#6495a8]">1. Higiene</Label>
+                    <Label className="text-xs font-semibold uppercase text-secondary">1. Higiene</Label>
                     <Textarea
                       value={formData.rutinaDia.higiene}
                       onChange={(e) => handleRutinaDiaChange("higiene", e.target.value)}
@@ -585,7 +585,7 @@ export default function ServicioDermo() {
                     />
                   </div>
                   <div className="space-y-1">
-                    <Label className="text-xs font-semibold uppercase text-[#6495a8]">2. Contorno de ojos</Label>
+                    <Label className="text-xs font-semibold uppercase text-secondary">2. Contorno de ojos</Label>
                     <Textarea
                       value={formData.rutinaDia.contornoOjos}
                       onChange={(e) => handleRutinaDiaChange("contornoOjos", e.target.value)}
@@ -594,7 +594,7 @@ export default function ServicioDermo() {
                     />
                   </div>
                   <div className="space-y-1">
-                    <Label className="text-xs font-semibold uppercase text-[#6495a8]">3. Producto intensivo</Label>
+                    <Label className="text-xs font-semibold uppercase text-secondary">3. Producto intensivo</Label>
                     <Textarea
                       value={formData.rutinaDia.productoIntensivo}
                       onChange={(e) => handleRutinaDiaChange("productoIntensivo", e.target.value)}
@@ -603,7 +603,7 @@ export default function ServicioDermo() {
                     />
                   </div>
                   <div className="space-y-1">
-                    <Label className="text-xs font-semibold uppercase text-[#6495a8]">4. Hidratación</Label>
+                    <Label className="text-xs font-semibold uppercase text-secondary">4. Hidratación</Label>
                     <Textarea
                       value={formData.rutinaDia.hidratacion}
                       onChange={(e) => handleRutinaDiaChange("hidratacion", e.target.value)}
@@ -612,7 +612,7 @@ export default function ServicioDermo() {
                     />
                   </div>
                   <div className="space-y-1">
-                    <Label className="text-xs font-semibold uppercase text-[#6495a8]">5. Protección Solar</Label>
+                    <Label className="text-xs font-semibold uppercase text-secondary">5. Protección Solar</Label>
                     <Textarea
                       value={formData.rutinaDia.proteccionSolar}
                       onChange={(e) => handleRutinaDiaChange("proteccionSolar", e.target.value)}
@@ -625,12 +625,12 @@ export default function ServicioDermo() {
 
               {/* Rutina de Noche */}
               <div>
-                <div className="bg-[#79438f] text-white text-center py-2 text-sm font-normal uppercase mb-4">
+                <div className="bg-primary text-primary-foreground text-center py-2 text-sm font-normal uppercase mb-4">
                   Rutina de Noche
                 </div>
                 <div className="space-y-4">
                   <div className="space-y-1">
-                    <Label className="text-xs font-semibold uppercase text-[#6495a8]">1. Limpieza / Doble Limpieza</Label>
+                    <Label className="text-xs font-semibold uppercase text-secondary">1. Limpieza / Doble Limpieza</Label>
                     <Textarea
                       value={formData.rutinaNoche.limpieza}
                       onChange={(e) => handleRutinaNocheChange("limpieza", e.target.value)}
@@ -639,7 +639,7 @@ export default function ServicioDermo() {
                     />
                   </div>
                   <div className="space-y-1">
-                    <Label className="text-xs font-semibold uppercase text-[#6495a8]">2. Contorno de ojos</Label>
+                    <Label className="text-xs font-semibold uppercase text-secondary">2. Contorno de ojos</Label>
                     <Textarea
                       value={formData.rutinaNoche.contornoOjos}
                       onChange={(e) => handleRutinaNocheChange("contornoOjos", e.target.value)}
@@ -648,7 +648,7 @@ export default function ServicioDermo() {
                     />
                   </div>
                   <div className="space-y-1">
-                    <Label className="text-xs font-semibold uppercase text-[#6495a8]">3. Producto intensivo</Label>
+                    <Label className="text-xs font-semibold uppercase text-secondary">3. Producto intensivo</Label>
                     <Textarea
                       value={formData.rutinaNoche.productoIntensivo}
                       onChange={(e) => handleRutinaNocheChange("productoIntensivo", e.target.value)}
@@ -657,7 +657,7 @@ export default function ServicioDermo() {
                     />
                   </div>
                   <div className="space-y-1">
-                    <Label className="text-xs font-semibold uppercase text-[#6495a8]">4. Hidratación</Label>
+                    <Label className="text-xs font-semibold uppercase text-secondary">4. Hidratación</Label>
                     <Textarea
                       value={formData.rutinaNoche.hidratacion}
                       onChange={(e) => handleRutinaNocheChange("hidratacion", e.target.value)}
@@ -671,29 +671,29 @@ export default function ServicioDermo() {
 
             {/* Cuidados Semanales y Suplementación */}
             <div className="grid grid-cols-2 gap-6 mt-6">
-              <div className="bg-[#f0f5f7] border-l-4 border-[#6495a8] p-4 space-y-4">
-                <div className="text-xs font-bold uppercase text-[#6495a8] mb-2">Cuidados Semanales</div>
+              <div className="bg-secondary/10 border-l-4 border-secondary p-4 space-y-4">
+                <div className="text-xs font-bold uppercase text-secondary mb-2">Cuidados Semanales</div>
                 <div className="space-y-1">
-                  <Label className="text-xs font-semibold uppercase text-[#79438f]">Exfoliante</Label>
+                  <Label className="text-xs font-semibold uppercase text-primary">Exfoliante</Label>
                   <Textarea
                     value={formData.cuidadosSemanales.exfoliante}
                     onChange={(e) => handleCuidadosSemanalesChange("exfoliante", e.target.value)}
                     rows={1}
-                    className="border-b border-[#6495a8] border-t-0 border-l-0 border-r-0 rounded-none px-0 resize-none bg-transparent"
+                    className="border-b border-secondary border-t-0 border-l-0 border-r-0 rounded-none px-0 resize-none bg-transparent"
                   />
                 </div>
                 <div className="space-y-1">
-                  <Label className="text-xs font-semibold uppercase text-[#79438f]">Mascarilla</Label>
+                  <Label className="text-xs font-semibold uppercase text-primary">Mascarilla</Label>
                   <Textarea
                     value={formData.cuidadosSemanales.mascarilla}
                     onChange={(e) => handleCuidadosSemanalesChange("mascarilla", e.target.value)}
                     rows={1}
-                    className="border-b border-[#6495a8] border-t-0 border-l-0 border-r-0 rounded-none px-0 resize-none bg-transparent"
+                    className="border-b border-secondary border-t-0 border-l-0 border-r-0 rounded-none px-0 resize-none bg-transparent"
                   />
                 </div>
               </div>
-              <div className="bg-[#f0f5f7] border-l-4 border-[#6495a8] p-4">
-                <div className="text-xs font-bold uppercase text-[#6495a8] mb-2">Suplementación oral</div>
+              <div className="bg-secondary/10 border-l-4 border-secondary p-4">
+                <div className="text-xs font-bold uppercase text-secondary mb-2">Suplementación oral</div>
                 <Textarea
                   value={formData.suplementacionOral}
                   onChange={(e) => setFormData((prev) => ({ ...prev, suplementacionOral: e.target.value }))}
@@ -707,20 +707,20 @@ export default function ServicioDermo() {
           {/* Firmas */}
           <div className="flex justify-between items-center pt-6 border-t">
             <div className="flex items-center gap-2">
-              <span className="text-xs font-semibold text-[#79438f] uppercase">Próxima Revisión:</span>
+              <span className="text-xs font-semibold text-primary uppercase">Próxima Revisión:</span>
               <Input
                 value={formData.proximaRevision}
                 onChange={(e) => setFormData((prev) => ({ ...prev, proximaRevision: e.target.value }))}
                 placeholder="dd / mm / aaaa"
-                className="border-b border-[#79438f] border-t-0 border-l-0 border-r-0 rounded-none px-0 w-32"
+                className="border-b border-primary border-t-0 border-l-0 border-r-0 rounded-none px-0 w-32"
               />
             </div>
             <div className="flex items-center gap-2">
-              <span className="text-xs font-semibold text-[#79438f] uppercase">Farmacéutico/a:</span>
+              <span className="text-xs font-semibold text-primary uppercase">Farmacéutico/a:</span>
               <Input
                 value={formData.farmaceutico}
                 onChange={(e) => setFormData((prev) => ({ ...prev, farmaceutico: e.target.value }))}
-                className="border-b border-[#79438f] border-t-0 border-l-0 border-r-0 rounded-none px-0 w-40"
+                className="border-b border-primary border-t-0 border-l-0 border-r-0 rounded-none px-0 w-40"
               />
             </div>
           </div>

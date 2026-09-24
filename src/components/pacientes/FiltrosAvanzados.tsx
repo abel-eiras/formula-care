@@ -11,6 +11,7 @@ import { Filter, X, CalendarIcon } from "lucide-react";
 import { format } from "date-fns";
 import { es } from "date-fns/locale";
 import { cn } from "@/lib/utils";
+import { RESERVA_ONLINE_DISPONIBLE } from "@/lib/funciones";
 
 export interface FiltrosPacientes {
   busqueda?: string;
@@ -21,6 +22,7 @@ export interface FiltrosPacientes {
   edadMax?: number;
   tieneDermo?: boolean;
   tieneBio?: boolean;
+  tieneNutricion?: boolean;
   fechaDesde?: Date;
   fechaHasta?: Date;
   ordenarPor?: "name" | "createdAt" | "age";
@@ -58,6 +60,7 @@ export function FiltrosAvanzados({ filtros, onFiltrosChange, onReset }: FiltrosA
     filtros.edadMax !== undefined ||
     filtros.tieneDermo ||
     filtros.tieneBio ||
+    filtros.tieneNutricion ||
     filtros.fechaDesde ||
     filtros.fechaHasta ||
     filtros.ordenarPor !== undefined;
@@ -70,6 +73,7 @@ export function FiltrosAvanzados({ filtros, onFiltrosChange, onReset }: FiltrosA
     if (filtros.edadMin !== undefined || filtros.edadMax !== undefined) count++;
     if (filtros.tieneDermo) count++;
     if (filtros.tieneBio) count++;
+    if (filtros.tieneNutricion) count++;
     if (filtros.fechaDesde) count++;
     if (filtros.fechaHasta) count++;
     return count;
@@ -143,28 +147,30 @@ export function FiltrosAvanzados({ filtros, onFiltrosChange, onReset }: FiltrosA
             </Select>
           </div>
 
-          {/* Origen */}
-          <div className="space-y-2">
-            <Label htmlFor="filtro-origen" className="text-xs">Origen</Label>
-            <Select
-              value={filtrosLocales.origen || "all"}
-              onValueChange={(value) =>
-                setFiltrosLocales({
-                  ...filtrosLocales,
-                  origen: value === "all" ? undefined : (value as "manual" | "autoregistro"),
-                })
-              }
-            >
-              <SelectTrigger id="filtro-origen" className="h-8">
-                <SelectValue placeholder="Todos" />
-              </SelectTrigger>
-              <SelectContent>
-                <SelectItem value="all">Todos</SelectItem>
-                <SelectItem value="manual">Registrado manualmente</SelectItem>
-                <SelectItem value="autoregistro">Autoregistrado</SelectItem>
-              </SelectContent>
-            </Select>
-          </div>
+          {/* Origen (solo distingue algo si hay reserva online) */}
+          {RESERVA_ONLINE_DISPONIBLE && (
+            <div className="space-y-2">
+              <Label htmlFor="filtro-origen" className="text-xs">Origen</Label>
+              <Select
+                value={filtrosLocales.origen || "all"}
+                onValueChange={(value) =>
+                  setFiltrosLocales({
+                    ...filtrosLocales,
+                    origen: value === "all" ? undefined : (value as "manual" | "autoregistro"),
+                  })
+                }
+              >
+                <SelectTrigger id="filtro-origen" className="h-8">
+                  <SelectValue placeholder="Todos" />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="all">Todos</SelectItem>
+                  <SelectItem value="manual">Registrado manualmente</SelectItem>
+                  <SelectItem value="autoregistro">Reserva online</SelectItem>
+                </SelectContent>
+              </Select>
+            </div>
+          )}
 
           {/* Rango de Edad */}
           <div className="space-y-2">
@@ -232,6 +238,19 @@ export function FiltrosAvanzados({ filtros, onFiltrosChange, onReset }: FiltrosA
                 }
               >
                 Bio
+              </Button>
+              <Button
+                variant={filtrosLocales.tieneNutricion ? "default" : "outline"}
+                size="sm"
+                className="flex-1 h-8 text-xs"
+                onClick={() =>
+                  setFiltrosLocales({
+                    ...filtrosLocales,
+                    tieneNutricion: !filtrosLocales.tieneNutricion,
+                  })
+                }
+              >
+                Nutrición
               </Button>
             </div>
           </div>

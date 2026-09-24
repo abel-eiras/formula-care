@@ -2,7 +2,9 @@ import { useQuery } from '@tanstack/react-query';
 import { api } from '@/lib/api';
 import type { AnalisisDermo, Paciente } from '@/types';
 
+/** Revisión programada en Dermo o en Nutrición */
 export interface RevisionProxima extends Pick<AnalisisDermo, 'id' | 'pacienteId' | 'proximaRevision'> {
+  servicio: 'dermo' | 'nutricion';
   paciente?: Pick<Paciente, 'id' | 'name' | 'phone' | 'email'>;
 }
 
@@ -20,6 +22,10 @@ export interface Estadisticas {
     esteMes: number;
     tendencia: number;
   };
+  visitasNutricion: {
+    esteMes: number;
+    tendencia: number;
+  };
   tasaRetorno: {
     valor: number;
     pacientesRecurrentes: number;
@@ -31,6 +37,7 @@ export interface EvolucionMes {
   mes: string;
   dermo: number;
   bio: number;
+  nutricion: number;
 }
 
 /**

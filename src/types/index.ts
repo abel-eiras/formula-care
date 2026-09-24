@@ -34,7 +34,7 @@ export interface Configuracion {
 // Plantillas de Email
 export interface PlantillaEmail {
   id: string;
-  tipo: 'confirmacion' | 'recordatorio' | 'cancelacion' | 'modificacion';
+  tipo: 'confirmacion' | 'recordatorio' | 'cancelacion' | 'modificacion' | 'cumpleanos' | 'rechazo';
   nombre: string;
   asunto: string;
   contenidoHtml: string;
@@ -95,12 +95,45 @@ export interface ParametroBioConfig {
 
 export type EstadoValoracion = 'normal' | 'advertencia' | 'critico';
 
-export interface AnalisisBio {
+// ==========================================
+// MEDICIONES (tabla única para todos los servicios)
+// ==========================================
+
+/**
+ * Medidas corporales y constantes. Bio y Nutrición las reciben y devuelven
+ * como campos planos, pero se guardan en una única tabla por paciente.
+ * Desde la API pueden llegar como null.
+ */
+export interface CamposMedicion {
+  peso?: number | null; // kg
+  altura?: number | null; // cm
+  cintura?: number | null; // cm (perímetro abdominal)
+  cadera?: number | null; // cm
+  imc?: number | null; // Calculado en el servidor
+  icc?: number | null; // Índice cintura-cadera, calculado en el servidor
+  porcentajeGrasa?: number | null;
+  masaGrasa?: number | null; // kg
+  masaMagra?: number | null; // kg (masa libre de grasa)
+  systolic?: number | null; // mmHg
+  diastolic?: number | null; // mmHg
+  pulsaciones?: number | null; // lpm
+}
+
+/** Una medición del historial único del paciente (GET /pacientes/:id/mediciones) */
+export interface Medicion extends CamposMedicion {
+  id: string;
+  fecha: string; // YYYY-MM-DD
+  origen: 'bio' | 'nutricion';
+  analisisBioId?: string | null;
+  visitaNutricionId?: string | null;
+}
+
+export interface AnalisisBio extends CamposMedicion {
   id: string;
   pacienteId: string;
   fecha: string;
   // Parámetros básicos
-  glucemia?: number; // Antes "glucose"
+  glucemia?: number;
   cholesterol?: number; // Colesterol total
   cholesterolHDL?: number; // Colesterol HDL
   cholesterolLDL?: number; // Colesterol LDL
@@ -110,15 +143,6 @@ export interface AnalisisBio {
   proteinaCReactiva?: number; // PCR
   vitaminaD?: number;
   ferritina?: number;
-  // Tensión arterial y pulsaciones
-  systolic?: number;
-  diastolic?: number;
-  pulsaciones?: number;
-  // Medidas corporales
-  weight?: number;
-  height?: number;
-  perimetroAbdominal?: number;
-  imc?: number; // Calculado automáticamente
   // Observaciones y recomendaciones
   observaciones?: string;
   recomendaciones?: string;
@@ -126,8 +150,6 @@ export interface AnalisisBio {
   updatedAt?: string;
   // Relación
   paciente?: Paciente;
-  // Campo legacy para compatibilidad
-  glucose?: number;
 }
 
 export interface RutinaDia {
@@ -175,14 +197,15 @@ export interface AnalisisDermo {
 export interface Paciente {
   id: string;
   name: string;
-  age: number;
   sex: string;
   phone: string;
   email?: string;
-  birthDate?: string;
+  /** YYYY-MM-DD. La edad no se guarda: se calcula con calcularEdad() de @/lib/edad */
+  birthDate: string;
   address?: string;
   notes?: string;
-  lastVisit?: string;
+  /** Último servicio (Dermo, Bio o Nutrición); lo calcula el servidor en listados */
+  ultimaVisita?: UltimaVisita | null;
   origen?: 'manual' | 'autoregistro'; // "manual" = registrado por farmacia, "autoregistro" = formulario público
   createdAt?: string;
   updatedAt?: string;
@@ -194,13 +217,21 @@ export interface Paciente {
   _count?: {
     analisisDermo: number;
     analisisBio: number;
+    programasNutricion: number;
     citas: number;
   };
 }
 
+export type ServicioPaciente = 'dermo' | 'bio' | 'nutricion';
+
+export interface UltimaVisita {
+  fecha: string; // YYYY-MM-DD
+  servicio: ServicioPaciente;
+}
+
 export interface Notificacion {
   id: string;
-  tipo: 'cita' | 'revision' | 'recordatorio' | 'alerta';
+  tipo: 'cita' | 'revision' | 'recordatorio' | 'alerta' | 'cumpleanos';
   pacienteId?: string;
   citaId?: string;
   analisisId?: string;
@@ -240,8 +271,9 @@ export interface Cita {
   pacienteId: string;
   fecha: string; // Formato ISO
   hora: string; // Formato "HH:mm"
-  tipo: 'dermo' | 'bio' | 'consulta' | 'seguimiento';
+  tipo: 'dermo' | 'bio' | 'nutricion' | 'consulta' | 'seguimiento' | `evento:${string}`;
   notas?: string;
+  estado?: 'pendiente' | 'confirmada' | 'cancelada' | 'completada';
   recordatorioEnviado?: boolean;
   createdAt?: string;
   updatedAt?: string;
@@ -289,4 +321,26 @@ export interface Usuario {
   activo: boolean;
   ultimoAcceso?: string;
   createdAt?: string;
+}
+
+export * from "./nutricion";
+
+// ==========================================
+// CUMPLEAÑOS
+// ==========================================
+
+export type CanalFelicitacion = 'whatsapp' | 'email' | 'llamada' | 'en_persona';
+
+/** Cumpleaños calculado desde la fecha de nacimiento (GET /cumpleanos) */
+export interface Cumpleanos {
+  pacienteId: string;
+  nombre: string;
+  telefono: string;
+  email: string | null;
+  fechaNacimiento: string;
+  /** Día en que se celebra (YYYY-MM-DD) */
+  fecha: string;
+  /** Años que cumple ese día */
+  edad: number;
+  felicitacion: { canal: CanalFelicitacion; usuario: string | null; fecha: string } | null;
 }

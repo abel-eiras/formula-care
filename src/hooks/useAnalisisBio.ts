@@ -39,7 +39,7 @@ export function useCrearAnalisisBio() {
   const queryClient = useQueryClient();
 
   return useMutation({
-    mutationFn: async (nuevoAnalisis: Omit<AnalisisBio, 'id' | 'createdAt' | 'updatedAt' | 'paciente' | 'imc'>) => {
+    mutationFn: async (nuevoAnalisis: Omit<AnalisisBio, 'id' | 'createdAt' | 'updatedAt' | 'paciente' | 'imc' | 'icc'>) => {
       return api.post<AnalisisBio>('/servicios/bio', nuevoAnalisis);
     },
     onSuccess: (_, variables) => {
@@ -47,6 +47,8 @@ export function useCrearAnalisisBio() {
       queryClient.invalidateQueries({ queryKey: ['analisisBio'] });
       queryClient.invalidateQueries({ queryKey: ['analisisBio', 'paciente', variables.pacienteId] });
       queryClient.invalidateQueries({ queryKey: ['paciente', variables.pacienteId] });
+      // Las medidas del análisis viven en el historial único de mediciones
+      queryClient.invalidateQueries({ queryKey: ['mediciones'] });
     },
   });
 }
@@ -68,6 +70,7 @@ export function useActualizarAnalisisBio() {
       if (variables.pacienteId) {
         queryClient.invalidateQueries({ queryKey: ['analisisBio', 'paciente', variables.pacienteId] });
       }
+      queryClient.invalidateQueries({ queryKey: ['mediciones'] });
     },
   });
 }

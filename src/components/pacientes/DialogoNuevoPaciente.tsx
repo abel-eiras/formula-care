@@ -21,6 +21,8 @@ import {
 import { UserPlus, Loader2 } from "lucide-react";
 import { toast } from "sonner";
 import { useCrearPaciente } from "@/hooks/usePacientes";
+import { calcularEdad } from "@/lib/edad";
+import { hoyISO } from "@/lib/fechas";
 
 interface DialogoNuevoPacienteProps {
   /** Callback cuando se crea el paciente, recibe el ID del nuevo paciente */
@@ -42,7 +44,7 @@ export function DialogoNuevoPaciente({
     name: "",
     phone: "",
     email: "",
-    age: "",
+    birthDate: "",
     sex: "O" as "M" | "F" | "O",
   });
 
@@ -70,8 +72,9 @@ export function DialogoNuevoPaciente({
       toast.error("El teléfono debe tener al menos 9 caracteres");
       return;
     }
-    if (!formData.age || parseInt(formData.age) <= 0) {
-      toast.error("La edad debe ser un número positivo");
+    // La edad no se introduce: se calcula siempre desde la fecha de nacimiento
+    if (calcularEdad(formData.birthDate) == null) {
+      toast.error("Indica una fecha de nacimiento válida");
       return;
     }
 
@@ -80,7 +83,7 @@ export function DialogoNuevoPaciente({
         name: formData.name.trim(),
         phone: formData.phone.trim(),
         email: formData.email.trim() || undefined,
-        age: parseInt(formData.age),
+        birthDate: formData.birthDate,
         sex: formData.sex,
       });
 
@@ -92,7 +95,7 @@ export function DialogoNuevoPaciente({
         name: "",
         phone: "",
         email: "",
-        age: "",
+        birthDate: "",
         sex: "O",
       });
     } catch (error) {
@@ -145,16 +148,17 @@ export function DialogoNuevoPaciente({
               />
             </div>
             <div className="grid gap-2">
-              <Label htmlFor="edad">Edad *</Label>
+              <Label htmlFor="fechaNacimiento">Fecha de nacimiento *</Label>
               <Input
-                id="edad"
-                type="number"
-                placeholder="35"
-                min="1"
-                max="150"
-                value={formData.age}
-                onChange={(e) => handleChange("age", e.target.value)}
+                id="fechaNacimiento"
+                type="date"
+                max={hoyISO()}
+                value={formData.birthDate}
+                onChange={(e) => handleChange("birthDate", e.target.value)}
               />
+              {calcularEdad(formData.birthDate) != null && (
+                <p className="text-xs text-muted-foreground">{calcularEdad(formData.birthDate)} años</p>
+              )}
             </div>
           </div>
           <div className="grid gap-2">

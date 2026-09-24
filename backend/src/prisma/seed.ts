@@ -10,6 +10,7 @@ import {
   PARAMETROS_BIO_CONFIG_DEFAULT,
   PARAMETROS_REFERENCIA_DEFAULT,
 } from '../config/parametrosBioDefault.js';
+import { textoBusquedaPaciente } from '../lib/textoBusqueda.js';
 
 const prisma = new PrismaClient();
 
@@ -124,10 +125,10 @@ async function main() {
     const paciente1 = await prisma.paciente.create({
       data: {
         name: 'María García López',
-        age: 45,
         sex: 'F',
         phone: '600123456',
         email: 'maria.garcia@email.com',
+        textoBusqueda: textoBusquedaPaciente({ name: 'María García López', phone: '600123456', email: 'maria.garcia@email.com' }),
         birthDate: '1981-03-15',
         address: 'Calle Mayor 10, Madrid',
         origen: 'manual',
@@ -137,10 +138,10 @@ async function main() {
     const paciente2 = await prisma.paciente.create({
       data: {
         name: 'Juan Martínez Ruiz',
-        age: 62,
         sex: 'M',
         phone: '600654321',
         email: 'juan.martinez@email.com',
+        textoBusqueda: textoBusquedaPaciente({ name: 'Juan Martínez Ruiz', phone: '600654321', email: 'juan.martinez@email.com' }),
         birthDate: '1964-07-22',
         address: 'Avenida Principal 25, Madrid',
         origen: 'manual',
@@ -159,13 +160,21 @@ async function main() {
         cholesterolHDL: 55,
         cholesterolLDL: 130,
         triglycerides: 125,
-        systolic: 130,
-        diastolic: 85,
-        weight: 78,
-        height: 175,
-        imc: 25.5,
         observaciones: 'Paciente con colesterol ligeramente elevado',
         recomendaciones: 'Dieta baja en grasas saturadas',
+        // Medidas y tensión: tabla única de mediciones
+        medicion: {
+          create: {
+            pacienteId: paciente2.id,
+            fecha: new Date().toISOString().split('T')[0],
+            origen: 'bio',
+            peso: 78,
+            altura: 175,
+            imc: 25.5,
+            systolic: 130,
+            diastolic: 85,
+          },
+        },
       },
     });
     console.log('✅ Análisis bioquímico de ejemplo creado');

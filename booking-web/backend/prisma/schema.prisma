@@ -1,196 +1,50 @@
-// Esquema de base de datos para booking-web
+// Esquema de booking-web: buzón de solicitudes de la reserva online.
 //
-// Servicio OPCIONAL, autoalojable, de reserva pública de citas para UNA farmacia.
-// No hay modelo Farmacia: este despliegue ES la farmacia (igual que la app de
-// escritorio). La marca y los datos de contacto viven en el singleton
-// Configuracion (id fijo "singleton"), igual que en backend/prisma/schema.prisma
-// de la app de escritorio.
-//
-// IMPORTANTE: esta base de datos es independiente de la de la app de escritorio.
-// No hay sincronización entre ambas en esta fase (ver README.md).
+// booking-web NO es un calendario: la app de escritorio de la farmacia es la
+// única fuente de verdad. Aquí solo se guarda:
+//   - La publicación que envía la app (marca, textos legales, clave pública y
+//     huecos libres).
+//   - Las solicitudes, cifradas en el navegador del paciente con la clave
+//     pública de la farmacia (este servidor no puede leerlas).
+//   - Las peticiones de cancelación (un token opaco que solo la app sabe validar).
+// La app recoge solicitudes y cancelaciones periódicamente y, al confirmar la
+// recepción, se borran de aquí. Ver README.md.
 
 generator client {
   provider = "prisma-client-js"
 }
 
 datasource db {
-  // Por defecto postgresql (uso típico en Render/Fly.io/Supabase para un
-  // servicio siempre encendido). También funciona con sqlite si se autoaloja
-  // con disco persistente — ver README.md para el formato de DATABASE_URL
-  // en cada caso.
+  // postgresql por defecto (Render, Fly.io, Supabase...). Para autoalojar con
+  // SQLite, ver README.md.
   provider = "postgresql"
   url      = env("DATABASE_URL")
 }
 
-// ==========================================
-// CONFIGURACIÓN (singleton, una fila por despliegue)
-// ==========================================
-// Branding, datos de contacto, textos legales y configuración de email.
-model Configuracion {
-  id String @id @default("singleton")
+// Última publicación de la app de escritorio (fila única)
+model Publicacion {
+  id            String   @id @default("singleton")
+  datos         String // JSON: ver src/publicacion.ts
+  actualizadaEn DateTime @updatedAt
+}
 
-  // Datos de la farmacia
-  farmaciaNombre    String?
-  farmaciaDireccion String?
-  farmaciaCiudad    String?
-  farmaciaTelefono  String?
-  farmaciaEmail     String?
-  farmaciaWeb       String?
-  farmaciaWhatsapp  String?
-  farmaciaLogo      String? // data: URI o URL absoluta
-
-  // Apariencia y marca
-  temaActivo   String? @default("default") // "default", "verde", "azul", "custom"
-  coloresMarca String? // JSON: { "primario": "#79438f", "secundario": "#6495a8", "acento": "#79438f" }
-
-  // ==========================================
-  // TEXTOS LEGALES
-  // ==========================================
-  textoAvisoLegal         String?
-  textoPoliticaPrivacidad String?
-  textoPoliticaCookies    String?
-
-  // ==========================================
-  // CONFIGURACIÓN DE EMAIL
-  // ==========================================
-  emailProvider        String?  @default("smtp") // "smtp" o "resend"
-  resendApiKey         String? // Recomendado: dejar vacío y usar RESEND_API_KEY por entorno
-  emailRemitente       String?
-  emailNombreRemitente String?
-  smtpHost             String?
-  smtpPort             Int?
-  smtpSecure           Boolean  @default(false)
-  smtpAcceptSelfSigned Boolean  @default(false)
-  smtpUser             String?
-  smtpPass             String? // ENCRIPTADO (AES-256-GCM) si se guarda desde el panel de staff
-
-  // reCAPTCHA (opcional; también puede configurarse solo por variables de entorno)
-  recaptchaSiteKey String?
-
+// Solicitud de cita aún no recogida por la app
+model Solicitud {
+  id        String   @id @default(cuid())
+  tipo      String // "dermo", "bio", "nutricion", "consulta" o "evento:<id>"
+  fecha     String // YYYY-MM-DD
+  hora      String // HH:mm
+  sobre     String // JSON cifrado (ECDH P-256 + AES-256-GCM); ilegible para este servidor
   createdAt DateTime @default(now())
-  updatedAt DateTime @updatedAt
+
+  @@index([createdAt])
 }
 
-// ==========================================
-// CONFIGURACIÓN DE CALENDARIO (singleton)
-// ==========================================
-model ConfiguracionCalendario {
-  id               String   @id @default("singleton")
-  horariosPorTipo  String   @default("{}") // JSON: { "dermo": { "lunes": ["09:00-14:00"], ... }, ... }
-  fechasBloqueadas String   @default("[]") // JSON: ["2026-01-20", ...]
-  horasBloqueadas  String   @default("{}") // JSON: { "2026-01-20": ["10:00"], ... }
-  autoAceptar      Boolean  @default(false)
-  duracionPorTipo  String   @default("{}") // JSON: { "dermo": 45, "bio": 20 } (minutos)
-  createdAt        DateTime @default(now())
-  updatedAt        DateTime @updatedAt
-}
+// El paciente pulsó "cancelar mi cita" en su email; la app decide si es válido
+model Cancelacion {
+  id        String   @id @default(cuid())
+  token     String   @unique
+  createdAt DateTime @default(now())
 
-// ==========================================
-// EVENTOS PERSONALIZADOS (talleres, jornadas, etc.)
-// ==========================================
-model Evento {
-  id            String   @id @default(cuid())
-  nombre        String
-  activo        Boolean  @default(true)
-  fechas        String   @default("[]") // JSON: ["2026-01-20", ...]
-  horas         String   @default("[]") // JSON: ["09:00-14:00", "16:00-19:00"]
-  duracion      Int      @default(60) // minutos
-  maxAsistentes Int      @default(1)
-  descripcion   String?
-  createdAt     DateTime @default(now())
-  updatedAt     DateTime @updatedAt
-
-  @@index([activo])
-}
-
-// ==========================================
-// SOLICITUD DE CITA (pendiente de revisión por el personal)
-// ==========================================
-// NOTA: nombreCliente, emailCliente y telefonoCliente están ENCRIPTADOS con
-// AES-256-GCM (ver src/services/encryptionService.ts). emailClienteHash
-// permite buscar por email sin desencriptar.
-model SolicitudCita {
-  id                String   @id @default(cuid())
-  nombreCliente     String // ENCRIPTADO
-  emailCliente      String // ENCRIPTADO
-  emailClienteHash  String // SHA-256, para búsquedas
-  telefonoCliente   String // ENCRIPTADO
-  tipo              String // "dermo", "bio", "consulta", "seguimiento", o "evento:<id>"
-  fecha             String // YYYY-MM-DD
-  hora              String // HH:mm
-  estado            String   @default("pendiente") // "pendiente", "aprobada", "rechazada"
-  notas             String?
-  motivoRechazo     String?
-  citaId            String? // Si se aprueba, id de la Cita creada en esta misma base de datos
-  createdAt         DateTime @default(now())
-  updatedAt         DateTime @updatedAt
-
-  @@index([emailClienteHash])
-  @@index([estado])
-  @@index([fecha])
-}
-
-// ==========================================
-// CITA (registro local mínimo de citas ya programadas por booking-web)
-// ==========================================
-// Se usa ÚNICAMENTE para calcular la disponibilidad de este propio servicio
-// (evitar que dos reservas online choquen entre sí). NO está sincronizada con
-// el calendario de la app de escritorio — ver README.md.
-model Cita {
-  id                  String   @id @default(cuid())
-  nombreCliente       String // ENCRIPTADO
-  emailCliente        String // ENCRIPTADO
-  emailClienteHash    String
-  telefonoCliente     String // ENCRIPTADO
-  fecha               String // YYYY-MM-DD
-  hora                String // HH:mm
-  tipo                String
-  duracion            Int      @default(30) // minutos
-  estado              String   @default("pendiente") // "pendiente", "confirmada", "cancelada"
-  notas               String?
-  confirmacionEnviada Boolean  @default(false)
-  createdAt           DateTime @default(now())
-  updatedAt           DateTime @updatedAt
-
-  tokens TokenAccionCita[]
-
-  @@index([fecha])
-  @@index([estado])
-}
-
-// ==========================================
-// TOKEN DE ACCIÓN DE CITA (enlaces de confirmar/modificar/cancelar por email)
-// ==========================================
-model TokenAccionCita {
-  id        String    @id @default(cuid())
-  citaId    String
-  token     String    @unique
-  tipo      String // "confirmar", "modificar", "cancelar"
-  expiraEn  DateTime
-  usado     Boolean   @default(false)
-  usadoEn   DateTime?
-  createdAt DateTime  @default(now())
-
-  cita Cita @relation(fields: [citaId], references: [id], onDelete: Cascade)
-
-  @@index([token])
-  @@index([citaId])
-  @@index([expiraEn])
-}
-
-// ==========================================
-// PLANTILLAS DE EMAIL (singleton por tipo)
-// ==========================================
-model PlantillaEmail {
-  id             String   @id @default(cuid())
-  tipo           String   @unique // "confirmacion", "cancelacion", "modificacion", "rechazo"
-  nombre         String
-  asunto         String // Soporta variables {{nombrePaciente}}, {{fechaCita}}, etc.
-  contenidoHtml  String
-  contenidoTexto String?
-  activa         Boolean  @default(true)
-  createdAt      DateTime @default(now())
-  updatedAt      DateTime @updatedAt
-
-  @@index([activa])
+  @@index([createdAt])
 }

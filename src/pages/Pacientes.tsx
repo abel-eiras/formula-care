@@ -17,7 +17,10 @@ import { Link } from "react-router-dom";
 import { usePacientes } from "@/hooks/usePacientes";
 import { LoadingSpinner } from "@/components/ui/LoadingSpinner";
 import { FiltrosAvanzados, type FiltrosPacientes } from "@/components/pacientes/FiltrosAvanzados";
-import type { Paciente } from "@/types";
+import type { Paciente, ServicioPaciente } from "@/types";
+import { textoFechaRelativa } from "@/lib/fechas";
+import { NOMBRE_SERVICIO, VARIANTE_SERVICIO } from "@/lib/servicios";
+import { textoEdad } from "@/lib/edad";
 
 /**
  * Obtiene las iniciales del nombre completo
@@ -30,13 +33,16 @@ const getInitials = (name: string) => {
  * Determina los servicios de un paciente a partir del recuento de análisis
  * que devuelve el listado (GET /pacientes incluye _count, no los arrays completos)
  */
-const getServices = (paciente: Paciente): ("dermo" | "bio")[] => {
-  const services: ("dermo" | "bio")[] = [];
+const getServices = (paciente: Paciente): ServicioPaciente[] => {
+  const services: ServicioPaciente[] = [];
   if ((paciente._count?.analisisDermo ?? 0) > 0) {
     services.push("dermo");
   }
   if ((paciente._count?.analisisBio ?? 0) > 0) {
     services.push("bio");
+  }
+  if ((paciente._count?.programasNutricion ?? 0) > 0) {
+    services.push("nutricion");
   }
   return services;
 };
@@ -156,29 +162,29 @@ export default function Pacientes() {
                               {patient.name}
                             </p>
                             <p className="text-sm text-muted-foreground sm:hidden">
-                              {patient.age} años • {patient.sex === "M" ? "Hombre" : patient.sex === "F" ? "Mujer" : "Otro"}
+                              {textoEdad(patient.birthDate)} • {patient.sex === "M" ? "Hombre" : patient.sex === "F" ? "Mujer" : "Otro"}
                             </p>
                           </div>
                         </div>
                       </TableCell>
                       <TableCell className="hidden sm:table-cell">
-                        {patient.age} años
+                        {textoEdad(patient.birthDate)}
                       </TableCell>
                       <TableCell className="hidden md:table-cell">
                         {patient.phone}
                       </TableCell>
                       <TableCell className="hidden lg:table-cell">
-                        {patient.lastVisit ? new Date(patient.lastVisit).toLocaleDateString("es-ES") : "—"}
+                        {patient.ultimaVisita ? textoFechaRelativa(patient.ultimaVisita.fecha) : "—"}
                       </TableCell>
                       <TableCell>
                         <div className="flex gap-1">
                           {services.map((service) => (
                             <Badge 
                               key={service}
-                              variant={service === "dermo" ? "default" : "secondary"}
+                              variant={VARIANTE_SERVICIO[service]}
                               className="text-xs"
                             >
-                              {service === "dermo" ? "Dermo" : "Bio"}
+                              {NOMBRE_SERVICIO[service]}
                             </Badge>
                           ))}
                         </div>

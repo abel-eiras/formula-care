@@ -1,171 +1,77 @@
 import { useEffect, useState } from 'react';
-import { useParams, Link } from 'react-router-dom';
+import { Link, useParams } from 'react-router-dom';
+import { CalendarX2, CheckCircle2, Loader2 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
-import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
-import { Textarea } from '@/components/ui/textarea';
-import { Label } from '@/components/ui/label';
+import { Card, CardContent } from '@/components/ui/card';
 import { Alert, AlertDescription } from '@/components/ui/alert';
-import { Loader2, CheckCircle2, XCircle, Calendar, Clock, Building2, AlertTriangle } from 'lucide-react';
-import { verificarTokenCita, cancelarCitaToken, type DatosCitaToken, useFarmaciaPublica } from '@/hooks/useBooking';
+import { solicitarCancelacion, useReserva } from '@/hooks/useBooking';
+import { aplicarColorPrimario } from '@/lib/color';
 
-function formatearFecha(fecha: string): string {
-  return new Date(fecha + 'T00:00:00').toLocaleDateString('es-ES', { weekday: 'long', year: 'numeric', month: 'long', day: 'numeric' });
-}
-
+/**
+ * Enlace "cancelar mi cita" de los emails. Este servidor no conoce las citas
+ * (están en la app de la farmacia): se registra la petición y la farmacia la
+ * aplica en su próxima sincronización y envía la confirmación por email.
+ */
 export default function CancelarCita() {
-  const { token } = useParams<{ token: string }>();
-  const { data: farmacia } = useFarmaciaPublica();
-  const nombreFarmacia = farmacia?.nombre || 'Reserva de citas';
-
-  const [estado, setEstado] = useState<'loading' | 'confirmando' | 'success' | 'error'>('loading');
-  const [datos, setDatos] = useState<DatosCitaToken | null>(null);
-  const [mensaje, setMensaje] = useState('');
-  const [motivo, setMotivo] = useState('');
-  const [isSubmitting, setIsSubmitting] = useState(false);
+  const { token = '' } = useParams<{ token: string }>();
+  const { data: reserva } = useReserva();
+  const [estado, setEstado] = useState<'preguntando' | 'enviando' | 'hecho' | 'error'>('preguntando');
+  const [mensajeError, setMensajeError] = useState('');
 
   useEffect(() => {
-    if (!token) {
-      setEstado('error');
-      setMensaje('Enlace no válido');
-      return;
-    }
-    verificarTokenCita(token)
-      .then((response) => {
-        setDatos(response);
-        if (!response.valido) {
-          setEstado('error');
-          setMensaje(response.error || 'Token no válido');
-        } else {
-          setEstado('confirmando');
-        }
-      })
-      .catch(() => {
-        setEstado('error');
-        setMensaje('Error al verificar el enlace');
-      });
-  }, [token]);
+    if (reserva) aplicarColorPrimario(reserva.farmacia.colorPrimario);
+  }, [reserva]);
 
   const cancelar = async () => {
-    if (!token) return;
-    setIsSubmitting(true);
+    setEstado('enviando');
     try {
-      const response = await cancelarCitaToken(token, motivo || undefined);
-      if (response.success) {
-        setEstado('success');
-        setMensaje(response.message);
-      } else {
-        setMensaje('Error al cancelar la cita');
-      }
-    } catch {
-      setMensaje('Error al cancelar la cita');
-    } finally {
-      setIsSubmitting(false);
+      await solicitarCancelacion(token);
+      setEstado('hecho');
+    } catch (e) {
+      setMensajeError(e instanceof Error ? e.message : 'Inténtalo de nuevo');
+      setEstado('error');
     }
   };
 
   return (
-    <div className="min-h-screen flex items-center justify-center p-4">
-      <div className="w-full max-w-md">
-        <div className="text-center mb-6">
-          <div className="inline-flex items-center justify-center w-12 h-12 rounded-full bg-primary/10 mb-2">
-            <Building2 className="h-6 w-6 text-primary" />
-          </div>
-          <p className="text-sm text-muted-foreground">{nombreFarmacia}</p>
-        </div>
+    <div className="min-h-screen py-12 px-4">
+      <Card className="max-w-md mx-auto shadow-lg">
+        <CardContent className="p-8 text-center space-y-4">
+          {reserva?.farmacia.nombre && <p className="text-sm text-muted-foreground">{reserva.farmacia.nombre}</p>}
 
-        <Card className="shadow-lg">
-          {estado === 'loading' && (
-            <CardContent className="py-12 text-center">
-              <Loader2 className="h-12 w-12 animate-spin text-primary mx-auto mb-4" />
-              <p className="text-muted-foreground">Cargando...</p>
-            </CardContent>
-          )}
-
-          {estado === 'confirmando' && datos?.cita && (
+          {estado === 'hecho' ? (
             <>
-              <CardHeader className="text-center border-b bg-red-50">
-                <CardTitle className="text-xl flex items-center justify-center gap-2 text-red-700">
-                  <AlertTriangle className="h-5 w-5" />
-                  Cancelar Cita
-                </CardTitle>
-                <CardDescription>¿Estás seguro de que deseas cancelar esta cita?</CardDescription>
-              </CardHeader>
-              <CardContent className="pt-6 space-y-6">
-                <div className="bg-muted/50 rounded-lg p-4 space-y-3">
-                  <p className="font-semibold text-sm text-muted-foreground">Cita a cancelar:</p>
-                  <div className="flex items-center gap-3">
-                    <Calendar className="h-5 w-5 text-primary" />
-                    <span>{formatearFecha(datos.cita.fecha)}</span>
-                  </div>
-                  <div className="flex items-center gap-3">
-                    <Clock className="h-5 w-5 text-primary" />
-                    <span>{datos.cita.hora}</span>
-                  </div>
-                  <p className="text-sm text-muted-foreground">Paciente: {datos.paciente?.nombre}</p>
-                </div>
-
-                <div className="space-y-2">
-                  <Label htmlFor="motivo">Motivo de cancelación (opcional)</Label>
-                  <Textarea id="motivo" value={motivo} onChange={(e) => setMotivo(e.target.value)} placeholder="Cuéntanos por qué cancelas la cita..." className="min-h-[80px]" />
-                </div>
-
-                <Alert variant="destructive">
-                  <AlertTriangle className="h-4 w-4" />
-                  <AlertDescription>Esta acción no se puede deshacer. Si deseas reagendar, usa la opción "Modificar cita" en su lugar.</AlertDescription>
+              <CheckCircle2 className="w-14 h-14 text-primary mx-auto" />
+              <h1 className="text-xl font-bold">Hemos recibido tu cancelación</h1>
+              <p className="text-muted-foreground">
+                La farmacia la aplicará en unos minutos y te enviará un email de confirmación.
+              </p>
+              <Button asChild variant="outline">
+                <Link to="/">Pedir otra cita</Link>
+              </Button>
+            </>
+          ) : (
+            <>
+              <CalendarX2 className="w-14 h-14 text-primary mx-auto" />
+              <h1 className="text-xl font-bold">¿Cancelar tu cita?</h1>
+              <p className="text-muted-foreground">
+                Si no puedes venir, cancélala para que otra persona pueda aprovechar el hueco.
+              </p>
+              {estado === 'error' && (
+                <Alert>
+                  <AlertDescription>{mensajeError}</AlertDescription>
                 </Alert>
-
-                <div className="flex gap-3">
-                  <Button variant="outline" className="flex-1" asChild>
-                    <Link to="/">No cancelar</Link>
-                  </Button>
-                  <Button variant="destructive" className="flex-1" onClick={cancelar} disabled={isSubmitting}>
-                    {isSubmitting ? (
-                      <>
-                        <Loader2 className="h-4 w-4 mr-2 animate-spin" /> Cancelando...
-                      </>
-                    ) : (
-                      <>
-                        <XCircle className="h-4 w-4 mr-2" /> Sí, cancelar
-                      </>
-                    )}
-                  </Button>
-                </div>
-              </CardContent>
+              )}
+              <Button onClick={cancelar} disabled={estado === 'enviando'} className="w-full">
+                {estado === 'enviando' ? <Loader2 className="h-4 w-4 animate-spin" /> : 'Sí, cancelar mi cita'}
+              </Button>
+              <Button asChild variant="ghost" className="w-full">
+                <Link to="/">No, volver</Link>
+              </Button>
             </>
           )}
-
-          {estado === 'success' && (
-            <CardContent className="py-12 text-center">
-              <div className="inline-flex items-center justify-center w-16 h-16 rounded-full bg-amber-100 mb-4">
-                <CheckCircle2 className="h-8 w-8 text-amber-600" />
-              </div>
-              <h3 className="text-xl font-semibold mb-2">Cita Cancelada</h3>
-              <p className="text-muted-foreground mb-6">{mensaje}</p>
-              <p className="text-sm text-muted-foreground mb-6">Recibirás un email de confirmación de la cancelación.</p>
-              <Button asChild>
-                <Link to="/">Solicitar nueva cita</Link>
-              </Button>
-            </CardContent>
-          )}
-
-          {estado === 'error' && (
-            <CardContent className="py-12 text-center">
-              <div className="inline-flex items-center justify-center w-16 h-16 rounded-full bg-red-100 mb-4">
-                <XCircle className="h-8 w-8 text-red-600" />
-              </div>
-              <h3 className="text-xl font-semibold mb-2">Error</h3>
-              <p className="text-muted-foreground mb-6">{mensaje}</p>
-              <Button variant="outline" asChild>
-                <Link to="/">Solicitar nueva cita</Link>
-              </Button>
-            </CardContent>
-          )}
-        </Card>
-
-        <p className="text-center text-sm text-muted-foreground mt-6">
-          © {new Date().getFullYear()} {nombreFarmacia}
-        </p>
-      </div>
+        </CardContent>
+      </Card>
     </div>
   );
 }

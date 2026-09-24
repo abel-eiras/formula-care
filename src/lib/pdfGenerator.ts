@@ -124,7 +124,7 @@ export async function generatePDFFromElement(
   } catch (error) {
     removeToast();
     console.error('Error al generar PDF:', error);
-    throw new Error('Error al generar el PDF. Por favor, intenta usar la opción de impresión del navegador.');
+    throw new Error('Error al generar el PDF. Prueba con el botón Imprimir y elige «Guardar como PDF».');
   }
 }
 

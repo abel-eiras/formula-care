@@ -41,7 +41,7 @@ export function EvolutionChartBio({ pacienteId }: EvolutionChartBioProps) {
     .map((a) => ({
       fecha: new Date(a.fecha).toLocaleDateString("es-ES", { day: "numeric", month: "short" }),
       fechaCompleta: a.fecha,
-      glucemia: a.glucemia || a.glucose || null,
+      glucemia: a.glucemia || null,
       cholesterol: a.cholesterol || null,
       cholesterolHDL: a.cholesterolHDL || null,
       cholesterolLDL: a.cholesterolLDL || null,
@@ -50,10 +50,6 @@ export function EvolutionChartBio({ pacienteId }: EvolutionChartBioProps) {
       proteinaCReactiva: a.proteinaCReactiva || null,
       vitaminaD: a.vitaminaD || null,
       ferritina: a.ferritina || null,
-      systolic: a.systolic || null,
-      diastolic: a.diastolic || null,
-      pulsaciones: a.pulsaciones || null,
-      imc: a.imc || null,
     }));
 
   // Parámetros básicos
@@ -71,18 +67,6 @@ export function EvolutionChartBio({ pacienteId }: EvolutionChartBioProps) {
     { key: "proteinaCReactiva", label: "PCR", unit: "mg/L", color: "hsl(var(--secondary))" },
     { key: "vitaminaD", label: "Vitamina D", unit: "ng/mL", color: "#10b981" },
     { key: "ferritina", label: "Ferritina", unit: "ng/mL", color: "#f59e0b" },
-  ];
-
-  // Tensión arterial
-  const tensionArterial = [
-    { key: "systolic", label: "Sistólica", unit: "mmHg", color: "hsl(var(--primary))" },
-    { key: "diastolic", label: "Diastólica", unit: "mmHg", color: "hsl(var(--secondary))" },
-    { key: "pulsaciones", label: "Pulsaciones", unit: "lpm", color: "#10b981" },
-  ];
-
-  // IMC
-  const imcData = [
-    { key: "imc", label: "IMC", unit: "kg/m²", color: "hsl(var(--primary))" },
   ];
 
   const renderChart = (parametros: typeof parametrosBasicos, titulo: string) => {
@@ -150,8 +134,6 @@ export function EvolutionChartBio({ pacienteId }: EvolutionChartBioProps) {
       <TabsList>
         <TabsTrigger value="basicos">Parámetros Básicos</TabsTrigger>
         <TabsTrigger value="avanzados">Parámetros Avanzados</TabsTrigger>
-        <TabsTrigger value="tension">Tensión Arterial</TabsTrigger>
-        <TabsTrigger value="imc">IMC</TabsTrigger>
       </TabsList>
 
       <TabsContent value="basicos">
@@ -176,27 +158,6 @@ export function EvolutionChartBio({ pacienteId }: EvolutionChartBioProps) {
         </Card>
       </TabsContent>
 
-      <TabsContent value="tension">
-        <Card className="shadow-sm border-border/50">
-          <CardHeader className="pb-4">
-            <CardTitle className="text-lg font-semibold">Evolución de Tensión Arterial y Pulsaciones</CardTitle>
-          </CardHeader>
-          <CardContent>
-            {renderChart(tensionArterial, "tensión arterial")}
-          </CardContent>
-        </Card>
-      </TabsContent>
-
-      <TabsContent value="imc">
-        <Card className="shadow-sm border-border/50">
-          <CardHeader className="pb-4">
-            <CardTitle className="text-lg font-semibold">Evolución del IMC</CardTitle>
-          </CardHeader>
-          <CardContent>
-            {renderChart(imcData, "IMC")}
-          </CardContent>
-        </Card>
-      </TabsContent>
     </Tabs>
   );
 }

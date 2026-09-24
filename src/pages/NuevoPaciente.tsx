@@ -12,21 +12,7 @@ import { toast } from "sonner";
 import { useCrearPaciente } from "@/hooks/usePacientes";
 import { useConfiguracionRgpd } from "@/hooks/useConfiguracion";
 import type { Paciente } from "@/types";
-
-/**
- * Calcula la edad a partir de la fecha de nacimiento
- */
-const calcularEdad = (birthDate: string): number | null => {
-  if (!birthDate) return null;
-  const hoy = new Date();
-  const nacimiento = new Date(birthDate);
-  let edad = hoy.getFullYear() - nacimiento.getFullYear();
-  const mes = hoy.getMonth() - nacimiento.getMonth();
-  if (mes < 0 || (mes === 0 && hoy.getDate() < nacimiento.getDate())) {
-    edad--;
-  }
-  return edad;
-};
+import { calcularEdad } from "@/lib/edad";
 
 export default function NuevoPaciente() {
   const navigate = useNavigate();
@@ -63,8 +49,9 @@ export default function NuevoPaciente() {
       return;
     }
 
-    if (!formData.birthDate && !edad) {
-      toast.error("Debe proporcionar fecha de nacimiento o edad");
+    // La edad no se introduce: se calcula siempre desde la fecha de nacimiento
+    if (edad == null) {
+      toast.error("Indica una fecha de nacimiento válida");
       return;
     }
 
@@ -82,11 +69,10 @@ export default function NuevoPaciente() {
     try {
       const nuevoPaciente: Omit<Paciente, 'id' | 'createdAt' | 'updatedAt'> = {
         name: formData.name,
-        age: edad || 0, // Si no hay fecha, usar 0 (se puede calcular después)
         sex: formData.sex as "M" | "F" | "O",
         phone: formData.phone,
         email: formData.email || undefined,
-        birthDate: formData.birthDate || undefined,
+        birthDate: formData.birthDate,
         address: formData.address || undefined,
         notes: formData.notes || undefined,
       };
