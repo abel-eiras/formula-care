@@ -4,6 +4,7 @@ import { useAnalisisDermo } from "@/hooks/useAnalisisDermo";
 import { usePacientes } from "@/hooks/usePacientes";
 import { useConfiguracion } from "@/hooks/useConfiguracion";
 import { getColoresParaConfig } from "@/lib/coloresMarca";
+import { textoSobre } from "@/lib/contraste";
 
 // Opciones de valoración de la piel
 const VALORACION_PIEL_LABELS: Record<string, string> = {
@@ -91,7 +92,6 @@ export default function ServicioDermoPrint() {
   return (
     <div className="print-page">
       <style>{`
-        @import url('https://fonts.googleapis.com/css2?family=Montserrat:wght@300;400;600&display=swap');
         
         .print-page {
           font-family: 'Montserrat', sans-serif;
@@ -127,7 +127,7 @@ export default function ServicioDermoPrint() {
         }
 
         .section-header {
-          color: white;
+          color: ${textoSobre(colores.secundario ?? "#4a7484")};
           background-color: ${colores.secundario};
           font-weight: 600;
           font-size: 0.9rem;
@@ -190,7 +190,7 @@ export default function ServicioDermoPrint() {
 
         .routine-title {
           background-color: ${colores.primario};
-          color: white;
+          color: ${textoSobre(colores.primario ?? "#79438f")};
           text-align: center;
           padding: 8px;
           font-size: 0.9rem;

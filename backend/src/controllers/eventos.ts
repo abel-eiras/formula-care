@@ -2,6 +2,7 @@ import { Request, Response } from 'express';
 import { z } from 'zod';
 import { prisma } from '../lib/prisma.js';
 import { getParamString } from '../lib/queryHelpers.js';
+import { avisarCambioAgenda } from '../services/reservaOnline/sincronizacion.js';
 
 // Esquema de validación para crear/actualizar evento
 const eventoSchema = z.object({
@@ -112,6 +113,7 @@ export async function crearEvento(req: Request, res: Response) {
         descripcion: datos.descripcion,
       },
     });
+    avisarCambioAgenda();
 
     // Parsear JSON fields para respuesta
     const eventoParsed = {
@@ -184,6 +186,7 @@ export async function actualizarEvento(req: Request, res: Response) {
       where: { id },
       data: datosActualizar,
     });
+    avisarCambioAgenda();
 
     // Parsear JSON fields para respuesta
     const eventoParsed = {
@@ -224,6 +227,7 @@ export async function eliminarEvento(req: Request, res: Response) {
     await prisma.evento.delete({
       where: { id },
     });
+    avisarCambioAgenda();
 
     res.json({ mensaje: 'Evento eliminado correctamente' });
   } catch (error) {

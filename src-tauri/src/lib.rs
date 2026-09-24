@@ -39,10 +39,11 @@ impl BackendChild {
 
 struct BackendProcess(Mutex<Option<BackendChild>>);
 
+// Las instalaciones antiguas pueden tener también "encryption_key" en
+// secrets.json (cifrado de campos ya retirado): serde ignora campos desconocidos.
 #[derive(Serialize, Deserialize)]
 struct LocalSecrets {
     jwt_secret: String,
-    encryption_key: String,
 }
 
 fn random_hex(bytes: usize) -> String {
@@ -51,7 +52,7 @@ fn random_hex(bytes: usize) -> String {
     buf.iter().map(|b| format!("{:02x}", b)).collect()
 }
 
-/// Genera (una sola vez) y persiste el JWT_SECRET y la ENCRYPTION_KEY de esta
+/// Genera (una sola vez) y persiste el JWT_SECRET de esta
 /// instalación en el directorio de datos de la app, para que sobrevivan a
 /// reinicios y actualizaciones sin quedar hardcodeados en el binario.
 fn ensure_local_secrets(app_data_dir: &Path) -> std::io::Result<LocalSecrets> {
@@ -66,7 +67,6 @@ fn ensure_local_secrets(app_data_dir: &Path) -> std::io::Result<LocalSecrets> {
 
     let secrets = LocalSecrets {
         jwt_secret: random_hex(32),
-        encryption_key: random_hex(32),
     };
 
     let mut file = fs::File::create(&secrets_path)?;
@@ -185,7 +185,6 @@ fn spawn_backend_release(
         .env("PORT", EMBEDDED_BACKEND_PORT.to_string())
         .env("DATABASE_URL", format!("file:{}", db_path.display()))
         .env("JWT_SECRET", secrets.jwt_secret)
-        .env("ENCRYPTION_KEY", secrets.encryption_key)
         .env("CORS_ORIGIN", "tauri://localhost,http://tauri.localhost")
         .spawn()?;
 

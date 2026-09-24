@@ -73,8 +73,10 @@ export function generarToken(usuario: { id: string; email: string; nombre: strin
 
 /**
  * Opciones de la cookie de autenticación.
- * La app de escritorio embebe el backend en localhost junto al webview,
- * por lo que la cookie siempre es same-site (no hace falta sameSite: 'none').
+ * La cookie solo sirve en desarrollo (localhost:5173 → localhost:3000 es el
+ * mismo sitio). En la app de escritorio el webview (tauri://localhost o
+ * http://tauri.localhost) es otro sitio y la descarta: allí el cliente envía
+ * el token en la cabecera Authorization (ver extraerToken y src/lib/api.ts).
  */
 export function getAuthCookieOptions(): CookieOptions {
   const isProduction = process.env.NODE_ENV === 'production';

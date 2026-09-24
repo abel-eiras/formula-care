@@ -1,10 +1,10 @@
 import { Request, Response } from 'express';
 import { prisma } from '../lib/prisma.js';
 import { z } from 'zod';
-import { crearNotificacionRevision } from '../services/notificacionesService.js';
 import type { Prisma } from '@prisma/client';
 import { getQueryString, getParamString, getQueryNumber, getQueryLimit } from '../lib/queryHelpers.js';
-import { decryptPacienteData } from '../services/encryptionService.js';
+import { normalizarBusqueda } from '../lib/textoBusqueda.js';
+import { aplanarMedicion, guardarMedicion, medicionSchema, separarMedicion } from '../services/medicionService.js';
 
 // Esquema de validación para análisis dermocosmético (plantilla completa)
 const crearAnalisisDermoSchema = z.object({
@@ -52,34 +52,29 @@ const crearAnalisisDermoSchema = z.object({
   supplements: z.string().optional(),
 });
 
-// Esquema de validación para análisis bioquímico
-const crearAnalisisBioSchema = z.object({
-  pacienteId: z.string().min(1, 'El ID del paciente es requerido'),
-  fecha: z.string(),
-  // Parámetros básicos
-  glucemia: z.number().positive().optional(),
-  cholesterol: z.number().positive().optional(),
-  cholesterolHDL: z.number().positive().optional(),
-  cholesterolLDL: z.number().positive().optional(),
-  triglycerides: z.number().positive().optional(),
-  // Parámetros avanzados
-  hemoglobinaGlucosilada: z.number().positive().optional(),
-  proteinaCReactiva: z.number().positive().optional(),
-  vitaminaD: z.number().positive().optional(),
-  ferritina: z.number().positive().optional(),
-  // Tensión arterial y pulsaciones
-  systolic: z.number().int().positive().optional(),
-  diastolic: z.number().int().positive().optional(),
-  pulsaciones: z.number().int().positive().optional(),
-  // Medidas corporales
-  weight: z.number().positive().optional(),
-  height: z.number().positive().optional(),
-  // Observaciones y recomendaciones
-  observaciones: z.string().optional(),
-  recomendaciones: z.string().optional(),
-  // Campo legacy para compatibilidad
-  glucose: z.number().positive().optional(),
-});
+// Esquema de validación para análisis bioquímico. Las medidas corporales y la
+// tensión (peso, altura, cintura, systolic, diastolic, pulsaciones...) se
+// validan con medicionSchema y se guardan en la tabla única Medicion.
+const crearAnalisisBioSchema = z
+  .object({
+    pacienteId: z.string().min(1, 'El ID del paciente es requerido'),
+    fecha: z.string(),
+    // Parámetros básicos
+    glucemia: z.number().positive().optional(),
+    cholesterol: z.number().positive().optional(),
+    cholesterolHDL: z.number().positive().optional(),
+    cholesterolLDL: z.number().positive().optional(),
+    triglycerides: z.number().positive().optional(),
+    // Parámetros avanzados
+    hemoglobinaGlucosilada: z.number().positive().optional(),
+    proteinaCReactiva: z.number().positive().optional(),
+    vitaminaD: z.number().positive().optional(),
+    ferritina: z.number().positive().optional(),
+    // Observaciones y recomendaciones
+    observaciones: z.string().optional(),
+    recomendaciones: z.string().optional(),
+  })
+  .merge(medicionSchema);
 
 /**
  * Crear un análisis dermocosmético
@@ -120,17 +115,10 @@ export async function crearAnalisisDermo(req: Request, res: Response) {
       },
     });
 
-    // Crear notificación si hay próxima revisión
-    if (analisis.proximaRevision) {
-      crearNotificacionRevision(analisis.id, analisis.pacienteId, analisis.proximaRevision).catch(
-        (err) => console.error('Error al crear notificación:', err)
-      );
-    }
-
-    // Parsear JSON strings de vuelta a objetos/arrays y desencriptar paciente
+    // Parsear JSON strings de vuelta a objetos/arrays
     res.status(201).json({
       ...analisis,
-      paciente: analisis.paciente ? decryptPacienteData(analisis.paciente) : null,
+      paciente: analisis.paciente,
       valoracionPiel: JSON.parse(analisis.valoracionPiel),
       habitos: JSON.parse(analisis.habitos),
       concerns: JSON.parse(analisis.concerns),
@@ -169,10 +157,10 @@ export async function obtenerAnalisisDermo(req: Request, res: Response) {
       return res.status(404).json({ error: 'Análisis no encontrado' });
     }
 
-    // Parsear todos los campos JSON y desencriptar paciente
+    // Parsear todos los campos JSON
     res.json({
       ...analisis,
-      paciente: analisis.paciente ? decryptPacienteData(analisis.paciente) : null,
+      paciente: analisis.paciente,
       valoracionPiel: JSON.parse(analisis.valoracionPiel),
       habitos: JSON.parse(analisis.habitos),
       concerns: JSON.parse(analisis.concerns),
@@ -209,7 +197,7 @@ export async function obtenerTodosAnalisisDermo(req: Request, res: Response) {
     if (pacienteNombre) {
       condiciones.push({
         paciente: {
-          name: { contains: pacienteNombre },
+          textoBusqueda: { contains: normalizarBusqueda(pacienteNombre) },
         },
       });
     }
@@ -251,10 +239,10 @@ export async function obtenerTodosAnalisisDermo(req: Request, res: Response) {
       take: limit,
     });
 
-    // Parsear campos JSON y desencriptar pacientes
+    // Parsear campos JSON
     const analisisParsed = analisis.map((a) => ({
       ...a,
-      paciente: a.paciente ? decryptPacienteData(a.paciente) : null,
+      paciente: a.paciente,
       valoracionPiel: JSON.parse(a.valoracionPiel),
       habitos: JSON.parse(a.habitos),
       concerns: JSON.parse(a.concerns),
@@ -288,7 +276,7 @@ export async function obtenerAnalisisDermoPorPaciente(req: Request, res: Respons
     res.json(
       analisis.map((a) => ({
         ...a,
-        paciente: a.paciente ? decryptPacienteData(a.paciente) : null,
+        paciente: a.paciente,
         valoracionPiel: JSON.parse(a.valoracionPiel),
         habitos: JSON.parse(a.habitos),
         concerns: JSON.parse(a.concerns),
@@ -344,17 +332,10 @@ export async function actualizarAnalisisDermo(req: Request, res: Response) {
       },
     });
 
-    // Crear notificación si hay próxima revisión nueva o actualizada
-    if (analisis.proximaRevision) {
-      crearNotificacionRevision(analisis.id, analisis.pacienteId, analisis.proximaRevision).catch(
-        (err) => console.error('Error al crear notificación:', err)
-      );
-    }
-
-    // Parsear JSON strings de vuelta a objetos/arrays y desencriptar paciente
+    // Parsear JSON strings de vuelta a objetos/arrays
     res.json({
       ...analisis,
-      paciente: analisis.paciente ? decryptPacienteData(analisis.paciente) : null,
+      paciente: analisis.paciente,
       valoracionPiel: JSON.parse(analisis.valoracionPiel),
       habitos: JSON.parse(analisis.habitos),
       concerns: JSON.parse(analisis.concerns),
@@ -375,6 +356,18 @@ export async function actualizarAnalisisDermo(req: Request, res: Response) {
   }
 }
 
+const INCLUDE_BIO = {
+  paciente: { select: { id: true, name: true, email: true, phone: true } },
+  medicion: true,
+} as const;
+
+type AnalisisBioConRelaciones = Prisma.AnalisisBioGetPayload<{ include: typeof INCLUDE_BIO }>;
+
+/** Respuesta de Bio: las medidas de su Medicion se devuelven como campos planos */
+function serializarAnalisisBio({ medicion, ...analisis }: AnalisisBioConRelaciones) {
+  return { ...analisis, ...aplanarMedicion(medicion) };
+}
+
 /**
  * Crear un análisis bioquímico
  */
@@ -382,51 +375,29 @@ export async function crearAnalisisBio(req: Request, res: Response) {
   try {
     const datos = crearAnalisisBioSchema.parse(req.body);
 
-    // Verificar que el paciente existe
     const paciente = await prisma.paciente.findUnique({
       where: { id: datos.pacienteId },
+      select: { id: true },
     });
-
     if (!paciente) {
       return res.status(404).json({ error: 'Paciente no encontrado' });
     }
 
-    // Calcular IMC si hay peso y altura
-    let imc: number | undefined;
-    if (datos.weight && datos.height) {
-      const heightM = datos.height / 100;
-      imc = Number((datos.weight / (heightM * heightM)).toFixed(1));
-    }
+    const { medicion, resto } = separarMedicion(datos);
 
-    // Manejar compatibilidad: si viene glucose, usar como glucemia
-    const glucemia = datos.glucemia || datos.glucose;
-    
-    // Crear objeto sin el campo legacy 'glucose'
-    const { glucose: _glucose, ...datosLimpios } = datos;
-
-    const analisis = await prisma.analisisBio.create({
-      data: {
-        ...datosLimpios,
-        glucemia,
-        imc,
-      },
-      include: {
-        paciente: {
-          select: {
-            id: true,
-            name: true,
-            email: true,
-            phone: true,
-          },
-        },
-      },
+    // Análisis y medición se guardan juntos o no se guarda ninguno
+    const id = await prisma.$transaction(async (tx) => {
+      const analisis = await tx.analisisBio.create({ data: resto });
+      await guardarMedicion(
+        tx,
+        { origen: 'bio', analisisBioId: analisis.id, pacienteId: analisis.pacienteId, fecha: analisis.fecha },
+        medicion
+      );
+      return analisis.id;
     });
 
-    // Desencriptar datos del paciente
-    res.status(201).json({
-      ...analisis,
-      paciente: analisis.paciente ? decryptPacienteData(analisis.paciente) : null,
-    });
+    const analisis = await prisma.analisisBio.findUniqueOrThrow({ where: { id }, include: INCLUDE_BIO });
+    res.status(201).json(serializarAnalisisBio(analisis));
   } catch (error) {
     if (error instanceof z.ZodError) {
       return res.status(400).json({
@@ -447,22 +418,13 @@ export async function obtenerAnalisisBio(req: Request, res: Response) {
   try {
     const id = getParamString(req.params.id);
 
-    const analisis = await prisma.analisisBio.findUnique({
-      where: { id },
-      include: {
-        paciente: true,
-      },
-    });
+    const analisis = await prisma.analisisBio.findUnique({ where: { id }, include: INCLUDE_BIO });
 
     if (!analisis) {
       return res.status(404).json({ error: 'Análisis no encontrado' });
     }
 
-    // Desencriptar datos del paciente
-    res.json({
-      ...analisis,
-      paciente: analisis.paciente ? decryptPacienteData(analisis.paciente) : null,
-    });
+    res.json(serializarAnalisisBio(analisis));
   } catch (error) {
     console.error('Error al obtener análisis bio:', error);
     res.status(500).json({ error: 'Error al obtener análisis bioquímico' });
@@ -490,9 +452,7 @@ export async function obtenerTodosAnalisisBio(req: Request, res: Response) {
 
     if (pacienteNombre) {
       condiciones.push({
-        paciente: {
-          name: { contains: pacienteNombre },
-        },
+        paciente: { textoBusqueda: { contains: normalizarBusqueda(pacienteNombre) } },
       });
     }
 
@@ -507,36 +467,18 @@ export async function obtenerTodosAnalisisBio(req: Request, res: Response) {
       condiciones.push({ fecha: fechaFilter });
     }
 
-    // Nota: parametroAlterado requeriría lógica más compleja para verificar valores fuera de rango
-    // Por ahora lo dejamos como placeholder
-
     const where = condiciones.length > 0 ? { AND: condiciones } : {};
 
     const analisis = await prisma.analisisBio.findMany({
       where,
-      include: {
-        paciente: {
-          select: {
-            id: true,
-            name: true,
-            phone: true,
-            email: true,
-          },
-        },
-      },
+      include: INCLUDE_BIO,
       orderBy: {
         [ordenarPor]: orden === 'asc' ? 'asc' : 'desc',
       },
       take: limit,
     });
 
-    // Desencriptar datos de pacientes
-    const analisisDesencriptados = analisis.map(a => ({
-      ...a,
-      paciente: a.paciente ? decryptPacienteData(a.paciente) : null,
-    }));
-
-    res.json(analisisDesencriptados);
+    res.json(analisis.map(serializarAnalisisBio));
   } catch (error) {
     console.error('Error al obtener análisis bio:', error);
     res.status(500).json({ error: 'Error al obtener análisis bioquímicos' });
@@ -552,19 +494,11 @@ export async function obtenerAnalisisBioPorPaciente(req: Request, res: Response)
 
     const analisis = await prisma.analisisBio.findMany({
       where: { pacienteId },
-      include: {
-        paciente: true,
-      },
+      include: INCLUDE_BIO,
       orderBy: { fecha: 'desc' },
     });
 
-    // Desencriptar datos de pacientes
-    const analisisDesencriptados = analisis.map(a => ({
-      ...a,
-      paciente: a.paciente ? decryptPacienteData(a.paciente) : null,
-    }));
-
-    res.json(analisisDesencriptados);
+    res.json(analisis.map(serializarAnalisisBio));
   } catch (error) {
     console.error('Error al obtener análisis bio por paciente:', error);
     res.status(500).json({ error: 'Error al obtener análisis bioquímico' });
@@ -577,54 +511,28 @@ export async function obtenerAnalisisBioPorPaciente(req: Request, res: Response)
 export async function actualizarAnalisisBio(req: Request, res: Response) {
   try {
     const id = getParamString(req.params.id);
-    const datos = crearAnalisisBioSchema.partial().parse(req.body);
+    // El paciente de un análisis no se puede cambiar
+    const { pacienteId: _pacienteId, ...datos } = crearAnalisisBioSchema.partial().parse(req.body);
 
-    // Verificar que el análisis existe
-    const analisisExistente = await prisma.analisisBio.findUnique({
-      where: { id },
-    });
-
-    if (!analisisExistente) {
+    const existente = await prisma.analisisBio.findUnique({ where: { id }, select: { id: true } });
+    if (!existente) {
       return res.status(404).json({ error: 'Análisis no encontrado' });
     }
 
-    // Calcular IMC si hay peso y altura
-    let imc: number | undefined;
-    if (datos.weight && datos.height) {
-      const heightM = datos.height / 100;
-      imc = Number((datos.weight / (heightM * heightM)).toFixed(1));
-    }
+    const { medicion, resto } = separarMedicion(datos);
 
-    // Manejar compatibilidad: si viene glucose, usar como glucemia
-    const glucemia = datos.glucemia || datos.glucose;
-    
-    // Crear objeto sin el campo legacy 'glucose'
-    const { glucose: _glucoseLegacy, ...datosLimpiosUpdate } = datos;
-
-    const analisis = await prisma.analisisBio.update({
-      where: { id },
-      data: {
-        ...datosLimpiosUpdate,
-        glucemia: glucemia !== undefined ? glucemia : undefined,
-        imc: imc !== undefined ? imc : undefined,
-      },
-      include: {
-        paciente: {
-          select: {
-            id: true,
-            name: true,
-            email: true,
-            phone: true,
-          },
-        },
-      },
+    await prisma.$transaction(async (tx) => {
+      const analisis = await tx.analisisBio.update({ where: { id }, data: resto });
+      // Siempre se llama: aunque no cambien las medidas, la fecha puede haber cambiado
+      await guardarMedicion(
+        tx,
+        { origen: 'bio', analisisBioId: id, pacienteId: analisis.pacienteId, fecha: analisis.fecha },
+        medicion
+      );
     });
 
-    // Desencriptar datos del paciente
-    res.json({
-      ...analisis,
-      paciente: analisis.paciente ? decryptPacienteData(analisis.paciente) : null,
-    });
+    const analisis = await prisma.analisisBio.findUniqueOrThrow({ where: { id }, include: INCLUDE_BIO });
+    res.json(serializarAnalisisBio(analisis));
   } catch (error) {
     if (error instanceof z.ZodError) {
       return res.status(400).json({

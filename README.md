@@ -89,7 +89,7 @@ chmod +x "Formula Care_*.AppImage"
   - Política de privacidad, cookies, términos
 
 - **Reserva pública de citas (opcional, servicio aparte)**
-  - Ver [booking-web/](booking-web/): un servicio web independiente y autohospedable para quien quiera ofrecer reserva de citas online, desacoplado de la app de escritorio.
+  - Ver [booking-web/](booking-web/): un servicio web independiente y autohospedable para quien quiera ofrecer reserva de citas online. La app le publica sus huecos libres y recoge las solicitudes, cifradas con la clave de la farmacia (**desactivado por ahora**: para activarlo, `RESERVA_ONLINE_DISPONIBLE` en `src/lib/funciones.ts` y `backend/src/config/funciones.ts`; después se configura en Configuración → Reserva online).
 
 ### 🚧 En Desarrollo
 - Mejoras de rendimiento
@@ -171,7 +171,7 @@ Esto compila el frontend, empaqueta el backend (Node + Prisma) como recurso de l
 
 Para generar las tres a la vez sin tener las tres máquinas, usa el workflow de GitHub Actions [`desktop-release.yml`](.github/workflows/desktop-release.yml): dispáralo a mano desde la pestaña *Actions* (deja los instaladores como artefactos del run) o haz push de un tag `v*` (crea además un borrador de release en GitHub con los instaladores adjuntos — publícalo manualmente desde la pestaña *Releases* cuando quieras que sea público).
 
-En el primer arranque de un paquete instalado, la app genera automáticamente un `JWT_SECRET`/clave de cifrado aleatorios y una base de datos SQLite propia en el directorio de datos del usuario del sistema operativo, y aplica las migraciones pendientes en cada arranque (también en actualizaciones futuras) — no hace falta configurar ni migrar nada a mano.
+En el primer arranque de un paquete instalado, la app genera automáticamente un `JWT_SECRET` aleatorio y una base de datos SQLite propia en el directorio de datos del usuario del sistema operativo, y aplica las migraciones pendientes en cada arranque (también en actualizaciones futuras) — no hace falta configurar ni migrar nada a mano.
 
 ---
 
@@ -262,8 +262,21 @@ Para más detalles, ver [context/guias/ESTRUCTURA_PROYECTO.md](context/guias/EST
 - Alertas visuales para valores fuera de rango
 - Seguimiento de evolución
 
+### Nutrición (con seguimiento GLP-1 opcional)
+- Programa por paciente: motivo, objetivo, antecedentes e historia de tratamiento
+- Visita inicial y de seguimiento con la misma estructura (medidas, bioimpedancia, tensión, hábitos, actividad, tratamiento GLP-1 y efectos secundarios)
+- Evolución respecto a la visita inicial: % de peso perdido, hitos del 5/10/15 %, cintura y masa grasa frente a masa magra
+- Registro de alimentación transcrito por el farmacéutico, con análisis de picoteo, hambre, saciedad y malestar
+- Sugerencias basadas en reglas explicables (cada una indica el dato que la dispara) para que el farmacéutico decida qué recomendar
+- Informe de visita imprimible y hoja de registro en blanco para el paciente, con la marca de la farmacia
+
+### Historial único de medidas
+- Peso, perímetros, bioimpedancia, tensión y pulsaciones de todos los servicios en una sola tabla por paciente
+- Gráficas de evolución conjuntas en la ficha del paciente
+
 ### Calendario
 - Vista mensual de citas
+- Cumpleaños de pacientes (calculados desde su fecha de nacimiento), con aviso el mismo día y felicitación por WhatsApp (mensaje ya escrito), email (plantilla editable) o registro de felicitación por llamada o en persona
 - Creación y gestión de citas
 - Diferentes tipos de citas (dermo, bio, consulta, seguimiento)
 
@@ -339,7 +352,7 @@ Formula Care es software libre. Contribuye si te apetece — programa mucho o pr
 ## 🐛 Problemas Conocidos
 
 - Los tres instaladores se generan y compilan vía CI ([`.github/workflows/desktop-release.yml`](.github/workflows/desktop-release.yml)) en su propio sistema operativo (Linux, Windows, macOS). El de Linux además se ha ejecutado e instalado de verdad en este entorno de desarrollo; Windows y macOS de momento solo están verificados por la propia compilación en CI, no por un arranque manual en esos sistemas — sin letra pequeña, es lo que hay. Ninguno de los tres está firmado digitalmente, así que Windows/macOS mostrarán un aviso de "editor no verificado" al abrirlos (ver [Descargar e instalar](#-descargar-e-instalar)).
-- `booking-web/` (reserva pública opcional) no sincroniza automáticamente sus citas con la base de datos local de la app de escritorio — ver su propio README para el alcance exacto.
+- `booking-web/` (reserva pública opcional) necesita un servidor accesible desde internet; la app de escritorio sincroniza con él cada 2 minutos mientras está abierta — ver su propio README.
 - Falta sistema de copia de seguridad automática de la base de datos local.
 
 ---

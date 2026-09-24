@@ -6,7 +6,7 @@
 import nodemailer from 'nodemailer';
 import { Resend } from 'resend';
 import { prisma } from '../lib/prisma.js';
-import { decrypt } from './encryptionService.js';
+import { RESERVA_ONLINE_DISPONIBLE } from '../config/funciones.js';
 
 // ==========================================
 // TIPOS
@@ -30,6 +30,7 @@ interface DatosEmail {
   colorSecundario?: string;
   colorAcento?: string;
   motivoRechazo?: string;
+  urlCancelar?: string; // Enlace "cancelar mi cita" (solo citas de la reserva online)
   [key: string]: string | undefined; // Para variables adicionales
 }
 
@@ -93,56 +94,68 @@ async function obtenerConfigEmail(): Promise<ConfigEmail> {
     smtpSecure: config?.smtpSecure ?? process.env.SMTP_SECURE === 'true',
     smtpAcceptSelfSigned: config?.smtpAcceptSelfSigned ?? false,
     smtpUser: config?.smtpUser ?? process.env.SMTP_USER ?? undefined,
-    smtpPass: (() => {
-      const raw = config?.smtpPass ?? process.env.SMTP_PASS ?? undefined;
-      return raw ? decrypt(raw) : undefined;
-    })(),
+    smtpPass: config?.smtpPass ?? process.env.SMTP_PASS ?? undefined,
   };
 }
 
-// Credenciales de Ethereal para pruebas (se generan una vez)
+// Credenciales de Ethereal (solo desarrollo; se generan una vez)
 let etherealCredentials: { user: string; pass: string } | null = null;
 
+// Huella de la configuración con la que se crearon los clientes en caché:
+// si el usuario cambia la configuración de correo, se crean de nuevo (antes
+// hacía falta reiniciar la app para que el cambio tuviera efecto).
+let huellaSmtp: string | null = null;
+let huellaResend: string | null = null;
+
+const esDesarrollo = () => process.env.NODE_ENV !== 'production';
+
 /**
- * Inicializa el transportador SMTP
+ * Inicializa el transportador SMTP con la configuración actual.
+ *
+ * Sin configuración SMTP completa:
+ * - En desarrollo se usa una cuenta de pruebas de Ethereal.
+ * - En producción NO: los correos saldrían del equipo hacia un servicio de
+ *   pruebas externo con datos de pacientes y nunca llegarían al destinatario.
+ *   Se devuelve null y el envío se considera fallido.
  */
 async function inicializarSMTP(config: ConfigEmail): Promise<nodemailer.Transporter | null> {
-  if (smtpTransporter) return smtpTransporter;
+  const completa = !!(config.smtpHost && config.smtpUser && config.smtpPass);
+  const huella = completa
+    ? JSON.stringify([config.smtpHost, config.smtpPort, config.smtpSecure, config.smtpAcceptSelfSigned, config.smtpUser, config.smtpPass])
+    : 'ethereal';
 
-  if (!config.smtpHost || !config.smtpUser || !config.smtpPass) {
-    // En desarrollo, crear cuenta de prueba en Ethereal
-    console.warn('⚠️  Configuración SMTP incompleta. Usando Ethereal Email para pruebas...');
-    
+  if (smtpTransporter && huella === huellaSmtp) return smtpTransporter;
+  smtpTransporter = null;
+  huellaSmtp = null;
+
+  if (!completa) {
+    if (!esDesarrollo()) {
+      console.warn('⚠️  Correo no configurado: configura SMTP o Resend en Configuración para enviar emails.');
+      return null;
+    }
+
+    console.warn('⚠️  Configuración SMTP incompleta. Usando Ethereal Email para pruebas (solo desarrollo)...');
     try {
-      // Generar cuenta de prueba de Ethereal solo una vez
       if (!etherealCredentials) {
         const testAccount = await nodemailer.createTestAccount();
-        etherealCredentials = {
-          user: testAccount.user,
-          pass: testAccount.pass,
-        };
+        etherealCredentials = { user: testAccount.user, pass: testAccount.pass };
         console.log('📧 Cuenta de prueba Ethereal creada:');
         console.log(`   Usuario: ${etherealCredentials.user}`);
         console.log(`   Los emails se pueden ver en: https://ethereal.email/login`);
       }
-      
       smtpTransporter = nodemailer.createTransport({
         host: 'smtp.ethereal.email',
         port: 587,
         secure: false,
         auth: etherealCredentials,
-        tls: {
-          // Ignorar errores de certificado en desarrollo (Ethereal)
-          rejectUnauthorized: false,
-        },
+        tls: { rejectUnauthorized: false },
       });
-      
+      huellaSmtp = huella;
       console.log('✅ Transportador Ethereal configurado (modo pruebas)');
     } catch (error) {
       console.error('❌ Error al crear cuenta Ethereal:', error);
       return null;
     }
-    
     return smtpTransporter;
   }
 
@@ -153,6 +166,7 @@ async function inicializarSMTP(config: ConfigEmail): Promise<nodemailer.Transpor
     auth: { user: config.smtpUser, pass: config.smtpPass },
     tls: { rejectUnauthorized: !config.smtpAcceptSelfSigned },
   });
+  huellaSmtp = huella;
 
   try {
     await smtpTransporter.verify();
@@ -165,18 +179,17 @@ async function inicializarSMTP(config: ConfigEmail): Promise<nodemailer.Transpor
 }
 
 /**
- * Inicializa el cliente de Resend
+ * Inicializa el cliente de Resend (se recrea si cambia la API key)
  */
 function inicializarResend(config: ConfigEmail): Resend | null {
-  if (resendClient) return resendClient;
-
   if (!config.resendApiKey) {
     console.warn('⚠️  API Key de Resend no configurada.');
     return null;
   }
+  if (resendClient && huellaResend === config.resendApiKey) return resendClient;
 
   resendClient = new Resend(config.resendApiKey);
-  console.log('✅ Cliente Resend inicializado');
+  huellaResend = config.resendApiKey;
   return resendClient;
 }
 
@@ -203,11 +216,40 @@ async function obtenerPlantilla(tipo: string) {
  * Reemplaza variables en el contenido de la plantilla
  * Variables soportadas: {{nombrePaciente}}, {{fechaCita}}, etc.
  */
-function reemplazarVariables(contenido: string, datos: DatosEmail): string {
-  let resultado = contenido;
+/** Escapa texto para insertarlo en HTML (los datos del paciente pueden venir de la web) */
+function escaparHtml(texto: string | undefined): string {
+  return (texto ?? '')
+    .replace(/&/g, '&amp;')
+    .replace(/</g, '&lt;')
+    .replace(/>/g, '&gt;')
+    .replace(/"/g, '&quot;')
+    .replace(/'/g, '&#39;');
+}
 
-  // Lista de todas las variables disponibles (incluye las de datos + extras)
-  const variables: Record<string, string | undefined> = {
+/** Copia de los datos con todos los textos escapados (para las plantillas generadas en código) */
+function escaparDatos(datos: DatosEmail): DatosEmail {
+  return Object.fromEntries(
+    Object.entries(datos).map(([clave, valor]) => [clave, valor === undefined ? undefined : escaparHtml(valor)])
+  ) as DatosEmail;
+}
+
+/** Botón de enlace con el estilo de los emails (vacío si no hay URL) */
+function botonEnlace(url: string | undefined, texto: string, color: string | undefined): string {
+  if (!url) return '';
+  return `<a href="${escaparHtml(url)}" style="display: inline-block; background-color: ${escaparHtml(color || '#79438f')}; color: white; padding: 12px 24px; text-decoration: none; border-radius: 6px; font-weight: bold;">${texto}</a>`;
+}
+
+function bloqueCancelar(datos: DatosEmail): string {
+  if (!datos.urlCancelar) return '';
+  return `<p style="font-size: 14px; color: #666;">¿No puedes venir? <a href="${escaparHtml(datos.urlCancelar)}">Cancela tu cita aquí</a> para que otra persona pueda aprovechar el hueco.</p>`;
+}
+
+function reemplazarVariables(contenido: string, datos: DatosEmail, esHtml = true): string {
+  let resultado = contenido;
+  const escapar = esHtml ? escaparHtml : (texto: string | undefined) => (texto ?? '').replace(/[\r\n]+/g, ' ');
+
+  // Texto y URLs se escapan; los "bloque*" ya son HTML construido aquí
+  const textos: Record<string, string | undefined> = {
     nombrePaciente: datos.nombrePaciente,
     fechaCita: datos.fechaCita,
     horaCita: datos.horaCita,
@@ -221,21 +263,30 @@ function reemplazarVariables(contenido: string, datos: DatosEmail): string {
     urlWhatsapp: datos.urlWhatsapp,
     urlTelefono: datos.urlTelefono,
     logoFarmacia: datos.logoFarmacia,
-    bloqueLogo: datos.logoFarmacia && datos.nombreFarmacia
-      ? `<img src="${datos.logoFarmacia}" alt="${(datos.nombreFarmacia || '').replace(/"/g, '&quot;')}" style="max-height: 60px; display: block; margin: 0 auto;" />`
-      : '',
-    bloqueWhatsapp: datos.urlWhatsapp
-      ? ` | <a href="${datos.urlWhatsapp}" style="color: #25d366;">Contactar por WhatsApp</a>`
-      : '',
-    bloqueTelefono: datos.urlTelefono
-      ? ` | <a href="${datos.urlTelefono}">Llamar</a>`
-      : '',
     colorPrimario: datos.colorPrimario,
     colorSecundario: datos.colorSecundario,
     colorAcento: datos.colorAcento,
     motivoRechazo: datos.motivoRechazo,
+    urlCancelar: datos.urlCancelar,
     anioActual: new Date().getFullYear().toString(),
   };
+  const variables: Record<string, string> = Object.fromEntries(
+    Object.entries(textos).map(([clave, valor]) => [clave, escapar(valor)])
+  );
+  Object.assign(variables, {
+    bloqueLogo: datos.logoFarmacia && datos.nombreFarmacia
+      ? `<img src="${escaparHtml(datos.logoFarmacia)}" alt="${escaparHtml(datos.nombreFarmacia)}" style="max-height: 60px; display: block; margin: 0 auto;" />`
+      : '',
+    bloqueWhatsapp: datos.urlWhatsapp
+      ? ` | <a href="${escaparHtml(datos.urlWhatsapp)}" style="color: #25d366;">Contactar por WhatsApp</a>`
+      : '',
+    bloqueTelefono: datos.urlTelefono ? ` | <a href="${escaparHtml(datos.urlTelefono)}">Llamar</a>` : '',
+    bloqueCancelar: bloqueCancelar(datos),
+    bloqueSolicitarCita: botonEnlace(datos.urlSolicitarCita, 'Solicitar nueva cita', datos.colorPrimario),
+    bloqueMotivo: datos.motivoRechazo
+      ? `<p style="margin: 10px 0 0 0;"><strong>Motivo:</strong> ${escaparHtml(datos.motivoRechazo)}</p>`
+      : '',
+  });
 
   // Reemplazar cada variable
   for (const [key, value] of Object.entries(variables)) {
@@ -269,22 +320,31 @@ function htmlATexto(html: string): string {
 /** Colores por defecto cuando no hay tema/colores configurados (alineados con frontend) */
 const COLORES_DEFAULT = {
   primario: '#79438f',
-  secundario: '#6495a8',
+  secundario: '#4a7484',
   acento: '#79438f',
 };
 
-/** Temas preconfigurados (coinciden con src/lib/coloresMarca.ts) */
+/**
+ * Temas preconfigurados: DEBEN coincidir con TEMAS_PRECONFIGURADOS de
+ * src/lib/coloresMarca.ts (frontend). Los emails ponen texto blanco sobre
+ * primario y secundario, que en todos los temas tienen contraste suficiente.
+ */
 const TEMAS_PRECONFIGURADOS: Record<string, { primario: string; secundario: string; acento: string }> = {
-  default: { primario: '#79438f', secundario: '#6495a8', acento: '#79438f' },
-  porDefecto: { primario: '#79438f', secundario: '#6495a8', acento: '#79438f' },
-  verde: { primario: '#0d9488', secundario: '#14b8a6', acento: '#0d9488' },
-  azul: { primario: '#2563eb', secundario: '#3b82f6', acento: '#2563eb' },
+  default: { primario: '#79438f', secundario: '#4a7484', acento: '#79438f' },
+  porDefecto: { primario: '#79438f', secundario: '#4a7484', acento: '#79438f' },
+  verdeFarmacia: { primario: '#3e551b', secundario: '#56732b', acento: '#a4c639' },
+  verde: { primario: '#0c7f75', secundario: '#0f766e', acento: '#0c7f75' },
+  azul: { primario: '#2563eb', secundario: '#1d4ed8', acento: '#2563eb' },
+  oceano: { primario: '#0b4f6c', secundario: '#1a6f8a', acento: '#2bb3a8' },
+  pizarraAmbar: { primario: '#334155', secundario: '#475569', acento: '#f59e0b' },
+  burdeos: { primario: '#7a1f3d', secundario: '#8f4a5e', acento: '#d4a373' },
+  terracota: { primario: '#8c3f26', secundario: '#56695a', acento: '#e07a5f' },
 };
 
 /**
  * Obtiene los colores de marca según tema y colores personalizados
  */
-function obtenerColoresMarca(config: {
+export function obtenerColoresMarca(config: {
   temaActivo?: string | null;
   coloresMarca?: string | null;
 } | null): { primario: string; secundario: string; acento: string } {
@@ -340,8 +400,9 @@ async function obtenerDatosFarmacia(): Promise<DatosFarmaciaParaEmail> {
   // El logo se guarda siempre como data: URI (base64) desde el formulario de Configuración
   const logoFarmacia = config?.farmaciaLogo || '';
 
-  // URL solicitar cita: usa la web configurada de la farmacia (no hay reserva pública en este backend)
-  const urlSolicitarCita = config?.farmaciaWeb || '';
+  // URL para pedir cita: la página de reserva online si está activa; si no, la web de la farmacia
+  const reserva = await prisma.reservaOnline.findUnique({ where: { id: 'singleton' }, select: { activa: true, urlPublica: true } });
+  const urlSolicitarCita = (RESERVA_ONLINE_DISPONIBLE && reserva?.activa && reserva.urlPublica) || config?.farmaciaWeb || '';
 
   // WhatsApp: https://wa.me/34XXXXXXXXX (sin + ni espacios)
   const urlWhatsapp = whatsapp
@@ -376,7 +437,8 @@ async function obtenerDatosFarmacia(): Promise<DatosFarmaciaParaEmail> {
  * Formatea la fecha para mostrar en el email
  */
 function formatearFecha(fecha: string): string {
-  const fechaObj = new Date(fecha);
+  // Mediodía local: new Date("YYYY-MM-DD") es medianoche UTC y puede caer en el día anterior
+  const fechaObj = new Date(/^\d{4}-\d{2}-\d{2}$/.test(fecha) ? `${fecha}T12:00:00` : fecha);
   const opciones: Intl.DateTimeFormatOptions = {
     weekday: 'long',
     year: 'numeric',
@@ -389,10 +451,18 @@ function formatearFecha(fecha: string): string {
 /**
  * Obtiene el nombre del tipo de servicio en español
  */
+/** Nombre del servicio; para "evento:<id>" busca el nombre del evento */
+async function nombreServicioOEvento(tipo: string): Promise<string> {
+  if (!tipo.startsWith('evento:')) return obtenerNombreTipoServicio(tipo);
+  const evento = await prisma.evento.findUnique({ where: { id: tipo.slice(7) }, select: { nombre: true } });
+  return evento?.nombre ?? 'Evento';
+}
+
 function obtenerNombreTipoServicio(tipo: string): string {
   const nombres: Record<string, string> = {
     dermo: 'Dermocosmética',
     bio: 'Análisis Bioquímico',
+    nutricion: 'Nutrición',
     consulta: 'Consulta General',
     seguimiento: 'Seguimiento',
   };
@@ -406,13 +476,14 @@ interface DatosCitaBase {
   hora: string;
   tipo: string;
   motivoRechazo?: string;
+  urlCancelar?: string;
 }
 
 /**
  * Construye DatosEmail completos con logo, colores y enlaces (WhatsApp, teléfono, solicitar cita).
  */
 async function obtenerDatosEmailCompletos(datosCita: DatosCitaBase): Promise<DatosEmail> {
-  const datosFarmacia = await obtenerDatosFarmacia();
+  const [datosFarmacia, tipoServicio] = await Promise.all([obtenerDatosFarmacia(), nombreServicioOEvento(datosCita.tipo)]);
 
   const direccionCompleta = [datosFarmacia.direccion, datosFarmacia.ciudad].filter(Boolean).join(', ');
 
@@ -420,7 +491,7 @@ async function obtenerDatosEmailCompletos(datosCita: DatosCitaBase): Promise<Dat
     nombrePaciente: datosCita.nombreCliente,
     fechaCita: formatearFecha(datosCita.fecha),
     horaCita: datosCita.hora,
-    tipoServicio: obtenerNombreTipoServicio(datosCita.tipo),
+    tipoServicio,
     nombreFarmacia: datosFarmacia.nombre,
     direccionFarmacia: direccionCompleta,
     telefonoFarmacia: datosFarmacia.telefono,
@@ -434,6 +505,7 @@ async function obtenerDatosEmailCompletos(datosCita: DatosCitaBase): Promise<Dat
     colorSecundario: datosFarmacia.colorSecundario,
     colorAcento: datosFarmacia.colorAcento,
     motivoRechazo: datosCita.motivoRechazo,
+    urlCancelar: datosCita.urlCancelar,
   };
 }
 
@@ -918,6 +990,7 @@ export async function enviarConfirmacionCita(
     fecha: string;
     hora: string;
     nombreCliente: string;
+    urlCancelar?: string;
   }
 ): Promise<boolean> {
   try {
@@ -931,10 +1004,10 @@ export async function enviarConfirmacionCita(
 
     if (plantilla) {
       html = reemplazarVariables(plantilla.contenidoHtml, datos);
-      asunto = reemplazarVariables(plantilla.asunto, datos);
+      asunto = reemplazarVariables(plantilla.asunto, datos, false);
     } else {
       // Plantilla por defecto si no existe en BD
-      html = generarPlantillaConfirmacionDefault(datos);
+      html = generarPlantillaConfirmacionDefault(escaparDatos(datos));
       asunto = `Confirmación de cita - ${datos.tipoServicio}`;
     }
 
@@ -966,6 +1039,7 @@ export async function enviarRecordatorioCita(
     fecha: string;
     hora: string;
     nombreCliente: string;
+    urlCancelar?: string;
   }
 ): Promise<boolean> {
   try {
@@ -978,9 +1052,9 @@ export async function enviarRecordatorioCita(
 
     if (plantilla) {
       html = reemplazarVariables(plantilla.contenidoHtml, datos);
-      asunto = reemplazarVariables(plantilla.asunto, datos);
+      asunto = reemplazarVariables(plantilla.asunto, datos, false);
     } else {
-      html = generarPlantillaRecordatorioDefault(datos);
+      html = generarPlantillaRecordatorioDefault(escaparDatos(datos));
       asunto = `Recordatorio: Tu cita es mañana - ${datos.tipoServicio}`;
     }
 
@@ -1024,15 +1098,40 @@ export async function enviarCancelacionCita(
 
     if (plantilla) {
       html = reemplazarVariables(plantilla.contenidoHtml, datos);
-      asunto = reemplazarVariables(plantilla.asunto, datos);
+      asunto = reemplazarVariables(plantilla.asunto, datos, false);
     } else {
-      html = generarPlantillaCancelacionDefault(datos);
+      html = generarPlantillaCancelacionDefault(escaparDatos(datos));
       asunto = `Cita cancelada - ${datos.tipoServicio}`;
     }
 
     return await enviarEmail(emailDestinatario, asunto, html);
   } catch (error) {
     console.error('❌ Error al enviar cancelación:', error);
+    return false;
+  }
+}
+
+/**
+ * Email a quien pidió cita por la reserva online y no se le ha podido dar
+ */
+export async function enviarRechazoSolicitud(
+  emailDestinatario: string,
+  datosSolicitud: { tipo: string; fecha: string; hora: string; nombreCliente: string; motivoRechazo?: string }
+): Promise<boolean> {
+  try {
+    const datos = await obtenerDatosEmailCompletos(datosSolicitud);
+    const plantilla = await obtenerPlantilla('rechazo');
+
+    const html = plantilla
+      ? reemplazarVariables(plantilla.contenidoHtml, datos)
+      : generarPlantillaRechazoDefault(escaparDatos(datos));
+    const asunto = plantilla
+      ? reemplazarVariables(plantilla.asunto, datos, false)
+      : `No hemos podido confirmar tu cita - ${datos.tipoServicio}`;
+
+    return await enviarEmail(emailDestinatario, asunto, html);
+  } catch (error) {
+    console.error('❌ Error al enviar el rechazo de la solicitud:', error);
     return false;
   }
 }
@@ -1060,9 +1159,9 @@ export async function enviarModificacionCita(
 
     if (plantilla) {
       html = reemplazarVariables(plantilla.contenidoHtml, datos);
-      asunto = reemplazarVariables(plantilla.asunto, datos);
+      asunto = reemplazarVariables(plantilla.asunto, datos, false);
     } else {
-      html = generarPlantillaModificacionDefault(datos);
+      html = generarPlantillaModificacionDefault(escaparDatos(datos));
       asunto = `Tu cita ha sido modificada - ${datos.tipoServicio}`;
     }
 
@@ -1073,41 +1172,57 @@ export async function enviarModificacionCita(
   }
 }
 
+
+// ==========================================
+// FELICITACIÓN DE CUMPLEAÑOS
+// ==========================================
+
 /**
- * Envía email de invitación para que un nuevo usuario establezca su contraseña
+ * Envía la felicitación de cumpleaños al paciente con la plantilla
+ * "cumpleanos" (editable en Configuración) o, si no existe, la de por defecto.
+ * Si la plantilla está desactivada no se envía nada.
  */
-export async function enviarInvitacionUsuario(
-  emailDestinatario: string,
-  nombreUsuario: string,
-  nombreFarmacia: string,
-  urlEstablecerContrasena: string
-): Promise<boolean> {
-  const asunto = `Crea tu contraseña - ${nombreFarmacia}`;
-  const html = `
-<!DOCTYPE html>
-<html lang="es">
-<head>
-  <meta charset="utf-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>Invitación</title>
-</head>
-<body style="font-family: 'Segoe UI', Arial, sans-serif; line-height: 1.6; color: #333; max-width: 600px; margin: 0 auto; padding: 20px;">
-  <div style="background-color: #79438f; color: white; padding: 24px; text-align: center; border-radius: 8px 8px 0 0;">
-    <h1 style="margin: 0; font-size: 22px;">Invitación a la plataforma</h1>
-  </div>
-  <div style="background-color: white; padding: 24px; border: 1px solid #eee; border-top: none; border-radius: 0 0 8px 8px;">
-    <p>Hola <strong>${nombreUsuario}</strong>,</p>
-    <p>Te han invitado a formar parte del equipo de <strong>${nombreFarmacia}</strong> en la plataforma de gestión.</p>
-    <p>Haz clic en el siguiente enlace para crear tu contraseña y acceder a tu cuenta:</p>
-    <p style="text-align: center; margin: 24px 0;">
-      <a href="${urlEstablecerContrasena}" style="display: inline-block; background-color: #79438f; color: white; padding: 12px 24px; text-decoration: none; border-radius: 6px; font-weight: bold;">Crear mi contraseña</a>
-    </p>
-    <p style="color: #666; font-size: 14px;">Este enlace caduca en 7 días. Si no has solicitado esta invitación, puedes ignorar este correo.</p>
-  </div>
-</body>
-</html>`;
-  const texto = `Hola ${nombreUsuario}, te han invitado a ${nombreFarmacia}. Crea tu contraseña aquí: ${urlEstablecerContrasena}. El enlace caduca en 7 días.`;
-  return enviarEmail(emailDestinatario, asunto, html, texto);
+export async function enviarFelicitacionCumpleanos(emailDestinatario: string, nombrePaciente: string): Promise<boolean> {
+  try {
+    const datosFarmacia = await obtenerDatosFarmacia();
+    const datos: DatosEmail = {
+      nombrePaciente,
+      // Campos de cita: no aplican a una felicitación
+      fechaCita: '',
+      horaCita: '',
+      tipoServicio: '',
+      nombreFarmacia: datosFarmacia.nombre,
+      direccionFarmacia: [datosFarmacia.direccion, datosFarmacia.ciudad].filter(Boolean).join(', '),
+      telefonoFarmacia: datosFarmacia.telefono,
+      emailFarmacia: datosFarmacia.email,
+      webFarmacia: datosFarmacia.web,
+      urlSolicitarCita: datosFarmacia.urlSolicitarCita,
+      urlWhatsapp: datosFarmacia.urlWhatsapp,
+      urlTelefono: datosFarmacia.urlTelefono,
+      logoFarmacia: datosFarmacia.logoFarmacia,
+      colorPrimario: datosFarmacia.colorPrimario,
+      colorSecundario: datosFarmacia.colorSecundario,
+      colorAcento: datosFarmacia.colorAcento,
+    };
+
+    const existente = await prisma.plantillaEmail.findUnique({ where: { tipo: 'cumpleanos' } });
+    if (existente && !existente.activa) {
+      console.log('ℹ️  Plantilla de cumpleaños desactivada: no se envía la felicitación');
+      return false;
+    }
+
+    const html = existente
+      ? reemplazarVariables(existente.contenidoHtml, datos)
+      : generarPlantillaCumpleanosDefault(escaparDatos(datos));
+    const asunto = existente
+      ? reemplazarVariables(existente.asunto, datos, false)
+      : `¡Feliz cumpleaños, ${nombrePaciente}!`;
+
+    return await enviarEmail(emailDestinatario, asunto, html);
+  } catch (error) {
+    console.error('❌ Error al enviar felicitación de cumpleaños:', error);
+    return false;
+  }
 }
 
 // ==========================================
@@ -1157,8 +1272,7 @@ function generarPlantillaConfirmacionDefault(datos: DatosEmail): string {
     
     <p>Por favor, llegue con unos minutos de antelación.</p>
     
-    <div style="text-align: center; margin: 30px 0;">
-    </div>
+    ${datos.urlCancelar ? `<p style="font-size: 14px; color: #666;">¿No puedes venir? <a href="${datos.urlCancelar}">Cancela tu cita aquí</a> para que otra persona pueda aprovechar el hueco.</p>` : ''}
     
     <hr style="border: none; border-top: 1px solid #eee; margin: 30px 0;">
     
@@ -1209,8 +1323,7 @@ function generarPlantillaRecordatorioDefault(datos: DatosEmail): string {
     
     <p>Por favor, llegue con unos minutos de antelación. Si no puedes asistir, te agradecemos que nos lo comuniques.</p>
     
-    <div style="text-align: center; margin: 30px 0;">
-    </div>
+    ${datos.urlCancelar ? `<p style="font-size: 14px; color: #666;">¿No puedes venir? <a href="${datos.urlCancelar}">Cancela tu cita aquí</a> para que otra persona pueda aprovechar el hueco.</p>` : ''}
     
     <hr style="border: none; border-top: 1px solid #eee; margin: 30px 0;">
     
@@ -1232,6 +1345,43 @@ function generarPlantillaRecordatorioDefault(datos: DatosEmail): string {
 /**
  * Genera plantilla HTML de cancelación por defecto
  */
+function generarPlantillaRechazoDefault(datos: DatosEmail): string {
+  const { logo, whatsapp, telefono, color } = bloquesDesdeDatos(datos);
+  const boton = datos.urlSolicitarCita
+    ? `<div style="text-align: center; margin: 30px 0;"><a href="${datos.urlSolicitarCita}" style="display: inline-block; background-color: ${color}; color: white; padding: 12px 24px; text-decoration: none; border-radius: 6px; font-weight: bold;">Elegir otro horario</a></div>`
+    : '';
+  return `
+<!DOCTYPE html>
+<html lang="es">
+<head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1.0"><title>Solicitud de cita</title></head>
+<body style="font-family: 'Segoe UI', Arial, sans-serif; line-height: 1.6; color: #333; max-width: 600px; margin: 0 auto; padding: 20px; background-color: #f5f5f5;">
+  ${logo}
+  <div style="background-color: ${color}; color: white; padding: 30px 20px; text-align: center; border-radius: 10px 10px 0 0;">
+    <h1 style="margin: 0; font-size: 24px;">Solicitud de cita</h1>
+  </div>
+  <div style="background-color: white; padding: 30px; border-radius: 0 0 10px 10px; box-shadow: 0 2px 10px rgba(0,0,0,0.1);">
+    <p style="font-size: 16px;">Hola <strong>${datos.nombrePaciente}</strong>,</p>
+    <p>Sentimos no poder confirmar la cita que solicitaste:</p>
+    <div style="background-color: #f8f4fa; padding: 20px; margin: 20px 0; border-left: 4px solid ${color}; border-radius: 0 8px 8px 0;">
+      <p style="margin: 5px 0;"><strong>📅 Fecha:</strong> ${datos.fechaCita}</p>
+      <p style="margin: 5px 0;"><strong>🕐 Hora:</strong> ${datos.horaCita}</p>
+      <p style="margin: 5px 0;"><strong>💊 Servicio:</strong> ${datos.tipoServicio}</p>
+      ${datos.motivoRechazo ? `<p style="margin: 10px 0 0 0;"><strong>Motivo:</strong> ${datos.motivoRechazo}</p>` : ''}
+    </div>
+    <p>Puedes pedir otro horario o ponerte en contacto con nosotros.</p>
+    ${boton}
+    <hr style="border: none; border-top: 1px solid #eee; margin: 30px 0;">
+    <div style="color: #666; font-size: 14px;">
+      <p><strong>${datos.nombreFarmacia}</strong></p>
+      <p style="margin: 3px 0;">${datos.direccionFarmacia}</p>
+      <p style="margin: 3px 0;">📞 ${datos.telefonoFarmacia || ''}${whatsapp}${telefono}</p>
+      <p style="margin: 3px 0;">✉️ ${datos.emailFarmacia || ''}</p>
+    </div>
+  </div>
+</body>
+</html>`;
+}
+
 function generarPlantillaCancelacionDefault(datos: DatosEmail): string {
   const { logo, whatsapp, telefono, color } = bloquesDesdeDatos(datos);
   const urlSolicitar = datos.urlSolicitarCita || datos.webFarmacia || '#';
@@ -1289,7 +1439,7 @@ function generarPlantillaCancelacionDefault(datos: DatosEmail): string {
  */
 function generarPlantillaModificacionDefault(datos: DatosEmail): string {
   const { logo, whatsapp, telefono } = bloquesDesdeDatos(datos);
-  const colorSec = datos.colorSecundario || '#6495a8';
+  const colorSec = datos.colorSecundario || COLORES_DEFAULT.secundario;
   return `
 <!DOCTYPE html>
 <html lang="es">
@@ -1317,8 +1467,7 @@ function generarPlantillaModificacionDefault(datos: DatosEmail): string {
     
     <p>Por favor, llegue con unos minutos de antelación.</p>
     
-    <div style="text-align: center; margin: 30px 0;">
-    </div>
+    ${datos.urlCancelar ? `<p style="font-size: 14px; color: #666;">¿No puedes venir? <a href="${datos.urlCancelar}">Cancela tu cita aquí</a> para que otra persona pueda aprovechar el hueco.</p>` : ''}
     
     <hr style="border: none; border-top: 1px solid #eee; margin: 30px 0;">
     
@@ -1333,6 +1482,34 @@ function generarPlantillaModificacionDefault(datos: DatosEmail): string {
   <p style="text-align: center; color: #999; font-size: 12px; margin-top: 20px;">
     © ${new Date().getFullYear()} ${datos.nombreFarmacia}
   </p>
+</body>
+</html>`;
+}
+
+/**
+ * Genera plantilla HTML de felicitación de cumpleaños por defecto
+ */
+function generarPlantillaCumpleanosDefault(datos: DatosEmail): string {
+  const { logo, whatsapp, telefono, color } = bloquesDesdeDatos(datos);
+  return `
+<!DOCTYPE html>
+<html lang="es">
+<head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1.0"></head>
+<body style="font-family: 'Segoe UI', Arial, sans-serif; line-height: 1.6; color: #333; max-width: 600px; margin: 0 auto; padding: 20px; background-color: #f5f5f5;">
+  <div style="background: white; border-radius: 10px; overflow: hidden;">
+    ${logo}
+    <div style="background: ${color}; color: white; padding: 28px; text-align: center;">
+      <p style="font-size: 40px; margin: 0;">🎉</p>
+      <h1 style="margin: 8px 0 0; font-size: 26px;">¡Feliz cumpleaños, ${datos.nombrePaciente}!</h1>
+    </div>
+    <div style="padding: 28px; text-align: center;">
+      <p>Todo el equipo de <strong>${datos.nombreFarmacia}</strong> te desea un día estupendo.</p>
+      <p>Gracias por confiar en nosotros para cuidar de tu salud.</p>
+    </div>
+    <div style="padding: 16px 28px; border-top: 1px solid #eee; font-size: 13px; color: #666; text-align: center;">
+      ${datos.nombreFarmacia}${datos.direccionFarmacia ? ` · ${datos.direccionFarmacia}` : ''}${telefono}${whatsapp}
+    </div>
+  </div>
 </body>
 </html>`;
 }

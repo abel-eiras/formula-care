@@ -47,11 +47,22 @@ const generarDatosPreview = (config?: Configuracion): Record<string, string> => 
   telefonoFarmacia: config?.farmaciaTelefono || 'Teléfono configurado',
   emailFarmacia: config?.farmaciaEmail || 'email@tufarmacia.com',
   webFarmacia: config?.farmaciaWeb || 'www.tufarmacia.com',
-  urlConfirmar: '#',
-  urlModificar: '#',
   urlCancelar: '#',
+  urlSolicitarCita: '#',
   anioActual: new Date().getFullYear().toString(),
   motivoRechazo: 'Horario no disponible',
+  colorPrimario: '#79438f',
+  colorSecundario: '#6495a8',
+  colorAcento: '#79438f',
+  bloqueLogo: '',
+  bloqueWhatsapp: '',
+  bloqueTelefono: '',
+  // Ejemplos de los bloques que el servidor genera según el caso
+  bloqueCancelar:
+    '<p style="font-size: 14px; color: #666;">¿No puedes venir? <a href="#">Cancela tu cita aquí</a> para que otra persona pueda aprovechar el hueco.</p>',
+  bloqueSolicitarCita:
+    '<a href="#" style="display: inline-block; background-color: #79438f; color: white; padding: 12px 24px; text-decoration: none; border-radius: 6px; font-weight: bold;">Solicitar nueva cita</a>',
+  bloqueMotivo: '<p style="margin: 10px 0 0 0;"><strong>Motivo:</strong> Horario no disponible</p>',
 });
 
 export function EditorPlantillaEmail({

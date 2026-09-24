@@ -74,11 +74,22 @@ backend/
 
 ### Pacientes
 
-- `GET /api/pacientes` - Listar todos los pacientes
+- `GET /api/pacientes` - Listar pacientes (`busqueda` sin distinguir mayúsculas ni tildes, `edadMin`/`edadMax`, `limit` opcional)
 - `GET /api/pacientes/:id` - Obtener un paciente
-- `POST /api/pacientes` - Crear paciente
+- `GET /api/pacientes/:id/mediciones` - Historial único de medidas y constantes (todos los servicios)
+- `POST /api/pacientes` - Crear paciente (`birthDate` obligatoria en formato YYYY-MM-DD; la edad no se guarda ni se acepta: se calcula siempre a partir de la fecha)
 - `PUT /api/pacientes/:id` - Actualizar paciente
 - `DELETE /api/pacientes/:id` - Eliminar paciente
+
+### Cumpleaños
+
+Se calculan desde la fecha de nacimiento (no se guardan como eventos). Cada día
+se crea un aviso interno por paciente que cumple años (al arrancar y cada hora,
+sin duplicados).
+
+- `GET /api/cumpleanos?desde=YYYY-MM-DD&hasta=YYYY-MM-DD` - Cumpleaños del rango (máx. 400 días) con la edad que se cumple y si ya se ha felicitado
+- `POST /api/cumpleanos/:pacienteId/felicitacion` - Registrar felicitación `{ anio, canal }` (`whatsapp`, `email`, `llamada`, `en_persona`); con `email` además se envía la plantilla "cumpleanos"
+- `DELETE /api/cumpleanos/:pacienteId/felicitacion/:anio` - Deshacer felicitación
 
 ### Citas
 
@@ -94,6 +105,22 @@ backend/
 - `GET /api/servicios/dermo/:id` - Obtener análisis dermo
 - `POST /api/servicios/bio` - Crear análisis bioquímico
 - `GET /api/servicios/bio/:id` - Obtener análisis bio
+
+Las medidas corporales y constantes (peso, altura, cintura, cadera,
+bioimpedancia, tensión, pulsaciones) de Bio y Nutrición se envían y
+devuelven como campos planos de cada registro, pero se guardan en una única
+tabla `Medicion` por paciente. IMC e ICC se calculan en el servidor.
+
+### Nutrición (seguimiento con GLP-1 opcional)
+
+- `GET /api/nutricion/programas?pacienteId=` - Programas de un paciente con sus visitas (`pacienteId` obligatorio)
+- `POST /api/nutricion/programas` - Iniciar programa (409 si el paciente ya tiene uno activo)
+- `GET /api/nutricion/programas/:id` - Programa con visitas y registro de alimentación
+- `PUT /api/nutricion/programas/:id` - Actualizar datos de partida o estado
+- `POST /api/nutricion/visitas` - Crear visita (la más antigua por fecha es la inicial; el tipo se calcula, no se guarda)
+- `GET|PUT|DELETE /api/nutricion/visitas/:id` - Obtener, actualizar o eliminar visita
+- `POST /api/nutricion/registros` - Añadir ingesta al registro de alimentación
+- `PUT|DELETE /api/nutricion/registros/:id` - Actualizar o eliminar ingesta
 
 ## 🛠️ Scripts Disponibles
 

@@ -1,6 +1,6 @@
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { api } from '@/lib/api';
-import type { Paciente } from '@/types';
+import type { Medicion, Paciente } from '@/types';
 import type { FiltrosPacientes } from '@/components/pacientes/FiltrosAvanzados';
 
 /**
@@ -21,6 +21,7 @@ export function usePacientes(filtros?: FiltrosPacientes) {
       if (filtros?.edadMax !== undefined) params.append('edadMax', filtros.edadMax.toString());
       if (filtros?.tieneDermo) params.append('tieneDermo', 'true');
       if (filtros?.tieneBio) params.append('tieneBio', 'true');
+      if (filtros?.tieneNutricion) params.append('tieneNutricion', 'true');
       if (filtros?.fechaDesde) params.append('fechaDesde', filtros.fechaDesde.toISOString());
       if (filtros?.fechaHasta) params.append('fechaHasta', filtros.fechaHasta.toISOString());
       if (filtros?.ordenarPor) params.append('ordenarPor', filtros.ordenarPor);
@@ -79,5 +80,17 @@ export function useActualizarPaciente() {
       queryClient.invalidateQueries({ queryKey: ['pacientes'] });
       queryClient.invalidateQueries({ queryKey: ['paciente', variables.id] });
     },
+  });
+}
+
+/**
+ * Historial único de mediciones del paciente (peso, perímetros, bioimpedancia,
+ * tensión...), venga del servicio que venga
+ */
+export function useMedicionesPaciente(pacienteId: string | undefined) {
+  return useQuery({
+    queryKey: ['mediciones', pacienteId],
+    queryFn: () => api.get<Medicion[]>(`/pacientes/${pacienteId}/mediciones`),
+    enabled: !!pacienteId,
   });
 }
