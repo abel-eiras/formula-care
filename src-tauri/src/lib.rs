@@ -244,6 +244,8 @@ fn spawn_backend_release(
         // El backend comprueba este PID y se cierra si la app ya no existe
         // (cierre forzoso o caída): así no queda ocupando el puerto
         .env("PID_APP", std::process::id().to_string())
+        // Se guarda en las copias de seguridad (para avisar si se restauran en una versión antigua)
+        .env("APP_VERSION", &version)
         .spawn()?;
 
     // Reenvía stdout/stderr del backend a la salida de la app (equivalente al
