@@ -26,7 +26,6 @@ model Usuario {
   createdAt     DateTime  @default(now())
   updatedAt     DateTime  @updatedAt
 
-  tokensInvitacion TokenInvitacionUsuario[]
 
   @@index([email])
   @@index([rol])
@@ -518,21 +517,4 @@ model PlantillaEmail {
   updatedAt      DateTime @updatedAt
 
   @@index([activa])
-}
-
-// Token de invitación para que un nuevo usuario establezca su contraseña
-model TokenInvitacionUsuario {
-  id        String    @id @default(cuid())
-  usuarioId String
-  token     String    @unique
-  expiraEn  DateTime
-  usado     Boolean   @default(false)
-  usadoEn   DateTime?
-  createdAt DateTime  @default(now())
-
-  usuario Usuario @relation(fields: [usuarioId], references: [id], onDelete: Cascade)
-
-  @@index([token])
-  @@index([usuarioId])
-  @@index([expiraEn])
 }

@@ -13,7 +13,7 @@ import { Calendar } from "@/components/ui/calendar";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
 import { Textarea } from "@/components/ui/textarea";
-import { ArrowLeft, Save, Settings, Building2, FlaskConical, Calendar as CalendarIcon, Plus, Trash2, GripVertical, Eye, EyeOff, Pencil, Shield, FileText, AlertTriangle, Mail, Palette, DatabaseBackup } from "lucide-react";
+import { ArrowLeft, Save, Settings, Building2, FlaskConical, Calendar as CalendarIcon, Plus, Trash2, GripVertical, Eye, EyeOff, Pencil, Shield, FileText, AlertTriangle, Mail, Palette, DatabaseBackup, Users, UserCircle } from "lucide-react";
 import { Link } from "react-router-dom";
 import { toast } from "sonner";
 import { useConfiguracion, useActualizarFarmacia, useActualizarParametrosReferencia, useActualizarValoracionBio, useActualizarParametrosBioConfig, useConfiguracionCalendario, useActualizarConfiguracionCalendario, useConfiguracionRgpd, useActualizarRgpd } from "@/hooks/useConfiguracion";
@@ -22,6 +22,9 @@ import { usePlantillasEmail, useVariablesPlantilla, useActualizarPlantilla, useR
 import { EditorPlantillaEmail } from "@/components/configuracion/EditorPlantillaEmail";
 import { SelectorTema } from "@/components/configuracion/SelectorTema";
 import { BackupTab } from "@/components/configuracion/BackupTab";
+import { UsuariosTab } from "@/components/configuracion/UsuariosTab";
+import { MiCuentaTab } from "@/components/configuracion/MiCuentaTab";
+import { useAuthContext } from "@/contexts/AuthContext";
 import type { Evento, ParametroBioConfig, ConfiguracionRgpd, PlantillaEmail } from "@/types";
 import { cn } from "@/lib/utils";
 import { getColoresParaConfig } from "@/lib/coloresMarca";
@@ -109,6 +112,8 @@ function VistaPreviaInforme({ colores }: { colores: ColoresMarca }) {
 }
 
 export default function Configuracion() {
+  const { usuario } = useAuthContext();
+  const esAdmin = usuario?.rol === "admin";
   const { data: config, isLoading } = useConfiguracion();
   const actualizarFarmacia = useActualizarFarmacia();
   const actualizarParametros = useActualizarParametrosReferencia();
@@ -242,7 +247,7 @@ export default function Configuracion() {
       </div>
 
       <Tabs defaultValue="farmacia" className="space-y-6">
-        <TabsList className="grid w-full grid-cols-7">
+        <TabsList className="flex h-auto w-full flex-wrap justify-start gap-1">
           <TabsTrigger value="farmacia" className="gap-2">
             <Building2 className="h-4 w-4" />
             <span className="hidden sm:inline">Datos de la Farmacia</span>
@@ -276,6 +281,17 @@ export default function Configuracion() {
             <DatabaseBackup className="h-4 w-4" />
             <span className="hidden sm:inline">Copias de Seguridad</span>
             <span className="sm:hidden">Copias</span>
+          </TabsTrigger>
+          {esAdmin && (
+            <TabsTrigger value="usuarios" className="gap-2">
+              <Users className="h-4 w-4" />
+              Usuarios
+            </TabsTrigger>
+          )}
+          <TabsTrigger value="cuenta" className="gap-2">
+            <UserCircle className="h-4 w-4" />
+            <span className="hidden sm:inline">Mi cuenta</span>
+            <span className="sm:hidden">Cuenta</span>
           </TabsTrigger>
         </TabsList>
 
@@ -501,6 +517,18 @@ export default function Configuracion() {
         {/* Tab: Copias de Seguridad */}
         <TabsContent value="backup">
           <BackupTab />
+        </TabsContent>
+
+        {/* Tab: Usuarios (solo administradores) */}
+        {esAdmin && (
+          <TabsContent value="usuarios">
+            <UsuariosTab />
+          </TabsContent>
+        )}
+
+        {/* Tab: Mi cuenta */}
+        <TabsContent value="cuenta">
+          <MiCuentaTab />
         </TabsContent>
 
       </Tabs>

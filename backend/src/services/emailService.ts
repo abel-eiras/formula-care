@@ -1094,42 +1094,6 @@ export async function enviarModificacionCita(
   }
 }
 
-/**
- * Envía email de invitación para que un nuevo usuario establezca su contraseña
- */
-export async function enviarInvitacionUsuario(
-  emailDestinatario: string,
-  nombreUsuario: string,
-  nombreFarmacia: string,
-  urlEstablecerContrasena: string
-): Promise<boolean> {
-  const asunto = `Crea tu contraseña - ${nombreFarmacia}`;
-  const html = `
-<!DOCTYPE html>
-<html lang="es">
-<head>
-  <meta charset="utf-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>Invitación</title>
-</head>
-<body style="font-family: 'Segoe UI', Arial, sans-serif; line-height: 1.6; color: #333; max-width: 600px; margin: 0 auto; padding: 20px;">
-  <div style="background-color: #79438f; color: white; padding: 24px; text-align: center; border-radius: 8px 8px 0 0;">
-    <h1 style="margin: 0; font-size: 22px;">Invitación a la plataforma</h1>
-  </div>
-  <div style="background-color: white; padding: 24px; border: 1px solid #eee; border-top: none; border-radius: 0 0 8px 8px;">
-    <p>Hola <strong>${nombreUsuario}</strong>,</p>
-    <p>Te han invitado a formar parte del equipo de <strong>${nombreFarmacia}</strong> en la plataforma de gestión.</p>
-    <p>Haz clic en el siguiente enlace para crear tu contraseña y acceder a tu cuenta:</p>
-    <p style="text-align: center; margin: 24px 0;">
-      <a href="${urlEstablecerContrasena}" style="display: inline-block; background-color: #79438f; color: white; padding: 12px 24px; text-decoration: none; border-radius: 6px; font-weight: bold;">Crear mi contraseña</a>
-    </p>
-    <p style="color: #666; font-size: 14px;">Este enlace caduca en 7 días. Si no has solicitado esta invitación, puedes ignorar este correo.</p>
-  </div>
-</body>
-</html>`;
-  const texto = `Hola ${nombreUsuario}, te han invitado a ${nombreFarmacia}. Crea tu contraseña aquí: ${urlEstablecerContrasena}. El enlace caduca en 7 días.`;
-  return enviarEmail(emailDestinatario, asunto, html, texto);
-}
 
 // ==========================================
 // FELICITACIÓN DE CUMPLEAÑOS
