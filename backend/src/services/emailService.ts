@@ -6,6 +6,7 @@
 import nodemailer from 'nodemailer';
 import { Resend } from 'resend';
 import { prisma } from '../lib/prisma.js';
+import { RESERVA_ONLINE_DISPONIBLE } from '../config/funciones.js';
 
 // ==========================================
 // TIPOS
@@ -401,7 +402,7 @@ async function obtenerDatosFarmacia(): Promise<DatosFarmaciaParaEmail> {
 
   // URL para pedir cita: la página de reserva online si está activa; si no, la web de la farmacia
   const reserva = await prisma.reservaOnline.findUnique({ where: { id: 'singleton' }, select: { activa: true, urlPublica: true } });
-  const urlSolicitarCita = (reserva?.activa && reserva.urlPublica) || config?.farmaciaWeb || '';
+  const urlSolicitarCita = (RESERVA_ONLINE_DISPONIBLE && reserva?.activa && reserva.urlPublica) || config?.farmaciaWeb || '';
 
   // WhatsApp: https://wa.me/34XXXXXXXXX (sin + ni espacios)
   const urlWhatsapp = whatsapp

@@ -12,6 +12,7 @@ import { toast } from "sonner";
 import { usePacientes, useActualizarPaciente } from "@/hooks/usePacientes";
 import { LoadingSpinner } from "@/components/ui/LoadingSpinner";
 import { calcularEdad } from "@/lib/edad";
+import { RESERVA_ONLINE_DISPONIBLE } from "@/lib/funciones";
 
 export default function EditarPaciente() {
   const { id } = useParams<{ id: string }>();
@@ -138,9 +139,11 @@ export default function EditarPaciente() {
               <UserCog className="h-6 w-6 text-primary" />
               Editar Paciente
             </h1>
-            <Badge variant={esAutoregistro ? "secondary" : "default"}>
-              {esAutoregistro ? "Llegó por la reserva online" : "Registrado en la farmacia"}
-            </Badge>
+            {RESERVA_ONLINE_DISPONIBLE && (
+              <Badge variant={esAutoregistro ? "secondary" : "default"}>
+                {esAutoregistro ? "Llegó por la reserva online" : "Registrado en la farmacia"}
+              </Badge>
+            )}
           </div>
           <p className="text-muted-foreground">Modificar datos de {paciente.name}</p>
         </div>

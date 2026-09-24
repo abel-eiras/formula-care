@@ -1,5 +1,6 @@
 import type { webcrypto } from 'node:crypto';
 import { prisma } from '../../lib/prisma.js';
+import { RESERVA_ONLINE_DISPONIBLE } from '../../config/funciones.js';
 import { obtenerColoresMarca } from '../emailService.js';
 import { datosAsociados, descifrarSolicitud, type SobreCifrado } from './cifrado.js';
 import { calcularHuecos } from './disponibilidad.js';
@@ -160,6 +161,7 @@ export function sincronizarReservaOnline(): Promise<ResultadoSincronizacion> {
 }
 
 async function ejecutarSincronizacion(): Promise<ResultadoSincronizacion> {
+  if (!RESERVA_ONLINE_DISPONIBLE) return { ok: true, omitida: 'La reserva online no está disponible en esta versión' };
   const inicial = await obtenerReservaOnline();
   if (!inicial.activa) return { ok: true, omitida: 'La reserva online está desactivada' };
   if (!inicial.urlApi || !inicial.tokenSincronizacion) {
