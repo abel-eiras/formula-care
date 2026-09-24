@@ -4,6 +4,7 @@ import { useAnalisisBio } from "@/hooks/useAnalisisBio";
 import { usePacientes } from "@/hooks/usePacientes";
 import { useConfiguracion } from "@/hooks/useConfiguracion";
 import { getColoresParaConfig } from "@/lib/coloresMarca";
+import { textoSobre } from "@/lib/contraste";
 
 /**
  * Formatea una fecha ISO a formato dd/mm/aaaa
@@ -104,7 +105,7 @@ export default function ServicioBioPrint() {
         }
 
         .section-header {
-          color: white;
+          color: ${textoSobre(colores.secundario ?? "#4a7484")};
           background-color: ${colores.secundario};
           font-weight: 600;
           font-size: 0.9rem;
