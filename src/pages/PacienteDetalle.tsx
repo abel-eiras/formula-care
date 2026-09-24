@@ -14,12 +14,14 @@ import {
   Edit,
   Clock,
   TrendingUp,
-  FileText
+  FileText,
+  Salad
 } from "lucide-react";
 import { Link, useParams, useNavigate } from "react-router-dom";
 import { usePacientes } from "@/hooks/usePacientes";
 import { useAnalisisDermoPorPaciente } from "@/hooks/useAnalisisDermo";
 import { useAnalisisBioPorPaciente } from "@/hooks/useAnalisisBio";
+import { useProgramasNutricion } from "@/hooks/useNutricion";
 import { LoadingSpinner } from "@/components/ui/LoadingSpinner";
 import { EvolutionChartBio } from "@/components/patient/EvolutionChartBio";
 
@@ -33,6 +35,7 @@ export default function PacienteDetalle() {
   const { data: pacientes = [] } = usePacientes();
   const { data: analisisDermo = [], isLoading: loadingDermo } = useAnalisisDermoPorPaciente(id);
   const { data: analisisBio = [], isLoading: loadingBio } = useAnalisisBioPorPaciente(id);
+  const { data: programasNutricion = [], isLoading: loadingNutricion } = useProgramasNutricion(id);
 
   const paciente = pacientes.find((p) => p.id === id);
 
@@ -60,6 +63,18 @@ export default function PacienteDetalle() {
       titulo: "Análisis Bioquímico",
       resumen: `IMC: ${a.imc || "N/A"} | Glucemia: ${a.glucemia || a.glucose || "N/A"}`,
     })),
+    ...programasNutricion.flatMap((programa) =>
+      programa.visitas.map((v) => ({
+        id: v.id,
+        fecha: v.fecha,
+        tipo: "nutricion" as const,
+        titulo: v.tipo === "inicial" ? "Nutrición · visita inicial" : "Nutrición · seguimiento",
+        resumen: [v.peso != null && `Peso: ${v.peso} kg`, v.imc != null && `IMC: ${v.imc}`, v.glp1Activo && "GLP-1 activo"]
+          .filter(Boolean)
+          .join(" | ") || "Visita de nutrición",
+        programaId: programa.id,
+      }))
+    ),
   ].sort((a, b) => new Date(b.fecha).getTime() - new Date(a.fecha).getTime());
 
   return (
@@ -153,6 +168,15 @@ export default function PacienteDetalle() {
                 </div>
               </Link>
             </Button>
+            <Button variant="outline" className="w-full h-14 text-left justify-start gap-3" asChild>
+              <Link to={`/servicios/nutricion?pacienteId=${id}`}>
+                <Salad className="h-5 w-5" />
+                <div>
+                  <p className="font-medium">Nutrición</p>
+                  <p className="text-xs opacity-80">Seguimiento nutricional y GLP-1</p>
+                </div>
+              </Link>
+            </Button>
           </CardContent>
         </Card>
       </div>
@@ -177,7 +201,7 @@ export default function PacienteDetalle() {
               <CardTitle className="text-lg font-semibold">Historial de Visitas</CardTitle>
             </CardHeader>
             <CardContent>
-              {loadingDermo || loadingBio ? (
+              {loadingDermo || loadingBio || loadingNutricion ? (
                 <div className="flex items-center justify-center py-8">
                   <LoadingSpinner />
                 </div>
@@ -196,12 +220,14 @@ export default function PacienteDetalle() {
                       {/* Icon */}
                       <div className={`
                         relative z-10 flex h-10 w-10 items-center justify-center rounded-full
-                        ${visit.tipo === "dermo" ? "bg-primary text-primary-foreground" : "bg-secondary text-secondary-foreground"}
+                        ${visit.tipo === "dermo" ? "bg-primary text-primary-foreground" : visit.tipo === "bio" ? "bg-secondary text-secondary-foreground" : "bg-success text-white"}
                       `}>
                         {visit.tipo === "dermo" ? (
                           <Sparkles className="h-5 w-5" />
-                        ) : (
+                        ) : visit.tipo === "bio" ? (
                           <FlaskConical className="h-5 w-5" />
+                        ) : (
+                          <Salad className="h-5 w-5" />
                         )}
                       </div>
 
@@ -228,6 +254,8 @@ export default function PacienteDetalle() {
                           onClick={() => {
                             if (visit.tipo === "dermo") {
                               navigate(`/servicios/dermo?id=${visit.id}`);
+                            } else if (visit.tipo === "nutricion") {
+                              navigate(`/servicios/nutricion/visita?programaId=${visit.programaId}&id=${visit.id}`);
                             } else {
                               navigate(`/servicios/bio?id=${visit.id}`);
                             }

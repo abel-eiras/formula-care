@@ -290,3 +290,5 @@ export interface Usuario {
   ultimoAcceso?: string;
   createdAt?: string;
 }
+
+export * from "./nutricion";

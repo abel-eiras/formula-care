@@ -20,6 +20,9 @@ const ServicioDermo = lazy(() => import("./pages/ServicioDermo"));
 const ServicioDermoPrint = lazy(() => import("./pages/ServicioDermoPrint"));
 const ServicioBio = lazy(() => import("./pages/ServicioBio"));
 const ServicioBioPrint = lazy(() => import("./pages/ServicioBioPrint"));
+const ServicioNutricion = lazy(() => import("./pages/ServicioNutricion"));
+const VisitaNutricion = lazy(() => import("./pages/VisitaNutricion"));
+const ServicioNutricionPrint = lazy(() => import("./pages/ServicioNutricionPrint"));
 const Configuracion = lazy(() => import("./pages/Configuracion"));
 const Calendario = lazy(() => import("./pages/Calendario"));
 const Legal = lazy(() => import("./pages/Legal"));
@@ -82,6 +85,16 @@ const App = () => (
                 </ProtectedRoute>
               }
             />
+            <Route
+              path="/servicios/nutricion/print"
+              element={
+                <ProtectedRoute>
+                  <Suspense fallback={<LoadingSpinner />}>
+                    <ServicioNutricionPrint />
+                  </Suspense>
+                </ProtectedRoute>
+              }
+            />
             {/* Rutas protegidas con layout */}
             <Route
               path="/"
@@ -103,6 +116,8 @@ const App = () => (
               <Route path="calendario" element={<Calendario />} />
               <Route path="servicios/dermo" element={<ServicioDermo />} />
               <Route path="servicios/bio" element={<ServicioBio />} />
+              <Route path="servicios/nutricion" element={<ServicioNutricion />} />
+              <Route path="servicios/nutricion/visita" element={<VisitaNutricion />} />
               <Route path="configuracion" element={<Configuracion />} />
               <Route path="*" element={<NotFound />} />
             </Route>
