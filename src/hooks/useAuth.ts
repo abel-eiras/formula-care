@@ -1,13 +1,13 @@
 /**
  * Hook de autenticación
  * Gestiona login, logout y estado del usuario.
- * El token JWT viaja en una cookie HttpOnly gestionada por el servidor;
- * el frontend nunca accede al token directamente.
+ * El token de sesión lo guarda el cliente de la API (@/lib/api) y viaja en
+ * la cabecera Authorization (ver allí por qué no basta la cookie).
  */
 
 import { useState, useEffect, useCallback } from 'react';
 import { useQueryClient } from '@tanstack/react-query';
-import { api } from '@/lib/api';
+import { api, guardarTokenSesion } from '@/lib/api';
 
 // Tipos
 export interface Usuario {
@@ -18,6 +18,7 @@ export interface Usuario {
 }
 
 interface LoginResponse {
+  token: string;
   usuario: Usuario;
 }
 
@@ -74,7 +75,7 @@ export function useAuth() {
     try {
       const response = await api.post<LoginResponse>('/auth/login', { email, password });
 
-      // El token llega como cookie HttpOnly — el frontend solo guarda los datos públicos del usuario
+      guardarTokenSesion(response.token);
       sessionStorage.setItem(USER_KEY, JSON.stringify(response.usuario));
       setUsuario(response.usuario);
       setIsLoading(false);
@@ -99,6 +100,7 @@ export function useAuth() {
     try {
       const response = await api.post<LoginResponse>('/auth/setup-inicial', { email, password, nombre });
 
+      guardarTokenSesion(response.token);
       sessionStorage.setItem(USER_KEY, JSON.stringify(response.usuario));
       setUsuario(response.usuario);
       setIsLoading(false);
@@ -122,6 +124,7 @@ export function useAuth() {
       // Continuar aunque falle la petición
     }
 
+    guardarTokenSesion(null);
     sessionStorage.removeItem(USER_KEY);
     setUsuario(null);
     queryClient.clear();

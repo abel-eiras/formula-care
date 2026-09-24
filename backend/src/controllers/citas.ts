@@ -111,23 +111,21 @@ export async function crearCita(req: Request, res: Response) {
 
     const paciente = cita.paciente;
 
-    // Enviar email de confirmación si el paciente tiene email
+    // Email de confirmación en segundo plano: guardar la cita no espera al
+    // servidor de correo (sin conexión o sin correo configurado tardaría o fallaría)
     if (paciente?.email) {
-      try {
-        await enviarConfirmacionCita(paciente.email, {
-          citaId: cita.id,
-          tipo: cita.tipo,
-          fecha: cita.fecha,
-          hora: cita.hora,
-          nombreCliente: paciente.name,
-        });
-        console.log(`✅ Email de confirmación enviado a ${paciente.email}`);
-      } catch (emailError) {
-        // No fallar la creación de cita por error de email
-        console.error('⚠️  Error al enviar email de confirmación:', emailError);
-      }
-    } else {
-      console.log('ℹ️  Cita creada sin email (paciente sin email registrado)');
+      const email = paciente.email;
+      enviarConfirmacionCita(email, {
+        citaId: cita.id,
+        tipo: cita.tipo,
+        fecha: cita.fecha,
+        hora: cita.hora,
+        nombreCliente: paciente.name,
+      })
+        .then((enviado) =>
+          console.log(enviado ? `✅ Email de confirmación enviado a ${email}` : `⚠️  No se pudo enviar la confirmación a ${email}`)
+        )
+        .catch((err) => console.error('⚠️  Error al enviar email de confirmación:', err));
     }
 
     res.status(201).json(cita);
