@@ -8,6 +8,7 @@ import { aplanarMedicion } from '../services/medicionService.js';
 import { normalizarBusqueda, textoBusquedaPaciente } from '../lib/textoBusqueda.js';
 import { fechaHaceAnios, hoyISO } from '../lib/fechas.js';
 import { obtenerUltimasVisitas } from '../services/ultimaVisitaService.js';
+import { constanciaConsentimiento } from '../services/rgpdService.js';
 
 /** El texto de búsqueda es un detalle interno: no se envía al cliente */
 function serializarPaciente<T extends Pick<Paciente, 'textoBusqueda'>>({ textoBusqueda: _texto, ...paciente }: T) {
@@ -31,8 +32,11 @@ const crearPacienteSchema = z.object({
   notes: z.string().optional(),
 });
 
-// Esquema de validación para actualizar paciente
+// Esquema de validación para actualizar paciente (el consentimiento tiene su propia ruta)
 const actualizarPacienteSchema = crearPacienteSchema.partial();
+
+/** Al crear: si el paciente ha dado su consentimiento, se deja constancia (fecha y versión) */
+const crearConConsentimientoSchema = crearPacienteSchema.extend({ consentimiento: z.boolean().optional() });
 
 /**
  * Obtener todos los pacientes con búsqueda y filtros avanzados.
@@ -199,14 +203,16 @@ export async function obtenerMedicionesPaciente(req: Request, res: Response) {
  */
 export async function crearPaciente(req: Request, res: Response) {
   try {
-    const datos = crearPacienteSchema.parse(req.body);
+    const { consentimiento, ...datos } = crearConConsentimientoSchema.parse(req.body);
     const email = datos.email || null;
+    const constancia = consentimiento ? await constanciaConsentimiento() : {};
 
     const paciente = await prisma.paciente.create({
       data: {
         ...datos,
         email,
         textoBusqueda: textoBusquedaPaciente({ ...datos, email }),
+        ...constancia,
       },
     });
 

@@ -18,7 +18,9 @@ import {
   Salad
 } from "lucide-react";
 import { Link, useParams, useNavigate } from "react-router-dom";
-import { usePacientes } from "@/hooks/usePacientes";
+import { usePaciente } from "@/hooks/usePacientes";
+import { ProteccionDatosPaciente } from "@/components/patient/ProteccionDatosPaciente";
+import { parsearFecha } from "@/lib/fechas";
 import { useAnalisisDermoPorPaciente } from "@/hooks/useAnalisisDermo";
 import { useAnalisisBioPorPaciente } from "@/hooks/useAnalisisBio";
 import { useProgramasNutricion } from "@/hooks/useNutricion";
@@ -34,12 +36,11 @@ const getInitials = (name: string) => {
 export default function PacienteDetalle() {
   const { id } = useParams();
   const navigate = useNavigate();
-  const { data: pacientes = [] } = usePacientes();
+  // Solo este paciente (antes se descargaba la lista completa para buscarlo)
+  const { data: paciente } = usePaciente(id ?? "");
   const { data: analisisDermo = [], isLoading: loadingDermo } = useAnalisisDermoPorPaciente(id);
   const { data: analisisBio = [], isLoading: loadingBio } = useAnalisisBioPorPaciente(id);
   const { data: programasNutricion = [], isLoading: loadingNutricion } = useProgramasNutricion(id);
-
-  const paciente = pacientes.find((p) => p.id === id);
 
   if (!paciente) {
     return (
@@ -125,7 +126,7 @@ export default function PacienteDetalle() {
                   {paciente.birthDate && (
                     <div className="flex items-center gap-2 text-muted-foreground">
                       <Calendar className="h-4 w-4" />
-                      <span>Nacimiento: {new Date(paciente.birthDate).toLocaleDateString("es-ES")}</span>
+                      <span>Nacimiento: {parsearFecha(paciente.birthDate).toLocaleDateString("es-ES")}</span>
                     </div>
                   )}
                   {paciente.address && (
@@ -147,40 +148,43 @@ export default function PacienteDetalle() {
         </Card>
 
         {/* Quick Actions */}
-        <Card className="lg:w-80 shadow-sm border-border/50">
-          <CardHeader className="pb-4">
-            <CardTitle className="text-lg font-semibold">Nuevo Análisis</CardTitle>
-          </CardHeader>
-          <CardContent className="space-y-3">
-            <Button className="w-full h-14 text-left justify-start gap-3" asChild>
-              <Link to={`/servicios/dermo?pacienteId=${id}`}>
-                <Sparkles className="h-5 w-5" />
-                <div>
-                  <p className="font-medium">Análisis Dermo</p>
-                  <p className="text-xs opacity-80">Evaluación de piel</p>
-                </div>
-              </Link>
-            </Button>
-            <Button variant="secondary" className="w-full h-14 text-left justify-start gap-3" asChild>
-              <Link to={`/servicios/bio?pacienteId=${id}`}>
-                <FlaskConical className="h-5 w-5" />
-                <div>
-                  <p className="font-medium">Análisis Bio</p>
-                  <p className="text-xs opacity-80">Parámetros de salud</p>
-                </div>
-              </Link>
-            </Button>
-            <Button variant="outline" className="w-full h-14 text-left justify-start gap-3" asChild>
-              <Link to={`/servicios/nutricion?pacienteId=${id}`}>
-                <Salad className="h-5 w-5" />
-                <div>
-                  <p className="font-medium">Nutrición</p>
-                  <p className="text-xs opacity-80">Seguimiento nutricional y GLP-1</p>
-                </div>
-              </Link>
-            </Button>
-          </CardContent>
-        </Card>
+        <div className="lg:w-80 space-y-6">
+          <Card className="shadow-sm border-border/50">
+            <CardHeader className="pb-4">
+              <CardTitle className="text-lg font-semibold">Nuevo Análisis</CardTitle>
+            </CardHeader>
+            <CardContent className="space-y-3">
+              <Button className="w-full h-14 text-left justify-start gap-3" asChild>
+                <Link to={`/servicios/dermo?pacienteId=${id}`}>
+                  <Sparkles className="h-5 w-5" />
+                  <div>
+                    <p className="font-medium">Análisis Dermo</p>
+                    <p className="text-xs opacity-80">Evaluación de piel</p>
+                  </div>
+                </Link>
+              </Button>
+              <Button variant="secondary" className="w-full h-14 text-left justify-start gap-3" asChild>
+                <Link to={`/servicios/bio?pacienteId=${id}`}>
+                  <FlaskConical className="h-5 w-5" />
+                  <div>
+                    <p className="font-medium">Análisis Bio</p>
+                    <p className="text-xs opacity-80">Parámetros de salud</p>
+                  </div>
+                </Link>
+              </Button>
+              <Button variant="outline" className="w-full h-14 text-left justify-start gap-3" asChild>
+                <Link to={`/servicios/nutricion?pacienteId=${id}`}>
+                  <Salad className="h-5 w-5" />
+                  <div>
+                    <p className="font-medium">Nutrición</p>
+                    <p className="text-xs opacity-80">Seguimiento nutricional y GLP-1</p>
+                  </div>
+                </Link>
+              </Button>
+            </CardContent>
+          </Card>
+          <ProteccionDatosPaciente paciente={paciente} />
+        </div>
       </div>
 
       {/* Tabs: Historial y Evolución */}

@@ -206,7 +206,10 @@ export interface Paciente {
   notes?: string;
   /** Último servicio (Dermo, Bio o Nutrición); lo calcula el servidor en listados */
   ultimaVisita?: UltimaVisita | null;
-  origen?: 'manual' | 'autoregistro'; // "manual" = registrado por farmacia, "autoregistro" = formulario público
+  origen?: 'manual' | 'autoregistro'; // "manual" = registrado por farmacia, "autoregistro" = reserva online
+  /** Constancia del consentimiento (RGPD) */
+  consentimientoFecha?: string | null;
+  consentimientoVersion?: string | null;
   createdAt?: string;
   updatedAt?: string;
   // Relaciones: presentes solo en el detalle (GET /pacientes/:id), no en el listado
