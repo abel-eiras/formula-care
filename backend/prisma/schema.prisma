@@ -35,16 +35,19 @@ model Usuario {
 // ==========================================
 // MODELO DE PACIENTE
 // ==========================================
-// NOTA: Los campos name, phone y email están ENCRIPTADOS con AES-256-GCM
-// Para búsquedas por email usar emailHash (SHA-256)
+// App local de una sola farmacia: los datos se guardan en claro. La
+// protección del fichero corresponde al equipo (cifrado de disco del sistema)
+// y a las copias de seguridad, que pueden cifrarse con contraseña.
 model Paciente {
   id          String   @id @default(cuid())
-  name        String   // ENCRIPTADO: nombre del paciente
+  name        String
   age         Int
-  sex         String   // "M", "F", "O"
-  phone       String   // ENCRIPTADO: teléfono del paciente
-  email       String?  // ENCRIPTADO: email del paciente
-  emailHash   String?  // SHA-256 del email (para búsquedas exactas)
+  sex         String   // "M" (masculino), "F" (femenino), "O" (otro)
+  phone       String
+  email       String?
+  // Nombre, teléfono y email normalizados (minúsculas, sin tildes) para buscar
+  // desde la base de datos sin distinguir mayúsculas ni acentos
+  textoBusqueda String @default("")
   birthDate   String?  // Fecha en formato ISO
   address     String?
   notes       String?
@@ -57,11 +60,51 @@ model Paciente {
   analisisDermo AnalisisDermo[]
   analisisBio   AnalisisBio[]
   programasNutricion ProgramaNutricion[]
+  mediciones    Medicion[]
   citas         Cita[]
   notificaciones Notificacion[]
 
-  @@index([emailHash])
   @@index([origen])
+}
+
+// ==========================================
+// MEDICIONES (tabla única para todos los servicios)
+// ==========================================
+// Todas las medidas corporales y constantes del paciente (peso, perímetros,
+// bioimpedancia, tensión...) viven aquí, vengan del servicio que vengan, para
+// tener un único historial por paciente. Cada medición puede estar ligada al
+// registro que la originó (análisis Bio o visita de nutrición): si ese
+// registro se borra, su medición se borra con él.
+model Medicion {
+  id                String   @id @default(cuid())
+  pacienteId        String
+  fecha             String   // YYYY-MM-DD
+  origen            String   // "bio", "nutricion"
+  analisisBioId     String?  @unique
+  visitaNutricionId String?  @unique
+  // Antropometría
+  peso              Float?   // kg
+  altura            Float?   // cm
+  cintura           Float?   // cm (perímetro abdominal)
+  cadera            Float?   // cm
+  imc               Float?   // Calculado en el servidor
+  icc               Float?   // Índice cintura-cadera, calculado en el servidor
+  // Bioimpedancia
+  porcentajeGrasa   Float?
+  masaGrasa         Float?   // kg
+  masaMagra         Float?   // kg (masa libre de grasa)
+  // Constantes
+  systolic          Int?     // mmHg
+  diastolic         Int?     // mmHg
+  pulsaciones       Int?     // lpm
+  createdAt         DateTime @default(now())
+  updatedAt         DateTime @updatedAt
+
+  paciente        Paciente         @relation(fields: [pacienteId], references: [id], onDelete: Cascade)
+  analisisBio     AnalisisBio?     @relation(fields: [analisisBioId], references: [id], onDelete: Cascade)
+  visitaNutricion VisitaNutricion? @relation(fields: [visitaNutricionId], references: [id], onDelete: Cascade)
+
+  @@index([pacienteId, fecha])
 }
 
 // ==========================================
@@ -132,23 +175,16 @@ model AnalisisBio {
   proteinaCReactiva     Float?   // PCR
   vitaminaD             Float?
   ferritina             Float?
-  // Tensión arterial y pulsaciones
-  systolic              Int?
-  diastolic             Int?
-  pulsaciones           Int?
-  // Medidas corporales
-  weight                Float?
-  height                Float?
-  perimetroAbdominal    Float?   // Perímetro abdominal en cm
-  imc                   Float?   // Calculado automáticamente
+  // Las medidas corporales y la tensión se guardan en Medicion
   // Observaciones y recomendaciones
   observaciones         String?
   recomendaciones       String?
   createdAt             DateTime @default(now())
   updatedAt             DateTime @updatedAt
 
-  // Relación
-  paciente Paciente @relation(fields: [pacienteId], references: [id], onDelete: Cascade)
+  // Relaciones
+  paciente Paciente  @relation(fields: [pacienteId], references: [id], onDelete: Cascade)
+  medicion Medicion?
 
   @@index([pacienteId])
   @@index([fecha])
@@ -240,18 +276,7 @@ model VisitaNutricion {
   ejercicioDiasSemana   Int?
   ejercicioMinutosSesion Int?
   ejercicioDetalle      String?
-  // Antropometría, bioimpedancia y tensión
-  peso                  Float?   // kg
-  altura                Float?   // cm
-  cintura               Float?   // cm
-  cadera                Float?   // cm
-  imc                   Float?   // Calculado en el servidor
-  icc                   Float?   // Índice cintura-cadera, calculado en el servidor
-  porcentajeGrasa       Float?
-  masaGrasa             Float?   // kg
-  masaMagra             Float?   // kg (masa libre de grasa)
-  systolic              Int?
-  diastolic             Int?
+  // Antropometría, bioimpedancia y tensión: en Medicion
   // Valoración profesional
   dificultades          String?
   observaciones         String?
@@ -263,6 +288,7 @@ model VisitaNutricion {
   updatedAt             DateTime @updatedAt
 
   programa ProgramaNutricion @relation(fields: [programaId], references: [id], onDelete: Cascade)
+  medicion Medicion?
 
   @@index([programaId, fecha])
 }

@@ -1,6 +1,6 @@
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { api } from '@/lib/api';
-import type { Paciente } from '@/types';
+import type { Medicion, Paciente } from '@/types';
 import type { FiltrosPacientes } from '@/components/pacientes/FiltrosAvanzados';
 
 /**
@@ -79,5 +79,17 @@ export function useActualizarPaciente() {
       queryClient.invalidateQueries({ queryKey: ['pacientes'] });
       queryClient.invalidateQueries({ queryKey: ['paciente', variables.id] });
     },
+  });
+}
+
+/**
+ * Historial único de mediciones del paciente (peso, perímetros, bioimpedancia,
+ * tensión...), venga del servicio que venga
+ */
+export function useMedicionesPaciente(pacienteId: string | undefined) {
+  return useQuery({
+    queryKey: ['mediciones', pacienteId],
+    queryFn: () => api.get<Medicion[]>(`/pacientes/${pacienteId}/mediciones`),
+    enabled: !!pacienteId,
   });
 }

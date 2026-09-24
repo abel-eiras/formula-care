@@ -50,7 +50,12 @@ export function useVisitaNutricion(id: string | undefined) {
  */
 function useInvalidarNutricion() {
   const queryClient = useQueryClient();
-  return () => queryClient.invalidateQueries({ queryKey: [CLAVE] });
+  return () =>
+    Promise.all([
+      queryClient.invalidateQueries({ queryKey: [CLAVE] }),
+      // Las medidas de las visitas viven en el historial único de mediciones
+      queryClient.invalidateQueries({ queryKey: ["mediciones"] }),
+    ]);
 }
 
 export function useCrearProgramaNutricion() {

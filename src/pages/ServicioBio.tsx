@@ -36,9 +36,9 @@ const PARAMETROS_DEFAULT: ParametroBioConfig[] = [
   { id: "vitaminaD", label: "Vitamina D", unit: "ng/mL", grupo: "avanzados", activo: true, orden: 7 },
   { id: "ferritina", label: "Ferritina", unit: "ng/mL", grupo: "avanzados", activo: true, orden: 8 },
   // Medidas corporales
-  { id: "weight", label: "Peso", unit: "kg", grupo: "corporales", activo: true, orden: 1 },
-  { id: "height", label: "Altura", unit: "cm", grupo: "corporales", activo: true, orden: 2 },
-  { id: "perimetroAbdominal", label: "Perímetro Abdominal", unit: "cm", grupo: "corporales", activo: true, orden: 3 },
+  { id: "peso", label: "Peso", unit: "kg", grupo: "corporales", activo: true, orden: 1 },
+  { id: "altura", label: "Altura", unit: "cm", grupo: "corporales", activo: true, orden: 2 },
+  { id: "cintura", label: "Perímetro Abdominal", unit: "cm", grupo: "corporales", activo: true, orden: 3 },
   { id: "imc", label: "IMC", unit: "kg/m²", grupo: "corporales", activo: true, orden: 4 },
 ];
 
@@ -171,8 +171,9 @@ export default function ServicioBio() {
     diastolic: "",
     pulsaciones: "",
     // Medidas corporales
-    weight: "",
-    height: "",
+    peso: "",
+    altura: "",
+    cintura: "",
     // Observaciones y recomendaciones
     observaciones: "",
     recomendaciones: "",
@@ -184,7 +185,7 @@ export default function ServicioBio() {
       setPacienteId(analisisExistente.pacienteId);
       setFormData({
         fecha: analisisExistente.fecha.split("T")[0] || new Date().toISOString().split("T")[0],
-        glucemia: analisisExistente.glucemia?.toString() || analisisExistente.glucose?.toString() || "",
+        glucemia: analisisExistente.glucemia?.toString() || "",
         cholesterol: analisisExistente.cholesterol?.toString() || "",
         cholesterolHDL: analisisExistente.cholesterolHDL?.toString() || "",
         cholesterolLDL: analisisExistente.cholesterolLDL?.toString() || "",
@@ -196,8 +197,9 @@ export default function ServicioBio() {
         systolic: analisisExistente.systolic?.toString() || "",
         diastolic: analisisExistente.diastolic?.toString() || "",
         pulsaciones: analisisExistente.pulsaciones?.toString() || "",
-        weight: analisisExistente.weight?.toString() || "",
-        height: analisisExistente.height?.toString() || "",
+        peso: analisisExistente.peso?.toString() || "",
+        altura: analisisExistente.altura?.toString() || "",
+        cintura: analisisExistente.cintura?.toString() || "",
         observaciones: analisisExistente.observaciones || "",
         recomendaciones: analisisExistente.recomendaciones || "",
       });
@@ -232,12 +234,12 @@ export default function ServicioBio() {
 
   // Calcular IMC
   const imc = useMemo(() => {
-    const weight = parseFloat(formData.weight);
-    const height = parseFloat(formData.height);
-    if (!weight || !height || height === 0) return null;
-    const heightM = height / 100;
-    return Number((weight / (heightM * heightM)).toFixed(1));
-  }, [formData.weight, formData.height]);
+    const peso = parseFloat(formData.peso);
+    const altura = parseFloat(formData.altura);
+    if (!peso || !altura) return null;
+    const alturaM = altura / 100;
+    return Number((peso / (alturaM * alturaM)).toFixed(1));
+  }, [formData.peso, formData.altura]);
 
   // Evaluar IMC si está activa la valoración
   const estadoIMC = useMemo(() => {
@@ -256,7 +258,11 @@ export default function ServicioBio() {
     }
 
     try {
-      const datosAnalisis: Omit<AnalisisBio, "id" | "createdAt" | "updatedAt" | "paciente" | "imc"> = {
+      // Medidas y tensión van a la tabla única de mediciones: vacío = null para
+      // que al editar se pueda borrar un valor
+      const medida = (valor: string, entero = false) =>
+        valor ? (entero ? parseInt(valor) : parseFloat(valor)) : null;
+      const datosAnalisis: Omit<AnalisisBio, "id" | "createdAt" | "updatedAt" | "paciente" | "imc" | "icc"> = {
         pacienteId,
         fecha: new Date(formData.fecha).toISOString(),
         glucemia: formData.glucemia ? parseFloat(formData.glucemia) : undefined,
@@ -268,11 +274,12 @@ export default function ServicioBio() {
         proteinaCReactiva: formData.proteinaCReactiva ? parseFloat(formData.proteinaCReactiva) : undefined,
         vitaminaD: formData.vitaminaD ? parseFloat(formData.vitaminaD) : undefined,
         ferritina: formData.ferritina ? parseFloat(formData.ferritina) : undefined,
-        systolic: formData.systolic ? parseInt(formData.systolic) : undefined,
-        diastolic: formData.diastolic ? parseInt(formData.diastolic) : undefined,
-        pulsaciones: formData.pulsaciones ? parseInt(formData.pulsaciones) : undefined,
-        weight: formData.weight ? parseFloat(formData.weight) : undefined,
-        height: formData.height ? parseFloat(formData.height) : undefined,
+        systolic: medida(formData.systolic, true),
+        diastolic: medida(formData.diastolic, true),
+        pulsaciones: medida(formData.pulsaciones, true),
+        peso: medida(formData.peso),
+        altura: medida(formData.altura),
+        cintura: medida(formData.cintura),
         observaciones: formData.observaciones || undefined,
         recomendaciones: formData.recomendaciones || undefined,
       };
@@ -513,28 +520,41 @@ export default function ServicioBio() {
             <CardContent className="pt-6">
               <h3 className="text-lg font-semibold mb-4 text-success">Medidas Corporales</h3>
               <div className="space-y-4">
-                <div className="grid grid-cols-2 gap-4">
+                <div className="grid grid-cols-3 gap-4">
                   <div className="space-y-2">
-                    <Label htmlFor="weight">Peso (kg)</Label>
+                    <Label htmlFor="peso">Peso (kg)</Label>
                     <Input
-                      id="weight"
+                      id="peso"
                       type="number"
                       step="0.1"
                       placeholder="Ej: 70"
-                      value={formData.weight}
-                      onChange={(e) => handleChange("weight", e.target.value)}
+                      value={formData.peso}
+                      onChange={(e) => handleChange("peso", e.target.value)}
                     />
                   </div>
                   <div className="space-y-2">
-                    <Label htmlFor="height">Altura (cm)</Label>
+                    <Label htmlFor="altura">Altura (cm)</Label>
                     <Input
-                      id="height"
+                      id="altura"
                       type="number"
                       placeholder="Ej: 170"
-                      value={formData.height}
-                      onChange={(e) => handleChange("height", e.target.value)}
+                      value={formData.altura}
+                      onChange={(e) => handleChange("altura", e.target.value)}
                     />
                   </div>
+                  {isParametroActivo("cintura") && (
+                    <div className="space-y-2">
+                      <Label htmlFor="cintura">Perímetro abdominal (cm)</Label>
+                      <Input
+                        id="cintura"
+                        type="number"
+                        step="0.5"
+                        placeholder="Ej: 90"
+                        value={formData.cintura}
+                        onChange={(e) => handleChange("cintura", e.target.value)}
+                      />
+                    </div>
+                  )}
                 </div>
                 {imc !== null && (
                   <div className="pt-4 border-t">

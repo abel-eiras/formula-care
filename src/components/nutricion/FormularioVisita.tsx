@@ -117,6 +117,7 @@ function estadoInicial(visita: VisitaNutricion | undefined, previa: VisitaNutric
     masaMagra: deNumero(visita?.masaMagra),
     systolic: deNumero(visita?.systolic),
     diastolic: deNumero(visita?.diastolic),
+    pulsaciones: deNumero(visita?.pulsaciones),
     dificultades: visita?.dificultades ?? "",
     observaciones: visita?.observaciones ?? "",
     objetivosProximaSesion: visita?.objetivosProximaSesion ?? "",
@@ -173,6 +174,7 @@ function aDatosVisita(form: EstadoFormulario, programaId: string): DatosVisita {
     masaMagra: aNumero(form.masaMagra),
     systolic: aEntero(form.systolic),
     diastolic: aEntero(form.diastolic),
+    pulsaciones: aEntero(form.pulsaciones),
     dificultades: aTexto(form.dificultades),
     observaciones: aTexto(form.observaciones),
     objetivosProximaSesion: aTexto(form.objetivosProximaSesion),
@@ -500,6 +502,7 @@ export function FormularioVisita({ programa, visita, sexoPaciente, nombrePacient
             <div className="grid grid-cols-2 md:grid-cols-4 gap-4 items-end">
               <CampoNumero id="systolic" label="TA sistólica" unidad="mmHg" step="1" value={form.systolic} onChange={(v) => cambiar("systolic", v)} />
               <CampoNumero id="diastolic" label="TA diastólica" unidad="mmHg" step="1" value={form.diastolic} onChange={(v) => cambiar("diastolic", v)} />
+              <CampoNumero id="pulsaciones" label="Pulsaciones" unidad="lpm" step="1" value={form.pulsaciones} onChange={(v) => cambiar("pulsaciones", v)} />
               {tas != null && tad != null && (
                 <div className="pb-2">
                   <BadgeClasificacion clasificacion={clasificarTension(tas, tad)} />

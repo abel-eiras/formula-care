@@ -171,7 +171,7 @@ Esto compila el frontend, empaqueta el backend (Node + Prisma) como recurso de l
 
 Para generar las tres a la vez sin tener las tres máquinas, usa el workflow de GitHub Actions [`desktop-release.yml`](.github/workflows/desktop-release.yml): dispáralo a mano desde la pestaña *Actions* (deja los instaladores como artefactos del run) o haz push de un tag `v*` (crea además un borrador de release en GitHub con los instaladores adjuntos — publícalo manualmente desde la pestaña *Releases* cuando quieras que sea público).
 
-En el primer arranque de un paquete instalado, la app genera automáticamente un `JWT_SECRET`/clave de cifrado aleatorios y una base de datos SQLite propia en el directorio de datos del usuario del sistema operativo, y aplica las migraciones pendientes en cada arranque (también en actualizaciones futuras) — no hace falta configurar ni migrar nada a mano.
+En el primer arranque de un paquete instalado, la app genera automáticamente un `JWT_SECRET` aleatorio y una base de datos SQLite propia en el directorio de datos del usuario del sistema operativo, y aplica las migraciones pendientes en cada arranque (también en actualizaciones futuras) — no hace falta configurar ni migrar nada a mano.
 
 ---
 
@@ -269,6 +269,10 @@ Para más detalles, ver [context/guias/ESTRUCTURA_PROYECTO.md](context/guias/EST
 - Registro de alimentación transcrito por el farmacéutico, con análisis de picoteo, hambre, saciedad y malestar
 - Sugerencias basadas en reglas explicables (cada una indica el dato que la dispara) para que el farmacéutico decida qué recomendar
 - Informe de visita imprimible y hoja de registro en blanco para el paciente, con la marca de la farmacia
+
+### Historial único de medidas
+- Peso, perímetros, bioimpedancia, tensión y pulsaciones de todos los servicios en una sola tabla por paciente
+- Gráficas de evolución conjuntas en la ficha del paciente
 
 ### Calendario
 - Vista mensual de citas

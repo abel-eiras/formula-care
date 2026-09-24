@@ -74,8 +74,9 @@ backend/
 
 ### Pacientes
 
-- `GET /api/pacientes` - Listar todos los pacientes
+- `GET /api/pacientes` - Listar pacientes (`busqueda` sin distinguir mayúsculas ni tildes, `limit` opcional)
 - `GET /api/pacientes/:id` - Obtener un paciente
+- `GET /api/pacientes/:id/mediciones` - Historial único de medidas y constantes (todos los servicios)
 - `POST /api/pacientes` - Crear paciente
 - `PUT /api/pacientes/:id` - Actualizar paciente
 - `DELETE /api/pacientes/:id` - Eliminar paciente
@@ -94,6 +95,11 @@ backend/
 - `GET /api/servicios/dermo/:id` - Obtener análisis dermo
 - `POST /api/servicios/bio` - Crear análisis bioquímico
 - `GET /api/servicios/bio/:id` - Obtener análisis bio
+
+Las medidas corporales y constantes (peso, altura, cintura, cadera,
+bioimpedancia, tensión, pulsaciones) de Bio y Nutrición se envían y
+devuelven como campos planos de cada registro, pero se guardan en una única
+tabla `Medicion` por paciente. IMC e ICC se calculan en el servidor.
 
 ### Nutrición (seguimiento con GLP-1 opcional)
 

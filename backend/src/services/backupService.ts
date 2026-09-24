@@ -1,9 +1,9 @@
 /**
  * Copias de seguridad: genera, lista, borra e importa copias que incluyen
- * la base de datos completa (datos + configuración) y, si la copia está
- * cifrada, la clave de cifrado de campo de esta instalación (ENCRYPTION_KEY)
- * — así una copia sigue protegiendo los datos de pacientes incluso sin
- * cifrado propio, y es restaurable en un equipo distinto al que la generó.
+ * la base de datos completa (datos + configuración). Los datos de pacientes
+ * se guardan en claro en la base de datos local, así que la copia es
+ * restaurable en cualquier equipo; para protegerla fuera del equipo, el
+ * usuario puede cifrarla con contraseña.
  *
  * Formato del fichero (.fcbackup): [manifest JSON][.db] empaquetados con un
  * contenedor de longitud-prefijada y comprimidos con gzip. Si el usuario
@@ -53,10 +53,6 @@ function getBackupsDir(): string {
   const dir = path.join(getDataDir(), 'backups');
   fs.mkdirSync(dir, { recursive: true });
   return dir;
-}
-
-function getSecretsPath(): string {
-  return path.join(getDataDir(), 'secrets.json');
 }
 
 function deriveKey(password: string, salt: Buffer): Buffer {
@@ -153,7 +149,6 @@ export async function crearBackup(): Promise<BackupInfo> {
     const manifest = {
       formatVersion: 1,
       createdAt: new Date().toISOString(),
-      encryptionKey: process.env.ENCRYPTION_KEY || null,
     };
 
     const packed = pack(manifest, dbBytes);
@@ -263,8 +258,7 @@ export async function importarBackup(filePath: string, password?: string): Promi
     throw new BackupError('El fichero no es una copia de seguridad de Formula Care válida');
   }
 
-  const { manifest, dbBytes } = unpack(packed);
-  const encryptionKey = typeof manifest.encryptionKey === 'string' ? manifest.encryptionKey : null;
+  const { dbBytes } = unpack(packed);
 
   // Copia de seguridad de la BD actual antes de tocar nada, por si hay que deshacer.
   const safetyPath = path.join(
@@ -282,18 +276,6 @@ export async function importarBackup(filePath: string, password?: string): Promi
   // El modo WAL puede dejar ficheros -wal/-shm del estado anterior; el snapshot restaurado no los necesita.
   fs.rmSync(`${dbPath}-wal`, { force: true });
   fs.rmSync(`${dbPath}-shm`, { force: true });
-
-  if (encryptionKey) {
-    const secretsPath = getSecretsPath();
-    if (fs.existsSync(secretsPath)) {
-      const secrets = JSON.parse(fs.readFileSync(secretsPath, 'utf8'));
-      secrets.encryption_key = encryptionKey;
-      fs.writeFileSync(secretsPath, JSON.stringify(secrets, null, 2));
-    }
-    // En desarrollo no hay secrets.json (backend/.env define ENCRYPTION_KEY directamente);
-    // restaurar ahí solo tiene sentido en la app empaquetada, donde el reinicio del sidecar
-    // vuelve a leer secrets.json.
-  }
 }
 
 /**

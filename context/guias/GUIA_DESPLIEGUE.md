@@ -43,7 +43,7 @@ No requiere ningún secreto adicional: usa el `GITHUB_TOKEN` que Actions inyecta
 
 ## Qué pasa en el primer arranque de un paquete instalado
 
-1. Tauri (Rust, `src-tauri/src/lib.rs`) genera un `JWT_SECRET` y una `ENCRYPTION_KEY` aleatorios y los guarda en `secrets.json`, en el directorio de datos del usuario del sistema operativo (p. ej. `~/.local/share/com.abeleiras.formulacare/` en Linux).
+1. Tauri (Rust, `src-tauri/src/lib.rs`) genera un `JWT_SECRET` aleatorio y lo guarda en `secrets.json`, en el directorio de datos del usuario del sistema operativo (p. ej. `~/.local/share/com.abeleiras.formulacare/` en Linux).
 2. Copia la base de datos plantilla (`desktop-template.db`, empaquetada como recurso) a ese mismo directorio como `formula-care.db`, si no existe ya una.
 3. Aplica las migraciones de Prisma pendientes contra esa base de datos (`prisma migrate deploy`, usando el CLI ya empaquetado en `backend/node_modules` — no hace falta Node ni Prisma instalados en el sistema). En una instalación recién creada esto no hace nada (la plantilla ya está al día); en una actualización, pone al día el esquema sin tocar los datos existentes. Si falla, se registra en `migrate-error.log` (mismo directorio) y la app intenta arrancar igualmente.
 4. Lanza el backend (Node, empaquetado como recurso junto a `node_modules`) apuntando a esa base de datos, en un puerto local fijo.

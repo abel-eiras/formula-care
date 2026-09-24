@@ -6,7 +6,6 @@
 import nodemailer from 'nodemailer';
 import { Resend } from 'resend';
 import { prisma } from '../lib/prisma.js';
-import { decrypt } from './encryptionService.js';
 
 // ==========================================
 // TIPOS
@@ -93,10 +92,7 @@ async function obtenerConfigEmail(): Promise<ConfigEmail> {
     smtpSecure: config?.smtpSecure ?? process.env.SMTP_SECURE === 'true',
     smtpAcceptSelfSigned: config?.smtpAcceptSelfSigned ?? false,
     smtpUser: config?.smtpUser ?? process.env.SMTP_USER ?? undefined,
-    smtpPass: (() => {
-      const raw = config?.smtpPass ?? process.env.SMTP_PASS ?? undefined;
-      return raw ? decrypt(raw) : undefined;
-    })(),
+    smtpPass: config?.smtpPass ?? process.env.SMTP_PASS ?? undefined,
   };
 }
 

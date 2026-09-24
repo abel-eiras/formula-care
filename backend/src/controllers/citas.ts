@@ -3,7 +3,6 @@ import { prisma } from '../lib/prisma.js';
 import { z } from 'zod';
 import { getQueryString, getParamString } from '../lib/queryHelpers.js';
 import { enviarConfirmacionCita, enviarModificacionCita } from '../services/emailService.js';
-import { decryptPacienteData } from '../services/encryptionService.js';
 
 // Esquema de validación para crear cita
 const crearCitaSchema = z.object({
@@ -45,13 +44,7 @@ export async function obtenerCitas(req: Request, res: Response) {
       ],
     });
 
-    // Desencriptar datos del paciente en cada cita
-    const citasDesencriptadas = citas.map(cita => ({
-      ...cita,
-      paciente: cita.paciente ? decryptPacienteData(cita.paciente) : null,
-    }));
-
-    res.json(citasDesencriptadas);
+    res.json(citas);
   } catch (error) {
     console.error('Error al obtener citas:', error);
     res.status(500).json({ error: 'Error al obtener citas' });
@@ -76,13 +69,7 @@ export async function obtenerCita(req: Request, res: Response) {
       return res.status(404).json({ error: 'Cita no encontrada' });
     }
 
-    // Desencriptar datos del paciente
-    const citaDesencriptada = {
-      ...cita,
-      paciente: cita.paciente ? decryptPacienteData(cita.paciente) : null,
-    };
-
-    res.json(citaDesencriptada);
+    res.json(cita);
   } catch (error) {
     console.error('Error al obtener cita:', error);
     res.status(500).json({ error: 'Error al obtener cita' });
@@ -97,11 +84,12 @@ export async function crearCita(req: Request, res: Response) {
     const datos = crearCitaSchema.parse(req.body);
 
     // Verificar que el paciente existe
-    const paciente = await prisma.paciente.findUnique({
+    const pacienteExistente = await prisma.paciente.findUnique({
       where: { id: datos.pacienteId },
+      select: { id: true },
     });
 
-    if (!paciente) {
+    if (!pacienteExistente) {
       return res.status(404).json({ error: 'Paciente no encontrado' });
     }
 
@@ -121,20 +109,19 @@ export async function crearCita(req: Request, res: Response) {
       },
     });
 
-    // Desencriptar datos del paciente para respuesta y email
-    const pacienteDesencriptado = cita.paciente ? decryptPacienteData(cita.paciente) : null;
+    const paciente = cita.paciente;
 
     // Enviar email de confirmación si el paciente tiene email
-    if (pacienteDesencriptado?.email) {
+    if (paciente?.email) {
       try {
-        await enviarConfirmacionCita(pacienteDesencriptado.email, {
+        await enviarConfirmacionCita(paciente.email, {
           citaId: cita.id,
           tipo: cita.tipo,
           fecha: cita.fecha,
           hora: cita.hora,
-          nombreCliente: pacienteDesencriptado.name,
+          nombreCliente: paciente.name,
         });
-        console.log(`✅ Email de confirmación enviado a ${pacienteDesencriptado.email}`);
+        console.log(`✅ Email de confirmación enviado a ${paciente.email}`);
       } catch (emailError) {
         // No fallar la creación de cita por error de email
         console.error('⚠️  Error al enviar email de confirmación:', emailError);
@@ -143,11 +130,7 @@ export async function crearCita(req: Request, res: Response) {
       console.log('ℹ️  Cita creada sin email (paciente sin email registrado)');
     }
 
-    // Devolver cita con paciente desencriptado
-    res.status(201).json({
-      ...cita,
-      paciente: pacienteDesencriptado,
-    });
+    res.status(201).json(cita);
   } catch (error) {
     if (error instanceof z.ZodError) {
       return res.status(400).json({
@@ -214,28 +197,22 @@ export async function actualizarCita(req: Request, res: Response) {
       },
     });
 
-    // Desencriptar datos del paciente
-    const pacienteDesencriptado = cita.paciente ? decryptPacienteData(cita.paciente) : null;
+    const paciente = cita.paciente;
 
     // Si se modificó fecha u hora, enviar email de modificación
     const fechaCambio = datos.fecha !== undefined && datos.fecha !== citaAnterior.fecha;
     const horaCambio = datos.hora !== undefined && datos.hora !== citaAnterior.hora;
-    if ((fechaCambio || horaCambio) && pacienteDesencriptado?.email) {
-      enviarModificacionCita(pacienteDesencriptado.email, {
+    if ((fechaCambio || horaCambio) && paciente?.email) {
+      enviarModificacionCita(paciente.email, {
         citaId: cita.id,
         tipo: cita.tipo,
         fecha: cita.fecha,
         hora: cita.hora,
-        nombreCliente: pacienteDesencriptado.name,
+        nombreCliente: paciente.name,
       }).catch((err) => console.error('Error al enviar email de modificación:', err));
     }
 
-    const citaDesencriptada = {
-      ...cita,
-      paciente: pacienteDesencriptado,
-    };
-
-    res.json(citaDesencriptada);
+    res.json(cita);
   } catch (error) {
     if (error instanceof z.ZodError) {
       return res.status(400).json({
