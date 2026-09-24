@@ -7,6 +7,8 @@ import { pacientesRouter } from './routes/pacientes.js';
 import { citasRouter } from './routes/citas.js';
 import { serviciosRouter } from './routes/servicios.js';
 import { nutricionRouter } from './routes/nutricion.js';
+import { cumpleanosRouter } from './routes/cumpleanos.js';
+import { generarAvisosCumpleanos } from './services/cumpleanosService.js';
 import { configuracionRouter } from './routes/configuracion.js';
 import { estadisticasRouter } from './routes/estadisticas.js';
 import { notificacionesRouter } from './routes/notificaciones.js';
@@ -59,6 +61,7 @@ app.use('/api/pacientes', verificarToken, pacientesRouter);
 app.use('/api/citas', verificarToken, citasRouter);
 app.use('/api/servicios', verificarToken, serviciosRouter);
 app.use('/api/nutricion', verificarToken, nutricionRouter);
+app.use('/api/cumpleanos', verificarToken, cumpleanosRouter);
 app.use('/api/configuracion', verificarToken, configuracionRouter);
 app.use('/api/estadisticas', verificarToken, estadisticasRouter);
 app.use('/api/notificaciones', verificarToken, notificacionesRouter);
@@ -90,7 +93,13 @@ app.listen(PORT, () => {
   // depender de que el proceso siga vivo exactamente en el instante del
   // aniversario de la periodicidad configurada.
   void verificarYEjecutarBackupProgramado();
+  // Avisos de cumpleaños del día: mismo criterio (al arrancar y cada hora;
+  // no se duplican dentro del mismo día)
+  const avisarCumpleanos = () =>
+    generarAvisosCumpleanos().catch((err) => console.error('Error al generar avisos de cumpleaños:', err));
+  void avisarCumpleanos();
   setInterval(() => {
     void verificarYEjecutarBackupProgramado();
+    void avisarCumpleanos();
   }, 60 * 60 * 1000);
 });

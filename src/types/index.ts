@@ -34,7 +34,7 @@ export interface Configuracion {
 // Plantillas de Email
 export interface PlantillaEmail {
   id: string;
-  tipo: 'confirmacion' | 'recordatorio' | 'cancelacion' | 'modificacion';
+  tipo: 'confirmacion' | 'recordatorio' | 'cancelacion' | 'modificacion' | 'cumpleanos';
   nombre: string;
   asunto: string;
   contenidoHtml: string;
@@ -222,7 +222,7 @@ export interface Paciente {
 
 export interface Notificacion {
   id: string;
-  tipo: 'cita' | 'revision' | 'recordatorio' | 'alerta';
+  tipo: 'cita' | 'revision' | 'recordatorio' | 'alerta' | 'cumpleanos';
   pacienteId?: string;
   citaId?: string;
   analisisId?: string;
@@ -314,3 +314,23 @@ export interface Usuario {
 }
 
 export * from "./nutricion";
+
+// ==========================================
+// CUMPLEAÑOS
+// ==========================================
+
+export type CanalFelicitacion = 'whatsapp' | 'email' | 'llamada' | 'en_persona';
+
+/** Cumpleaños calculado desde la fecha de nacimiento (GET /cumpleanos) */
+export interface Cumpleanos {
+  pacienteId: string;
+  nombre: string;
+  telefono: string;
+  email: string | null;
+  fechaNacimiento: string;
+  /** Día en que se celebra (YYYY-MM-DD) */
+  fecha: string;
+  /** Años que cumple ese día */
+  edad: number;
+  felicitacion: { canal: CanalFelicitacion; usuario: string | null; fecha: string } | null;
+}

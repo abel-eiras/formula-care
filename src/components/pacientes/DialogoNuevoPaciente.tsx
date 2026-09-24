@@ -22,6 +22,7 @@ import { UserPlus, Loader2 } from "lucide-react";
 import { toast } from "sonner";
 import { useCrearPaciente } from "@/hooks/usePacientes";
 import { calcularEdad } from "@/lib/edad";
+import { hoyISO } from "@/lib/fechas";
 
 interface DialogoNuevoPacienteProps {
   /** Callback cuando se crea el paciente, recibe el ID del nuevo paciente */
@@ -151,7 +152,7 @@ export function DialogoNuevoPaciente({
               <Input
                 id="fechaNacimiento"
                 type="date"
-                max={new Date().toISOString().split("T")[0]}
+                max={hoyISO()}
                 value={formData.birthDate}
                 onChange={(e) => handleChange("birthDate", e.target.value)}
               />

@@ -206,6 +206,37 @@ const PLANTILLAS_DEFAULT = {
 </body>
 </html>`,
   },
+  cumpleanos: {
+    nombre: 'Felicitación de Cumpleaños',
+    asunto: '¡Feliz cumpleaños, {{nombrePaciente}}! 🎉',
+    contenidoHtml: `<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Feliz cumpleaños</title>
+</head>
+<body style="font-family: 'Segoe UI', Arial, sans-serif; line-height: 1.6; color: #333; max-width: 600px; margin: 0 auto; padding: 20px; background-color: #f5f5f5;">
+  <div style="background: white; border-radius: 10px; overflow: hidden; box-shadow: 0 2px 10px rgba(0,0,0,0.1);">
+    <div style="text-align: center; padding: 16px 0;">{{bloqueLogo}}</div>
+    <div style="background: {{colorPrimario}}; color: white; padding: 30px; text-align: center;">
+      <p style="font-size: 44px; margin: 0;">🎉</p>
+      <h1 style="margin: 8px 0 0; font-size: 26px;">¡Feliz cumpleaños, {{nombrePaciente}}!</h1>
+    </div>
+    <div style="padding: 30px; text-align: center;">
+      <p style="font-size: 16px;">Todo el equipo de <strong>{{nombreFarmacia}}</strong> te desea un día estupendo.</p>
+      <p>Gracias por confiar en nosotros para cuidar de tu salud. ¡Te esperamos pronto!</p>
+    </div>
+    <div style="padding: 16px 30px; border-top: 1px solid #eee; font-size: 13px; color: #666; text-align: center;">
+      {{nombreFarmacia}} · {{direccionFarmacia}}{{bloqueTelefono}}{{bloqueWhatsapp}}
+    </div>
+  </div>
+  <p style="text-align: center; color: #999; font-size: 12px; margin-top: 20px;">
+    © {{anioActual}} {{nombreFarmacia}}
+  </p>
+</body>
+</html>`,
+  },
 };
 
 // Lista de variables disponibles para las plantillas

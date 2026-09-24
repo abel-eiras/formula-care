@@ -3,7 +3,7 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { LoadingSpinner } from "@/components/ui/LoadingSpinner";
 import { useMedicionesPaciente } from "@/hooks/usePacientes";
-import { parsearFecha } from "@/lib/nutricion/metricas";
+import { parsearFecha } from "@/lib/fechas";
 import type { Medicion } from "@/types";
 import { COLOR_1, COLOR_2, GraficoLinea } from "./GraficoLinea";
 
