@@ -52,6 +52,9 @@ model Paciente {
   address     String?
   notes       String?
   origen      String   @default("manual") // "manual" = registrado por farmacia, "autoregistro" = llegó por la reserva online
+  // Constancia del consentimiento (RGPD): cuándo y qué versión del texto aceptó
+  consentimientoFecha   DateTime?
+  consentimientoVersion String?
   createdAt   DateTime @default(now())
   updatedAt   DateTime @updatedAt
 
