@@ -1,6 +1,7 @@
 /**
- * Copias de seguridad: periodicidad, cifrado opcional, generar ahora,
- * importar (restaurar) y listado de copias existentes.
+ * Copias de seguridad: periodicidad, cifrado opcional, carpeta adicional,
+ * generar ahora, guardar fuera, importar (restaurar, también en otro equipo)
+ * y listado de copias existentes.
  */
 import { useEffect, useState } from 'react';
 import { Button } from '@/components/ui/button';
@@ -19,10 +20,11 @@ import {
   AlertDialogHeader,
   AlertDialogTitle,
 } from '@/components/ui/alert-dialog';
-import { DatabaseBackup, Eye, EyeOff, PlayCircle, Trash2, Upload, Save } from 'lucide-react';
+import { AlertTriangle, DatabaseBackup, Download, Eye, EyeOff, FolderOpen, PlayCircle, Trash2, Upload, Save, X } from 'lucide-react';
 import { toast } from 'sonner';
-import { open as abrirDialogoArchivo } from '@tauri-apps/plugin-dialog';
-import { relaunch } from '@tauri-apps/plugin-process';
+import { open as abrirDialogoArchivo, save as dialogoGuardar } from '@tauri-apps/plugin-dialog';
+import { useAuthContext } from '@/contexts/AuthContext';
+import { guardarTokenSesion } from '@/lib/api';
 import {
   useConfigBackup,
   useActualizarConfigBackup,
@@ -30,6 +32,7 @@ import {
   useCrearBackupAhora,
   useBorrarBackup,
   useImportarBackup,
+  useExportarBackup,
 } from '@/hooks/useBackups';
 
 function formatearTamano(bytes: number): string {
@@ -55,6 +58,10 @@ export function BackupTab() {
   const crearAhora = useCrearBackupAhora();
   const borrarBackup = useBorrarBackup();
   const importarBackup = useImportarBackup();
+  const exportarBackup = useExportarBackup();
+  const { usuario } = useAuthContext();
+  // Restaurar, borrar y guardar fuera: solo administradores (el servidor lo exige)
+  const esAdmin = usuario?.rol === 'admin';
 
   const [periodicidad, setPeriodicidad] = useState<'diaria' | 'semanal' | 'mensual' | 'desactivada'>('diaria');
   const [cifradoActivo, setCifradoActivo] = useState(false);
@@ -123,6 +130,39 @@ export function BackupTab() {
     }
   };
 
+  const handleElegirCarpeta = async () => {
+    const carpeta = await abrirDialogoArchivo({ directory: true, multiple: false, title: 'Carpeta para las copias' });
+    if (!carpeta || Array.isArray(carpeta)) return;
+    try {
+      await actualizarConfig.mutateAsync({ backupCarpetaExtra: carpeta });
+      toast.success('Las próximas copias se guardarán también en esa carpeta');
+    } catch (error) {
+      toast.error(error instanceof Error ? error.message : 'No se ha podido guardar la carpeta');
+    }
+  };
+
+  const handleQuitarCarpeta = async () => {
+    try {
+      await actualizarConfig.mutateAsync({ backupCarpetaExtra: '' });
+    } catch (error) {
+      toast.error(error instanceof Error ? error.message : 'No se ha podido quitar la carpeta');
+    }
+  };
+
+  const handleGuardarEn = async (nombre: string) => {
+    const destino = await dialogoGuardar({
+      defaultPath: nombre,
+      filters: [{ name: 'Copia de seguridad de Formula Care', extensions: ['fcbackup'] }],
+    });
+    if (!destino) return;
+    try {
+      await exportarBackup.mutateAsync({ nombre, destino });
+      toast.success('Copia guardada', { description: destino });
+    } catch (error) {
+      toast.error(error instanceof Error ? error.message : 'No se ha podido guardar la copia');
+    }
+  };
+
   const handleElegirArchivo = async () => {
     const seleccion = await abrirDialogoArchivo({
       multiple: false,
@@ -141,9 +181,11 @@ export function BackupTab() {
         path: rutaImportar,
         password: passwordImportar || undefined,
       });
-      toast.success('Copia de seguridad restaurada. Reiniciando la aplicación...');
       setDialogoImportarAbierto(false);
-      await relaunch();
+      // Los usuarios y contraseñas pasan a ser los de la copia: nueva sesión
+      toast.success('Copia restaurada. Inicia sesión con un usuario de la copia.');
+      guardarTokenSesion(null);
+      setTimeout(() => window.location.assign('/login'), 1500);
     } catch (error) {
       toast.error(error instanceof Error ? error.message : 'Error al importar la copia de seguridad');
     }
@@ -162,9 +204,10 @@ export function BackupTab() {
             Copias de seguridad
           </CardTitle>
           <CardDescription>
-            Incluyen todos los datos de pacientes y la configuración de esta instalación.
-            Se guardan en el equipo; si activas el cifrado, protégelas con una contraseña que
-            recuerdes — si la pierdes, no podrás restaurar copias cifradas con ella.
+            Incluyen todos los datos de pacientes y toda la configuración (usuarios, correo,
+            plantillas, apariencia...), así que se pueden restaurar en cualquier otro equipo.
+            Si activas el cifrado, usa una contraseña que recuerdes: sin ella no podrás
+            restaurar las copias cifradas.
           </CardDescription>
         </CardHeader>
         <CardContent className="space-y-6">
@@ -244,6 +287,31 @@ export function BackupTab() {
             )}
           </div>
 
+          <div className="space-y-2">
+            <Label>Guardar también en otra carpeta</Label>
+            <p className="text-sm text-muted-foreground">
+              Si el ordenador se estropea, las copias guardadas solo en él se pierden. Elige un disco
+              externo, un USB o una carpeta sincronizada (OneDrive, Google Drive, Dropbox...).
+            </p>
+            <div className="flex flex-wrap items-center gap-2">
+              <code className="rounded bg-muted px-2 py-1 text-sm">{config?.backupCarpetaExtra ?? 'Ninguna'}</code>
+              <Button variant="outline" size="sm" className="gap-2" onClick={handleElegirCarpeta} disabled={actualizarConfig.isPending}>
+                <FolderOpen className="h-4 w-4" />
+                {config?.backupCarpetaExtra ? 'Cambiar' : 'Elegir carpeta'}
+              </Button>
+              {config?.backupCarpetaExtra && (
+                <Button variant="ghost" size="sm" className="gap-2" onClick={handleQuitarCarpeta} disabled={actualizarConfig.isPending}>
+                  <X className="h-4 w-4" /> Quitar
+                </Button>
+              )}
+            </div>
+            {config?.backupUltimoError && (
+              <p className="flex items-start gap-2 text-sm text-destructive">
+                <AlertTriangle className="h-4 w-4 mt-0.5 shrink-0" /> {config.backupUltimoError}
+              </p>
+            )}
+          </div>
+
           <div className="flex flex-wrap gap-3 pt-2">
             <Button onClick={handleGuardar} disabled={actualizarConfig.isPending} className="gap-2">
               <Save className="h-4 w-4" />
@@ -253,10 +321,12 @@ export function BackupTab() {
               <PlayCircle className="h-4 w-4" />
               Realizar copia ahora
             </Button>
-            <Button onClick={handleElegirArchivo} variant="outline" className="gap-2">
-              <Upload className="h-4 w-4" />
-              Importar copia de seguridad
-            </Button>
+            {esAdmin && (
+              <Button onClick={handleElegirArchivo} variant="outline" className="gap-2">
+                <Upload className="h-4 w-4" />
+                Restaurar una copia
+              </Button>
+            )}
           </div>
         </CardContent>
       </Card>
@@ -277,7 +347,7 @@ export function BackupTab() {
                 <TableRow>
                   <TableHead>Fecha</TableHead>
                   <TableHead>Tamaño</TableHead>
-                  <TableHead className="w-12"></TableHead>
+                  <TableHead className="w-24"></TableHead>
                 </TableRow>
               </TableHeader>
               <TableBody>
@@ -285,15 +355,30 @@ export function BackupTab() {
                   <TableRow key={backup.nombre}>
                     <TableCell>{formatearFecha(backup.fecha)}</TableCell>
                     <TableCell>{formatearTamano(backup.tamanoBytes)}</TableCell>
-                    <TableCell>
-                      <Button
-                        variant="ghost"
-                        size="icon"
-                        onClick={() => handleBorrar(backup.nombre)}
-                        disabled={borrarBackup.isPending}
-                      >
-                        <Trash2 className="h-4 w-4 text-destructive" />
-                      </Button>
+                    <TableCell className="text-right whitespace-nowrap">
+                      {esAdmin && (
+                        <>
+                          <Button
+                            variant="ghost"
+                            size="icon"
+                            onClick={() => handleGuardarEn(backup.nombre)}
+                            disabled={exportarBackup.isPending}
+                            aria-label="Guardar en…"
+                            title="Guardar en… (USB, otra carpeta)"
+                          >
+                            <Download className="h-4 w-4" />
+                          </Button>
+                          <Button
+                            variant="ghost"
+                            size="icon"
+                            onClick={() => handleBorrar(backup.nombre)}
+                            disabled={borrarBackup.isPending}
+                            aria-label="Borrar copia"
+                          >
+                            <Trash2 className="h-4 w-4 text-destructive" />
+                          </Button>
+                        </>
+                      )}
                     </TableCell>
                   </TableRow>
                 ))}
@@ -311,7 +396,8 @@ export function BackupTab() {
               Esto reemplazará <strong>todos los datos actuales</strong> de esta instalación
               (pacientes, citas, configuración) por los de la copia elegida. Antes de tocar
               nada se guarda automáticamente una copia de seguridad del estado actual, por si
-              hace falta deshacerlo. La aplicación se reiniciará al terminar.
+              hace falta deshacerlo. Puede ser una copia de otro equipo. Al terminar tendrás
+              que iniciar sesión con un usuario de la copia.
             </AlertDialogDescription>
           </AlertDialogHeader>
           <div className="space-y-2 py-2">
@@ -334,7 +420,7 @@ export function BackupTab() {
               onClick={handleConfirmarImportar}
               disabled={importarBackup.isPending}
             >
-              Restaurar y reiniciar
+              {importarBackup.isPending ? 'Restaurando…' : 'Restaurar'}
             </Button>
           </AlertDialogFooter>
         </AlertDialogContent>

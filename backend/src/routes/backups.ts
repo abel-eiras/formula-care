@@ -1,9 +1,12 @@
 import { Router } from 'express';
-import { borrar, crear, importar, listar } from '../controllers/backups.js';
+import { borrar, crear, exportar, importar, listar } from '../controllers/backups.js';
+import { verificarRol } from '../middleware/auth.js';
 
 export const backupsRouter = Router();
 
 backupsRouter.get('/', listar);
 backupsRouter.post('/', crear);
-backupsRouter.delete('/:nombre', borrar);
-backupsRouter.post('/import', importar);
+// Borrar, restaurar (sustituye todos los datos) y guardar fuera: solo administradores
+backupsRouter.delete('/:nombre', verificarRol('admin'), borrar);
+backupsRouter.post('/import', verificarRol('admin'), importar);
+backupsRouter.post('/:nombre/exportar', verificarRol('admin'), exportar);

@@ -4,6 +4,7 @@ import {
   BackupError,
   borrarBackup,
   crearBackup,
+  exportarBackup,
   importarBackup,
   listarBackups,
 } from '../services/backupService.js';
@@ -55,6 +56,23 @@ export async function borrar(req: Request, res: Response) {
   }
 }
 
+/**
+ * Guardar una copia donde elija el usuario (USB, carpeta sincronizada...)
+ * POST /api/backups/:nombre/exportar { destino }
+ */
+export async function exportar(req: Request, res: Response) {
+  try {
+    const { destino } = z.object({ destino: z.string().min(1) }).parse(req.body);
+    exportarBackup(String(req.params.nombre), destino);
+    res.json({ mensaje: 'Copia guardada' });
+  } catch (error) {
+    if (error instanceof z.ZodError) return res.status(400).json({ error: 'Datos inválidos' });
+    if (error instanceof BackupError) return res.status(400).json({ error: error.message });
+    console.error('Error al guardar la copia de seguridad:', error);
+    res.status(500).json({ error: 'Error al guardar la copia de seguridad' });
+  }
+}
+
 const importarSchema = z.object({
   path: z.string().min(1),
   password: z.string().optional(),
@@ -69,7 +87,7 @@ export async function importar(req: Request, res: Response) {
   try {
     const { path: filePath, password } = importarSchema.parse(req.body);
     await importarBackup(filePath, password);
-    res.json({ mensaje: 'Copia de seguridad restaurada. Reinicia la aplicación.' });
+    res.json({ mensaje: 'Copia de seguridad restaurada. Vuelve a iniciar sesión.' });
   } catch (error) {
     if (error instanceof z.ZodError) {
       return res.status(400).json({ error: 'Datos inválidos', detalles: error.errors });

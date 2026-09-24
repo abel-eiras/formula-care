@@ -7,6 +7,7 @@ import {
 } from '../config/parametrosBioDefault.js';
 import { derivarClaveCifrado } from '../services/backupService.js';
 import { avisarCambioAgenda } from '../services/reservaOnline/sincronizacion.js';
+import path from 'path';
 
 // ID fijo de la fila única de configuración (instalación local de una sola farmacia)
 const CONFIG_ID = 'singleton';
@@ -100,6 +101,12 @@ const configBackupSchema = z.object({
   backupCifrado: z.boolean().optional(),
   // Solo necesaria al activar el cifrado por primera vez o al cambiar la contraseña
   password: z.string().min(4).optional(),
+  // Carpeta adicional (absoluta) donde guardar también cada copia; "" la quita
+  backupCarpetaExtra: z
+    .string()
+    .trim()
+    .refine((c) => c === '' || path.isAbsolute(c), 'La carpeta debe ser una ruta completa')
+    .optional(),
 });
 
 /**
@@ -702,6 +709,8 @@ export async function obtenerConfigBackup(req: Request, res: Response) {
         backupPeriodicidad: true,
         backupCifrado: true,
         backupUltimaEjecucion: true,
+        backupCarpetaExtra: true,
+        backupUltimoError: true,
       },
     });
 
@@ -709,6 +718,8 @@ export async function obtenerConfigBackup(req: Request, res: Response) {
       backupPeriodicidad: config?.backupPeriodicidad || 'diaria',
       backupCifrado: config?.backupCifrado ?? false,
       backupUltimaEjecucion: config?.backupUltimaEjecucion ?? null,
+      backupCarpetaExtra: config?.backupCarpetaExtra ?? null,
+      backupUltimoError: config?.backupUltimoError ?? null,
     });
   } catch (error) {
     console.error('Error al obtener configuración de copias de seguridad:', error);
@@ -726,6 +737,10 @@ export async function actualizarConfigBackup(req: Request, res: Response) {
     const { password, ...resto } = datos;
 
     const dataParaPrisma: Record<string, unknown> = { ...resto };
+    if (resto.backupCarpetaExtra !== undefined) {
+      dataParaPrisma.backupCarpetaExtra = resto.backupCarpetaExtra || null;
+      if (!resto.backupCarpetaExtra) dataParaPrisma.backupUltimoError = null;
+    }
 
     if (resto.backupCifrado) {
       if (password) {
@@ -759,6 +774,8 @@ export async function actualizarConfigBackup(req: Request, res: Response) {
       backupPeriodicidad: config.backupPeriodicidad,
       backupCifrado: config.backupCifrado,
       backupUltimaEjecucion: config.backupUltimaEjecucion,
+      backupCarpetaExtra: config.backupCarpetaExtra,
+      backupUltimoError: config.backupUltimoError,
     });
   } catch (error) {
     if (error instanceof z.ZodError) {
