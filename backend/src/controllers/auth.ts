@@ -104,6 +104,7 @@ export async function setupInicial(req: Request, res: Response) {
     res.cookie('auth_token', token, getAuthCookieOptions());
 
     res.status(201).json({
+      token,
       usuario: {
         id: usuario.id,
         email: usuario.email,
@@ -179,6 +180,10 @@ export async function login(req: Request, res: Response) {
     res.cookie('auth_token', token, getAuthCookieOptions());
 
     res.json({
+      // El token también va en el cuerpo: la app de escritorio lo envía en la
+      // cabecera Authorization porque su webview (tauri://localhost o
+      // http://tauri.localhost) es otro sitio y descarta la cookie
+      token,
       usuario: {
         id: usuario.id,
         email: usuario.email,
@@ -348,12 +353,9 @@ export async function cambiarPassword(req: Request, res: Response) {
  * Cerrar sesión: elimina la cookie de autenticación
  */
 export function logout(req: Request, res: Response) {
-  res.clearCookie('auth_token', {
-    httpOnly: true,
-    secure: process.env.NODE_ENV === 'production',
-    sameSite: process.env.NODE_ENV === 'production' ? 'none' : 'lax',
-    path: '/',
-  });
+  // Sin maxAge: en Express 4 anularía la caducidad inmediata de clearCookie
+  const { maxAge: _maxAge, ...opcionesCookie } = getAuthCookieOptions();
+  res.clearCookie('auth_token', opcionesCookie);
   res.json({ mensaje: 'Sesión cerrada correctamente' });
 }
 

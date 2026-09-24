@@ -1,8 +1,31 @@
 /**
- * Cliente HTTP para la API
- * La autenticación se gestiona mediante cookies HttpOnly — el cliente
- * no necesita manejar tokens manualmente.
+ * Cliente HTTP para la API.
+ *
+ * Autenticación: el token de sesión se envía en la cabecera Authorization.
+ * La cookie HttpOnly que también pone el servidor no sirve en la app de
+ * escritorio: su webview (tauri://localhost o http://tauri.localhost) es un
+ * sitio distinto de http://localhost:4577 y descarta la cookie.
  */
+
+// Token de sesión: en memoria y en localStorage (compartido con las ventanas
+// e iframes de impresión y con los reinicios de la app hasta que caduca)
+const CLAVE_TOKEN = 'auth_token';
+let tokenSesion: string | null = null;
+try {
+  tokenSesion = localStorage.getItem(CLAVE_TOKEN);
+} catch {
+  // localStorage no disponible: la sesión solo dura en memoria
+}
+
+export function guardarTokenSesion(token: string | null): void {
+  tokenSesion = token;
+  try {
+    if (token) localStorage.setItem(CLAVE_TOKEN, token);
+    else localStorage.removeItem(CLAVE_TOKEN);
+  } catch {
+    // Ignorar si localStorage no está disponible
+  }
+}
 
 // Validar y construir la URL base del API.
 // El backend corre embebido en localhost junto a la app de escritorio;
@@ -53,6 +76,7 @@ class ApiClient {
   private getHeaders(): HeadersInit {
     return {
       'Content-Type': 'application/json',
+      ...(tokenSesion ? { Authorization: `Bearer ${tokenSesion}` } : {}),
     };
   }
 
@@ -73,6 +97,7 @@ class ApiClient {
 
     // Si es 401 (sesión expirada o inválida), redirigir a login
     if (response.status === 401 && typeof window !== 'undefined') {
+      guardarTokenSesion(null);
       sessionStorage.removeItem('auth_user');
       if (!window.location.pathname.startsWith('/login')) {
         window.location.href = '/login';

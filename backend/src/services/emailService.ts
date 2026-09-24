@@ -96,49 +96,64 @@ async function obtenerConfigEmail(): Promise<ConfigEmail> {
   };
 }
 
-// Credenciales de Ethereal para pruebas (se generan una vez)
+// Credenciales de Ethereal (solo desarrollo; se generan una vez)
 let etherealCredentials: { user: string; pass: string } | null = null;
 
+// Huella de la configuración con la que se crearon los clientes en caché:
+// si el usuario cambia la configuración de correo, se crean de nuevo (antes
+// hacía falta reiniciar la app para que el cambio tuviera efecto).
+let huellaSmtp: string | null = null;
+let huellaResend: string | null = null;
+
+const esDesarrollo = () => process.env.NODE_ENV !== 'production';
+
 /**
- * Inicializa el transportador SMTP
+ * Inicializa el transportador SMTP con la configuración actual.
+ *
+ * Sin configuración SMTP completa:
+ * - En desarrollo se usa una cuenta de pruebas de Ethereal.
+ * - En producción NO: los correos saldrían del equipo hacia un servicio de
+ *   pruebas externo con datos de pacientes y nunca llegarían al destinatario.
+ *   Se devuelve null y el envío se considera fallido.
  */
 async function inicializarSMTP(config: ConfigEmail): Promise<nodemailer.Transporter | null> {
-  if (smtpTransporter) return smtpTransporter;
+  const completa = !!(config.smtpHost && config.smtpUser && config.smtpPass);
+  const huella = completa
+    ? JSON.stringify([config.smtpHost, config.smtpPort, config.smtpSecure, config.smtpAcceptSelfSigned, config.smtpUser, config.smtpPass])
+    : 'ethereal';
 
-  if (!config.smtpHost || !config.smtpUser || !config.smtpPass) {
-    // En desarrollo, crear cuenta de prueba en Ethereal
-    console.warn('⚠️  Configuración SMTP incompleta. Usando Ethereal Email para pruebas...');
-    
+  if (smtpTransporter && huella === huellaSmtp) return smtpTransporter;
+  smtpTransporter = null;
+  huellaSmtp = null;
+
+  if (!completa) {
+    if (!esDesarrollo()) {
+      console.warn('⚠️  Correo no configurado: configura SMTP o Resend en Configuración para enviar emails.');
+      return null;
+    }
+
+    console.warn('⚠️  Configuración SMTP incompleta. Usando Ethereal Email para pruebas (solo desarrollo)...');
     try {
-      // Generar cuenta de prueba de Ethereal solo una vez
       if (!etherealCredentials) {
         const testAccount = await nodemailer.createTestAccount();
-        etherealCredentials = {
-          user: testAccount.user,
-          pass: testAccount.pass,
-        };
+        etherealCredentials = { user: testAccount.user, pass: testAccount.pass };
         console.log('📧 Cuenta de prueba Ethereal creada:');
         console.log(`   Usuario: ${etherealCredentials.user}`);
         console.log(`   Los emails se pueden ver en: https://ethereal.email/login`);
       }
-      
       smtpTransporter = nodemailer.createTransport({
         host: 'smtp.ethereal.email',
         port: 587,
         secure: false,
         auth: etherealCredentials,
-        tls: {
-          // Ignorar errores de certificado en desarrollo (Ethereal)
-          rejectUnauthorized: false,
-        },
+        tls: { rejectUnauthorized: false },
       });
-      
+      huellaSmtp = huella;
       console.log('✅ Transportador Ethereal configurado (modo pruebas)');
     } catch (error) {
       console.error('❌ Error al crear cuenta Ethereal:', error);
       return null;
     }
-    
     return smtpTransporter;
   }
 
@@ -149,6 +164,7 @@ async function inicializarSMTP(config: ConfigEmail): Promise<nodemailer.Transpor
     auth: { user: config.smtpUser, pass: config.smtpPass },
     tls: { rejectUnauthorized: !config.smtpAcceptSelfSigned },
   });
+  huellaSmtp = huella;
 
   try {
     await smtpTransporter.verify();
@@ -161,18 +177,17 @@ async function inicializarSMTP(config: ConfigEmail): Promise<nodemailer.Transpor
 }
 
 /**
- * Inicializa el cliente de Resend
+ * Inicializa el cliente de Resend (se recrea si cambia la API key)
  */
 function inicializarResend(config: ConfigEmail): Resend | null {
-  if (resendClient) return resendClient;
-
   if (!config.resendApiKey) {
     console.warn('⚠️  API Key de Resend no configurada.');
     return null;
   }
+  if (resendClient && huellaResend === config.resendApiKey) return resendClient;
 
   resendClient = new Resend(config.resendApiKey);
-  console.log('✅ Cliente Resend inicializado');
+  huellaResend = config.resendApiKey;
   return resendClient;
 }
 
