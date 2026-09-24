@@ -1,0 +1,109 @@
+name: Comprobaciones
+
+# Se ejecuta en cada PR y en cada push a main: tipos, lint, tests y builds de
+# la app, el backend, booking-web y el código Rust de la app de escritorio.
+# (Los instaladores los genera desktop-release.yml al crear un tag v*.)
+
+on:
+  pull_request:
+  push:
+    branches: [main]
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: comprobaciones-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  app:
+    name: App (frontend)
+    runs-on: ubuntu-22.04
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 20
+          cache: npm
+      - run: npm ci
+      - name: Tipos
+        run: npx tsc --noEmit -p tsconfig.app.json
+      - name: Lint
+        run: npx eslint src
+      - name: Tests
+        run: npx vitest run
+      - name: Build
+        run: npm run build
+
+  backend:
+    name: Backend
+    runs-on: ubuntu-22.04
+    env:
+      DATABASE_URL: "file:./ci.db"
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 20
+          cache: npm
+          cache-dependency-path: backend/package-lock.json
+      - name: Dependencias y cliente de Prisma
+        working-directory: backend
+        run: npm ci && npx prisma generate
+      - name: Tipos
+        working-directory: backend
+        run: npx tsc --noEmit
+      - name: Tests (base de datos temporal migrada desde cero)
+        working-directory: backend
+        run: npm test
+
+  booking-web:
+    name: booking-web
+    runs-on: ubuntu-22.04
+    env:
+      DATABASE_URL: "postgresql://ci:ci@localhost:5432/ci"
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 20
+      - name: Backend
+        working-directory: booking-web/backend
+        run: npm ci && npm run build
+      - name: Frontend
+        working-directory: booking-web/frontend
+        run: npm ci && npm run build
+
+  escritorio:
+    name: App de escritorio (Rust)
+    runs-on: ubuntu-22.04
+    steps:
+      - uses: actions/checkout@v4
+      - name: Dependencias nativas de Tauri
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y libwebkit2gtk-4.1-dev libgtk-3-dev libayatana-appindicator3-dev librsvg2-dev
+      - uses: dtolnay/rust-toolchain@stable
+        with:
+          components: clippy
+      - uses: swatinem/rust-cache@v2
+        with:
+          workspaces: src-tauri
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 20
+          cache: npm
+          cache-dependency-path: backend/package-lock.json
+      - name: Recursos que empaqueta Tauri (backend y plantilla de base de datos)
+        run: npm --prefix backend ci && npm --prefix backend run build:desktop
+        env:
+          DATABASE_URL: "file:./ci-placeholder.db"
+      - name: Marcadores de posición del frontend y del sidecar de Node
+        run: |
+          mkdir -p dist src-tauri/binaries
+          cp "$(which node)" "src-tauri/binaries/node-$(rustc -vV | sed -n 's/host: //p')"
+      - name: cargo clippy
+        working-directory: src-tauri
+        run: cargo clippy --locked -- -D warnings

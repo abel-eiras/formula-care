@@ -20,11 +20,13 @@ import {
   AlertDialogHeader,
   AlertDialogTitle,
 } from '@/components/ui/alert-dialog';
-import { AlertTriangle, DatabaseBackup, Download, Eye, EyeOff, FolderOpen, PlayCircle, Trash2, Upload, Save, X } from 'lucide-react';
+import { AlertTriangle, DatabaseBackup, LifeBuoy, Download, Eye, EyeOff, FolderOpen, PlayCircle, Trash2, Upload, Save, X } from 'lucide-react';
 import { toast } from 'sonner';
 import { open as abrirDialogoArchivo, save as dialogoGuardar } from '@tauri-apps/plugin-dialog';
 import { useAuthContext } from '@/contexts/AuthContext';
-import { guardarTokenSesion } from '@/lib/api';
+import { api, guardarTokenSesion } from '@/lib/api';
+import { guardarArchivo } from '@/lib/guardarArchivo';
+import { hoyISO } from '@/lib/fechas';
 import {
   useConfigBackup,
   useActualizarConfigBackup,
@@ -160,6 +162,21 @@ export function BackupTab() {
       toast.success('Copia guardada', { description: destino });
     } catch (error) {
       toast.error(error instanceof Error ? error.message : 'No se ha podido guardar la copia');
+    }
+  };
+
+  const handleDiagnostico = async () => {
+    try {
+      const ruta = await guardarArchivo({
+        nombreSugerido: `diagnostico-formula-care-${hoyISO()}.txt`,
+        extension: 'txt',
+        descripcion: 'Informe de diagnóstico',
+        escribirEn: (destino) => api.post('/diagnostico', { destino }),
+        obtenerContenido: () => api.getTexto('/diagnostico'),
+      });
+      if (ruta) toast.success('Diagnóstico guardado', { description: ruta });
+    } catch (error) {
+      toast.error(error instanceof Error ? error.message : 'No se ha podido generar el diagnóstico');
     }
   };
 
@@ -387,6 +404,25 @@ export function BackupTab() {
           )}
         </CardContent>
       </Card>
+
+      {esAdmin && (
+        <Card className="shadow-sm border-border/50">
+          <CardHeader>
+            <CardTitle className="flex items-center gap-2">
+              <LifeBuoy className="h-5 w-5" /> Diagnóstico
+            </CardTitle>
+            <CardDescription>
+              Si algo falla, guarda este informe y envíalo a quien te dé soporte. Incluye la versión, el estado del correo
+              y de las copias y los últimos mensajes de la app; no incluye datos de pacientes ni contraseñas.
+            </CardDescription>
+          </CardHeader>
+          <CardContent>
+            <Button variant="outline" onClick={handleDiagnostico}>
+              Exportar diagnóstico
+            </Button>
+          </CardContent>
+        </Card>
+      )}
 
       <AlertDialog open={dialogoImportarAbierto} onOpenChange={setDialogoImportarAbierto}>
         <AlertDialogContent>

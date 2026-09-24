@@ -51,7 +51,7 @@ const actualizarUsuarioSchema = z.object({
  * Evita dejar la instalación sin ningún administrador activo (nadie podría
  * volver a gestionar usuarios ni configuración).
  */
-async function quedariaSinAdministrador(idAfectado: string, seguiraSiendoAdminActivo: boolean): Promise<boolean> {
+export async function quedariaSinAdministrador(idAfectado: string, seguiraSiendoAdminActivo: boolean): Promise<boolean> {
   if (seguiraSiendoAdminActivo) return false;
   const otrosAdmins = await prisma.usuario.count({
     where: { rol: 'admin', activo: true, NOT: { id: idAfectado } },

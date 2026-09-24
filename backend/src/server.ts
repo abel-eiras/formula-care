@@ -1,3 +1,4 @@
+import { iniciarRegistro } from './lib/registro.js';
 import express from 'express';
 import cors from 'cors';
 import cookieParser from 'cookie-parser';
@@ -19,10 +20,14 @@ import { verificarToken } from './middleware/auth.js';
 import { iniciarTareasPeriodicas } from './services/tareasProgramadas.js';
 import { iniciarSincronizacionReservaOnline } from './services/reservaOnline/sincronizacion.js';
 import { reservaOnlineRouter } from './routes/reservaOnline.js';
+import { exportarDiagnostico } from './controllers/diagnostico.js';
+import { verificarRol } from './middleware/auth.js';
 import { RESERVA_ONLINE_DISPONIBLE } from './config/funciones.js';
 
 // Cargar variables de entorno
 dotenv.config();
+// Registro en fichero (app de escritorio): antes que nada para no perder errores de arranque
+iniciarRegistro();
 
 const app = express();
 const PORT = process.env.PORT || 3000;
@@ -42,7 +47,7 @@ app.use(cookieParser());
 
 // Middleware de logging simple
 app.use((req, res, next) => {
-  console.log(`${new Date().toISOString()} - ${req.method} ${req.path}`);
+  console.log(`${req.method} ${req.path}`);
   next();
 });
 
@@ -73,6 +78,8 @@ app.use('/api/notificaciones', verificarToken, notificacionesRouter);
 app.use('/api/eventos', verificarToken, eventosRouter);
 app.use('/api/plantillas-email', verificarToken, plantillasEmailRouter);
 app.use('/api/backups', verificarToken, backupsRouter);
+app.get('/api/diagnostico', verificarToken, verificarRol('admin'), exportarDiagnostico);
+app.post('/api/diagnostico', verificarToken, verificarRol('admin'), exportarDiagnostico);
 if (RESERVA_ONLINE_DISPONIBLE) app.use('/api/reserva-online', verificarToken, reservaOnlineRouter);
 
 // Ruta de salud

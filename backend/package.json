@@ -11,7 +11,8 @@
     "prisma:generate": "prisma generate",
     "prisma:migrate": "prisma migrate dev",
     "prisma:studio": "prisma studio",
-    "prisma:seed": "tsx src/prisma/seed.ts"
+    "prisma:seed": "tsx src/prisma/seed.ts",
+    "test": "vitest run"
   },
   "dependencies": {
     "@prisma/client": "^5.20.0",
@@ -36,6 +37,7 @@
     "@types/node": "^22.16.5",
     "@types/nodemailer": "^8.0.2",
     "tsx": "^4.19.2",
-    "typescript": "^5.8.3"
+    "typescript": "^5.8.3",
+    "vitest": "^3.2.7"
   }
 }
