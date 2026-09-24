@@ -115,7 +115,7 @@ export function useAuth() {
   }, []);
 
   /**
-   * Cerrar sesión: el servidor elimina la cookie
+   * Cerrar sesión: se invalida la sesión en el servidor y se olvida el token local
    */
   const logout = useCallback(async () => {
     try {

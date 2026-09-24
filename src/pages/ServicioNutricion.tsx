@@ -21,6 +21,7 @@ import { ordenarVisitas, visitaReferencia } from "@/lib/nutricion/metricas";
 import { generarSugerencias } from "@/lib/nutricion/sugerencias";
 import type { ProgramaNutricionDetalle } from "@/types";
 import { textoEdad } from "@/lib/edad";
+import { imprimirRuta } from "@/lib/imprimir";
 
 const COLOR_ESTADO: Record<string, string> = {
   activo: "bg-success-soft text-success border-success/20",
@@ -80,7 +81,7 @@ function ListaVisitas({ programa }: { programa: ProgramaNutricionDetalle }) {
                       variant="ghost"
                       size="sm"
                       className="gap-1"
-                      onClick={() => window.open(`/servicios/nutricion/print?visitaId=${v.id}`, "_blank")}
+                      onClick={() => imprimirRuta(`/servicios/nutricion/print?visitaId=${v.id}`)}
                     >
                       <Printer className="h-4 w-4" />
                       Imprimir
@@ -220,7 +221,7 @@ export default function ServicioNutricion() {
         <Button
           variant="outline"
           className="gap-2"
-          onClick={() => window.open("/servicios/nutricion/print?tipo=registro", "_blank")}
+          onClick={() => imprimirRuta("/servicios/nutricion/print?tipo=registro")}
         >
           <Printer className="h-4 w-4" />
           Hoja de registro en blanco

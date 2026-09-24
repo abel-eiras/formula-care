@@ -22,6 +22,10 @@ export interface Estadisticas {
     esteMes: number;
     tendencia: number;
   };
+  visitasNutricion: {
+    esteMes: number;
+    tendencia: number;
+  };
   tasaRetorno: {
     valor: number;
     pacientesRecurrentes: number;
@@ -33,6 +37,7 @@ export interface EvolucionMes {
   mes: string;
   dermo: number;
   bio: number;
+  nutricion: number;
 }
 
 /**

@@ -3,6 +3,7 @@ import { prisma } from '../lib/prisma.js';
 import { getQueryLimit } from '../lib/queryHelpers.js';
 import { hoyISO } from '../lib/fechas.js';
 import { obtenerRevisionesProximas } from '../services/notificacionesService.js';
+import { obtenerUltimasVisitas } from '../services/ultimaVisitaService.js';
 
 /**
  * Pacientes con más de una visita (análisis dermo, bio o visitas de nutrición).
@@ -30,42 +31,46 @@ async function contarPacientesRecurrentes(): Promise<number> {
   return [...visitasPorPaciente.values()].filter((n) => n > 1).length;
 }
 
+/** Rango [desde, hasta) de fechas "YYYY-MM-DD" de un mes, en hora local */
+function rangoMes(anio: number, mes: number): { gte: string; lt: string } {
+  // hoyISO usa la hora local; toISOString() desplazaría el inicio de mes al día anterior en España
+  return { gte: hoyISO(new Date(anio, mes, 1)), lt: hoyISO(new Date(anio, mes + 1, 1)) };
+}
+
+/** Servicios realizados (Dermo, Bio y visitas de Nutrición) en un rango de fechas */
+function contarServicios(rango: { gte: string; lt: string }) {
+  return Promise.all([
+    prisma.analisisDermo.count({ where: { fecha: rango } }),
+    prisma.analisisBio.count({ where: { fecha: rango } }),
+    prisma.visitaNutricion.count({ where: { fecha: rango } }),
+  ]);
+}
+
 /**
  * Obtener estadísticas generales del dashboard
  */
 export async function obtenerEstadisticas(req: Request, res: Response) {
   try {
     const ahora = new Date();
-    const inicioMes = new Date(ahora.getFullYear(), ahora.getMonth(), 1);
-    const inicioMesAnterior = new Date(ahora.getFullYear(), ahora.getMonth() - 1, 1);
-    const finMesAnterior = new Date(ahora.getFullYear(), ahora.getMonth(), 0);
-
-    const mesActual = { gte: inicioMes.toISOString().split('T')[0] };
-    const mesAnterior = {
-      gte: inicioMesAnterior.toISOString().split('T')[0],
-      lte: finMesAnterior.toISOString().split('T')[0],
-    };
+    const anio = ahora.getFullYear();
+    const mes = ahora.getMonth();
+    const inicioMes = new Date(anio, mes, 1);
+    const inicioMesAnterior = new Date(anio, mes - 1, 1);
 
     // Todas las consultas son independientes: en paralelo
     const [
       totalPacientes,
       pacientesEsteMes,
       pacientesMesAnterior,
-      analisisDermoEsteMes,
-      analisisDermoMesAnterior,
-      analisisBioEsteMes,
-      analisisBioMesAnterior,
+      [dermoEsteMes, bioEsteMes, nutricionEsteMes],
+      [dermoMesAnterior, bioMesAnterior, nutricionMesAnterior],
       pacientesRecurrentes,
     ] = await Promise.all([
       prisma.paciente.count(),
-      prisma.paciente.count({ where: { createdAt: { gte: inicioMes.toISOString() } } }),
-      prisma.paciente.count({
-        where: { createdAt: { gte: inicioMesAnterior.toISOString(), lte: finMesAnterior.toISOString() } },
-      }),
-      prisma.analisisDermo.count({ where: { fecha: mesActual } }),
-      prisma.analisisDermo.count({ where: { fecha: mesAnterior } }),
-      prisma.analisisBio.count({ where: { fecha: mesActual } }),
-      prisma.analisisBio.count({ where: { fecha: mesAnterior } }),
+      prisma.paciente.count({ where: { createdAt: { gte: inicioMes } } }),
+      prisma.paciente.count({ where: { createdAt: { gte: inicioMesAnterior, lt: inicioMes } } }),
+      contarServicios(rangoMes(anio, mes)),
+      contarServicios(rangoMes(anio, mes - 1)),
       contarPacientesRecurrentes(),
     ]);
 
@@ -73,7 +78,7 @@ export async function obtenerEstadisticas(req: Request, res: Response) {
       ? Math.round((pacientesRecurrentes / totalPacientes) * 100) 
       : 0;
 
-    // Calcular tendencias
+    // Variación porcentual respecto al mes anterior
     const calcularTendencia = (actual: number, anterior: number): number => {
       if (anterior === 0) return actual > 0 ? 100 : 0;
       return Math.round(((actual - anterior) / anterior) * 100);
@@ -86,12 +91,16 @@ export async function obtenerEstadisticas(req: Request, res: Response) {
         tendencia: calcularTendencia(pacientesEsteMes, pacientesMesAnterior),
       },
       analisisDermo: {
-        esteMes: analisisDermoEsteMes,
-        tendencia: calcularTendencia(analisisDermoEsteMes, analisisDermoMesAnterior),
+        esteMes: dermoEsteMes,
+        tendencia: calcularTendencia(dermoEsteMes, dermoMesAnterior),
       },
       analisisBio: {
-        esteMes: analisisBioEsteMes,
-        tendencia: calcularTendencia(analisisBioEsteMes, analisisBioMesAnterior),
+        esteMes: bioEsteMes,
+        tendencia: calcularTendencia(bioEsteMes, bioMesAnterior),
+      },
+      visitasNutricion: {
+        esteMes: nutricionEsteMes,
+        tendencia: calcularTendencia(nutricionEsteMes, nutricionMesAnterior),
       },
       tasaRetorno: {
         valor: tasaRetorno,
@@ -106,42 +115,25 @@ export async function obtenerEstadisticas(req: Request, res: Response) {
 }
 
 /**
- * Obtener evolución de análisis por mes (últimos 6 meses)
+ * Obtener evolución de servicios por mes (últimos 6 meses)
  */
 export async function obtenerEvolucionAnalisis(req: Request, res: Response) {
   try {
     const ahora = new Date();
-    const meses: { mes: string; dermo: number; bio: number }[] = [];
+    const meses = Array.from({ length: 6 }, (_, i) => new Date(ahora.getFullYear(), ahora.getMonth() - 5 + i, 1));
 
-    // Obtener datos de los últimos 6 meses
-    for (let i = 5; i >= 0; i--) {
-      const fecha = new Date(ahora.getFullYear(), ahora.getMonth() - i, 1);
-      const siguienteMes = new Date(ahora.getFullYear(), ahora.getMonth() - i + 1, 1);
-      
-      const mesNombre = fecha.toLocaleDateString('es-ES', { month: 'short', year: 'numeric' });
+    const recuentos = await Promise.all(
+      meses.map((fecha) => contarServicios(rangoMes(fecha.getFullYear(), fecha.getMonth())))
+    );
 
-      const dermo = await prisma.analisisDermo.count({
-        where: {
-          fecha: {
-            gte: fecha.toISOString().split('T')[0],
-            lt: siguienteMes.toISOString().split('T')[0],
-          },
-        },
-      });
-
-      const bio = await prisma.analisisBio.count({
-        where: {
-          fecha: {
-            gte: fecha.toISOString().split('T')[0],
-            lt: siguienteMes.toISOString().split('T')[0],
-          },
-        },
-      });
-
-      meses.push({ mes: mesNombre, dermo, bio });
-    }
-
-    res.json(meses);
+    res.json(
+      meses.map((fecha, i) => ({
+        mes: fecha.toLocaleDateString('es-ES', { month: 'short', year: 'numeric' }),
+        dermo: recuentos[i][0],
+        bio: recuentos[i][1],
+        nutricion: recuentos[i][2],
+      }))
+    );
   } catch (error) {
     console.error('Error al obtener evolución:', error);
     res.status(500).json({ error: 'Error al obtener evolución de análisis' });
@@ -160,19 +152,11 @@ export async function obtenerPacientesRecientes(req: Request, res: Response) {
       orderBy: {
         createdAt: 'desc',
       },
-      include: {
-        analisisDermo: {
-          take: 1,
-          orderBy: { fecha: 'desc' },
-        },
-        analisisBio: {
-          take: 1,
-          orderBy: { fecha: 'desc' },
-        },
-      },
+      select: { id: true, name: true, createdAt: true },
     });
 
-    res.json(pacientes);
+    const ultimasVisitas = await obtenerUltimasVisitas(pacientes.map((p) => p.id));
+    res.json(pacientes.map((p) => ({ ...p, ultimaVisita: ultimasVisitas.get(p.id) ?? null })));
   } catch (error) {
     console.error('Error al obtener pacientes recientes:', error);
     res.status(500).json({ error: 'Error al obtener pacientes recientes' });

@@ -7,63 +7,11 @@ import { Link } from "react-router-dom";
 import { usePacientesRecientes } from "@/hooks/useEstadisticas";
 import { LoadingSpinner } from "@/components/ui/LoadingSpinner";
 import type { Paciente } from "@/types";
+import { hoyISO, textoFechaRelativa } from "@/lib/fechas";
+import { NOMBRE_SERVICIO, VARIANTE_SERVICIO } from "@/lib/servicios";
 
 const getInitials = (name: string) => {
   return name.split(" ").map(n => n[0]).slice(0, 2).join("").toUpperCase();
-};
-
-const formatLastVisit = (fecha: string | undefined): string => {
-  if (!fecha) return "Sin visitas";
-  
-  try {
-    const fechaObj = new Date(fecha);
-    const ahora = new Date();
-    const diffMs = ahora.getTime() - fechaObj.getTime();
-    const diffDays = Math.floor(diffMs / (1000 * 60 * 60 * 24));
-    const diffHours = Math.floor(diffMs / (1000 * 60 * 60));
-    const diffMinutes = Math.floor(diffMs / (1000 * 60));
-
-    if (diffMinutes < 60) {
-      return `Hace ${diffMinutes} min`;
-    } else if (diffHours < 24) {
-      return `Hace ${diffHours} ${diffHours === 1 ? "hora" : "horas"}`;
-    } else if (diffDays === 1) {
-      return "Ayer";
-    } else if (diffDays < 7) {
-      return `Hace ${diffDays} días`;
-    } else {
-      return fechaObj.toLocaleDateString("es-ES", { day: "numeric", month: "short" });
-    }
-  } catch {
-    return "Fecha inválida";
-  }
-};
-
-const getLastService = (paciente: Paciente): { type: "dermo" | "bio" | null; fecha: string | null } => {
-  const ultimoDermo = paciente.analisisDermo?.[0];
-  const ultimoBio = paciente.analisisBio?.[0];
-
-  if (!ultimoDermo && !ultimoBio) {
-    return { type: null, fecha: null };
-  }
-
-  if (!ultimoDermo) {
-    return { type: "bio", fecha: ultimoBio?.fecha || null };
-  }
-
-  if (!ultimoBio) {
-    return { type: "dermo", fecha: ultimoDermo?.fecha || null };
-  }
-
-  // Comparar fechas
-  const fechaDermo = new Date(ultimoDermo.fecha);
-  const fechaBio = new Date(ultimoBio.fecha);
-
-  if (fechaDermo > fechaBio) {
-    return { type: "dermo", fecha: ultimoDermo.fecha };
-  } else {
-    return { type: "bio", fecha: ultimoBio.fecha };
-  }
 };
 
 export function RecentPatients() {
@@ -98,8 +46,12 @@ export function RecentPatients() {
       <CardContent className="space-y-1">
         {pacientes && pacientes.length > 0 ? (
           pacientes.map((paciente: Paciente) => {
-            const lastService = getLastService(paciente);
-            const lastVisit = formatLastVisit(lastService.fecha || paciente.createdAt);
+            const ultima = paciente.ultimaVisita;
+            const textoVisita = ultima
+              ? textoFechaRelativa(ultima.fecha)
+              : paciente.createdAt
+              ? `Alta: ${textoFechaRelativa(hoyISO(new Date(paciente.createdAt)))}`
+              : "Sin visitas";
 
             return (
               <Link
@@ -118,16 +70,13 @@ export function RecentPatients() {
                   </p>
                   <div className="flex items-center gap-2 text-sm text-muted-foreground">
                     <Clock className="h-3 w-3" />
-                    <span>{lastVisit}</span>
+                    <span>{textoVisita}</span>
                   </div>
                 </div>
                 <div className="flex items-center gap-2">
-                  {lastService.type && (
-                    <Badge 
-                      variant={lastService.type === "dermo" ? "default" : "secondary"}
-                      className="text-xs"
-                    >
-                      {lastService.type === "dermo" ? "Dermo" : "Bio"}
+                  {ultima && (
+                    <Badge variant={VARIANTE_SERVICIO[ultima.servicio]} className="text-xs">
+                      {NOMBRE_SERVICIO[ultima.servicio]}
                     </Badge>
                   )}
                 </div>

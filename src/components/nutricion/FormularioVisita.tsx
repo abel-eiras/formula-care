@@ -65,6 +65,7 @@ import type {
 import { BadgeClasificacion, CampoNumero, CampoSiNo, CampoTexto, Escala0a10, OpcionesMultiples, OpcionesUnicas, SeccionFormulario } from "./campos";
 import { aEntero, aNumero, aTexto, deNumero, formatearDiferencia, formatearFecha, hoyISO } from "@/lib/nutricion/formulario";
 import { PanelSugerencias } from "./PanelSugerencias";
+import { imprimirRuta } from "@/lib/imprimir";
 
 // ==========================================
 // ESTADO DEL FORMULARIO
@@ -412,7 +413,7 @@ export function FormularioVisita({ programa, visita, sexoPaciente, nombrePacient
               <Button
                 variant="outline"
                 className="gap-2"
-                onClick={() => window.open(`/servicios/nutricion/print?visitaId=${visita.id}`, "_blank")}
+                onClick={() => imprimirRuta(`/servicios/nutricion/print?visitaId=${visita.id}`)}
               >
                 <Printer className="h-4 w-4" />
                 Imprimir

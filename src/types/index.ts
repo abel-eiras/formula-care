@@ -204,7 +204,8 @@ export interface Paciente {
   birthDate: string;
   address?: string;
   notes?: string;
-  lastVisit?: string;
+  /** Último servicio (Dermo, Bio o Nutrición); lo calcula el servidor en listados */
+  ultimaVisita?: UltimaVisita | null;
   origen?: 'manual' | 'autoregistro'; // "manual" = registrado por farmacia, "autoregistro" = formulario público
   createdAt?: string;
   updatedAt?: string;
@@ -216,8 +217,16 @@ export interface Paciente {
   _count?: {
     analisisDermo: number;
     analisisBio: number;
+    programasNutricion: number;
     citas: number;
   };
+}
+
+export type ServicioPaciente = 'dermo' | 'bio' | 'nutricion';
+
+export interface UltimaVisita {
+  fecha: string; // YYYY-MM-DD
+  servicio: ServicioPaciente;
 }
 
 export interface Notificacion {

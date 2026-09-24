@@ -21,6 +21,7 @@ export function usePacientes(filtros?: FiltrosPacientes) {
       if (filtros?.edadMax !== undefined) params.append('edadMax', filtros.edadMax.toString());
       if (filtros?.tieneDermo) params.append('tieneDermo', 'true');
       if (filtros?.tieneBio) params.append('tieneBio', 'true');
+      if (filtros?.tieneNutricion) params.append('tieneNutricion', 'true');
       if (filtros?.fechaDesde) params.append('fechaDesde', filtros.fechaDesde.toISOString());
       if (filtros?.fechaHasta) params.append('fechaHasta', filtros.fechaHasta.toISOString());
       if (filtros?.ordenarPor) params.append('ordenarPor', filtros.ordenarPor);

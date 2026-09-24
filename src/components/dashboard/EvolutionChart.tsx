@@ -79,6 +79,15 @@ export const EvolutionChart = memo(function EvolutionChart() {
                   dot={{ fill: "hsl(var(--secondary))", strokeWidth: 2, r: 4 }}
                   activeDot={{ r: 6, strokeWidth: 0 }}
                 />
+                <Line 
+                  type="monotone" 
+                  dataKey="nutricion" 
+                  name="Nutrición"
+                  stroke="hsl(var(--success))" 
+                  strokeWidth={3}
+                  dot={{ fill: "hsl(var(--success))", strokeWidth: 2, r: 4 }}
+                  activeDot={{ r: 6, strokeWidth: 0 }}
+                />
               </LineChart>
             </ResponsiveContainer>
           ) : (
