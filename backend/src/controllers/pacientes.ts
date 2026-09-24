@@ -7,6 +7,7 @@ import type { Paciente } from '@prisma/client';
 import { aplanarMedicion } from '../services/medicionService.js';
 import { normalizarBusqueda, textoBusquedaPaciente } from '../lib/textoBusqueda.js';
 import { fechaHaceAnios, hoyISO } from '../lib/fechas.js';
+import { obtenerUltimasVisitas } from '../services/ultimaVisitaService.js';
 
 /** El texto de búsqueda es un detalle interno: no se envía al cliente */
 function serializarPaciente<T extends Pick<Paciente, 'textoBusqueda'>>({ textoBusqueda: _texto, ...paciente }: T) {
@@ -48,6 +49,7 @@ export async function obtenerPacientes(req: Request, res: Response) {
     const edadMax = getQueryNumber(req.query.edadMax);
     const tieneDermo = getQueryString(req.query.tieneDermo);
     const tieneBio = getQueryString(req.query.tieneBio);
+    const tieneNutricion = getQueryString(req.query.tieneNutricion);
     const fechaDesde = getQueryString(req.query.fechaDesde);
     const fechaHasta = getQueryString(req.query.fechaHasta);
     const ordenarPorParam = getQueryString(req.query.ordenarPor) ?? 'createdAt';
@@ -108,6 +110,10 @@ export async function obtenerPacientes(req: Request, res: Response) {
       condiciones.push({ analisisBio: { some: {} } });
     }
 
+    if (tieneNutricion === 'true') {
+      condiciones.push({ programasNutricion: { some: {} } });
+    }
+
     const pacientes = await prisma.paciente.findMany({
       where: condiciones.length > 0 ? { AND: condiciones } : {},
       orderBy: { [ordenarPor]: orden },
@@ -117,13 +123,15 @@ export async function obtenerPacientes(req: Request, res: Response) {
           select: {
             analisisDermo: true,
             analisisBio: true,
+            programasNutricion: true,
             citas: true,
           },
         },
       },
     });
 
-    res.json(pacientes.map(serializarPaciente));
+    const ultimasVisitas = await obtenerUltimasVisitas(pacientes.map((p) => p.id));
+    res.json(pacientes.map((p) => ({ ...serializarPaciente(p), ultimaVisita: ultimasVisitas.get(p.id) ?? null })));
   } catch (error) {
     console.error('Error al obtener pacientes:', error);
     res.status(500).json({ error: 'Error al obtener pacientes' });

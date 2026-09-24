@@ -21,6 +21,7 @@ export interface FiltrosPacientes {
   edadMax?: number;
   tieneDermo?: boolean;
   tieneBio?: boolean;
+  tieneNutricion?: boolean;
   fechaDesde?: Date;
   fechaHasta?: Date;
   ordenarPor?: "name" | "createdAt" | "age";
@@ -58,6 +59,7 @@ export function FiltrosAvanzados({ filtros, onFiltrosChange, onReset }: FiltrosA
     filtros.edadMax !== undefined ||
     filtros.tieneDermo ||
     filtros.tieneBio ||
+    filtros.tieneNutricion ||
     filtros.fechaDesde ||
     filtros.fechaHasta ||
     filtros.ordenarPor !== undefined;
@@ -70,6 +72,7 @@ export function FiltrosAvanzados({ filtros, onFiltrosChange, onReset }: FiltrosA
     if (filtros.edadMin !== undefined || filtros.edadMax !== undefined) count++;
     if (filtros.tieneDermo) count++;
     if (filtros.tieneBio) count++;
+    if (filtros.tieneNutricion) count++;
     if (filtros.fechaDesde) count++;
     if (filtros.fechaHasta) count++;
     return count;
@@ -232,6 +235,19 @@ export function FiltrosAvanzados({ filtros, onFiltrosChange, onReset }: FiltrosA
                 }
               >
                 Bio
+              </Button>
+              <Button
+                variant={filtrosLocales.tieneNutricion ? "default" : "outline"}
+                size="sm"
+                className="flex-1 h-8 text-xs"
+                onClick={() =>
+                  setFiltrosLocales({
+                    ...filtrosLocales,
+                    tieneNutricion: !filtrosLocales.tieneNutricion,
+                  })
+                }
+              >
+                Nutrición
               </Button>
             </div>
           </div>

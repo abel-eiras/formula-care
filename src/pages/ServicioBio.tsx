@@ -16,6 +16,7 @@ import { useConfiguracion } from "@/hooks/useConfiguracion";
 import { evaluarValor, getMensajeValoracion } from "@/lib/valoracionBio";
 import { cn } from "@/lib/utils";
 import type { AnalisisBio, ParametroReferencia, ParametroBioConfig } from "@/types";
+import { imprimirRuta } from "@/lib/imprimir";
 // Importación dinámica para reducir el bundle inicial
 const loadPDFGenerator = () => import("@/lib/pdfGenerator");
 
@@ -307,8 +308,7 @@ export default function ServicioBio() {
       return;
     }
     
-    // Abrir vista de impresión en nueva pestaña
-    window.open(`/servicios/bio/print?id=${analisisId}`, "_blank");
+    imprimirRuta(`/servicios/bio/print?id=${analisisId}`);
   };
 
   const handleDescargarPDF = async () => {
@@ -383,7 +383,7 @@ export default function ServicioBio() {
       sessionStorage.removeItem('pdfDownload');
     } catch (error) {
       console.error("Error al descargar PDF:", error);
-      toast.error("Error al generar el PDF. Usa la opción de imprimir del navegador.");
+      toast.error("Error al generar el PDF. Prueba con Imprimir y elige «Guardar como PDF».");
       sessionStorage.removeItem('pdfDownload');
       // Limpiar iframe si existe
       const iframe = document.querySelector('iframe[style*="-9999px"]');

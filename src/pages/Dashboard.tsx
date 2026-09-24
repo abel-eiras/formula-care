@@ -5,7 +5,7 @@ import { QuickActions } from "@/components/dashboard/QuickActions";
 import { NotificacionesWidget } from "@/components/dashboard/NotificacionesWidget";
 import { ProximasRevisiones } from "@/components/dashboard/ProximasRevisiones";
 import { ProximosCumpleanos } from "@/components/dashboard/ProximosCumpleanos";
-import { Users, Sparkles, FlaskConical, TrendingUp } from "lucide-react";
+import { Users, Sparkles, FlaskConical, Salad, TrendingUp } from "lucide-react";
 import { useEstadisticas } from "@/hooks/useEstadisticas";
 import { useConfiguracion } from "@/hooks/useConfiguracion";
 import { LoadingSpinner } from "@/components/ui/LoadingSpinner";
@@ -36,7 +36,7 @@ export default function Dashboard() {
       </div>
 
       {/* Stats Grid */}
-      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
+      <div className="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-5 gap-4">
         <StatCard
           title="Total Pacientes"
           value={estadisticas?.pacientes.total || 0}
@@ -67,6 +67,16 @@ export default function Dashboard() {
           trend={{
             value: estadisticas?.analisisBio.tendencia || 0,
             isPositive: (estadisticas?.analisisBio.tendencia || 0) >= 0,
+          }}
+        />
+        <StatCard
+          title="Visitas Nutrición"
+          value={estadisticas?.visitasNutricion.esteMes || 0}
+          subtitle="Este mes"
+          icon={Salad}
+          trend={{
+            value: estadisticas?.visitasNutricion.tendencia || 0,
+            isPositive: (estadisticas?.visitasNutricion.tendencia || 0) >= 0,
           }}
         />
         <StatCard

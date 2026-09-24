@@ -20,6 +20,7 @@
     "tauri:build": "npm run predesktop:backend && npm run predesktop:node-sidecar && tauri build"
   },
   "dependencies": {
+    "@fontsource/montserrat": "^5.3.0",
     "@hookform/resolvers": "^3.10.0",
     "@radix-ui/react-accordion": "^1.2.11",
     "@radix-ui/react-alert-dialog": "^1.1.14",

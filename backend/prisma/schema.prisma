@@ -51,7 +51,6 @@ model Paciente {
   birthDate   String
   address     String?
   notes       String?
-  lastVisit   String?  // Fecha en formato ISO
   origen      String   @default("manual") // "manual" = registrado por farmacia, "autoregistro" = formulario público
   createdAt   DateTime @default(now())
   updatedAt   DateTime @updatedAt

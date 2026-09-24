@@ -69,7 +69,6 @@ export default function ServicioBioPrint() {
   return (
     <div className="print-page">
       <style>{`
-        @import url('https://fonts.googleapis.com/css2?family=Montserrat:wght@300;400;600&display=swap');
         
         .print-page {
           font-family: 'Montserrat', sans-serif;

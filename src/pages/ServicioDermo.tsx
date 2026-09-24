@@ -13,6 +13,7 @@ import { usePacientes } from "@/hooks/usePacientes";
 import { useCrearAnalisisDermo, useAnalisisDermo, useActualizarAnalisisDermo } from "@/hooks/useAnalisisDermo";
 import { DialogoNuevoPaciente } from "@/components/pacientes/DialogoNuevoPaciente";
 import type { AnalisisDermo, RutinaDia, RutinaNoche, CuidadosSemanales } from "@/types";
+import { imprimirRuta } from "@/lib/imprimir";
 // Importación dinámica para reducir el bundle inicial
 const loadPDFGenerator = () => import("@/lib/pdfGenerator");
 
@@ -268,8 +269,7 @@ export default function ServicioDermo() {
       return;
     }
     
-    // Abrir vista de impresión en nueva pestaña
-    window.open(`/servicios/dermo/print?id=${analisisId}`, "_blank");
+    imprimirRuta(`/servicios/dermo/print?id=${analisisId}`);
   };
 
   const handleDescargarPDF = async () => {
@@ -344,7 +344,7 @@ export default function ServicioDermo() {
       sessionStorage.removeItem('pdfDownload');
     } catch (error) {
       console.error("Error al descargar PDF:", error);
-      toast.error("Error al generar el PDF. Usa la opción de imprimir del navegador.");
+      toast.error("Error al generar el PDF. Prueba con Imprimir y elige «Guardar como PDF».");
       sessionStorage.removeItem('pdfDownload');
       // Limpiar iframe si existe
       const iframe = document.querySelector('iframe[style*="-9999px"]');

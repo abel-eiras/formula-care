@@ -35,6 +35,7 @@ import type {
 } from "@/types";
 import { CampoTexto, Escala0a10, OpcionesMultiples, OpcionesUnicas } from "./campos";
 import { aTexto, formatearFecha, hoyISO } from "@/lib/nutricion/formulario";
+import { imprimirRuta } from "@/lib/imprimir";
 
 // ==========================================
 // FORMULARIO DE UNA INGESTA
@@ -256,7 +257,7 @@ export function RegistroAlimentacion({ programaId, registros }: RegistroAlimenta
         <Button
           variant="outline"
           className="gap-2"
-          onClick={() => window.open(`/servicios/nutricion/print?tipo=registro&programaId=${programaId}`, "_blank")}
+          onClick={() => imprimirRuta(`/servicios/nutricion/print?tipo=registro&programaId=${programaId}`)}
         >
           <Printer className="h-4 w-4" />
           Hoja en blanco para el paciente
