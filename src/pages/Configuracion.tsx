@@ -20,10 +20,11 @@ import { useConfiguracion, useActualizarFarmacia, useActualizarParametrosReferen
 import { useEventos, useCrearEvento, useActualizarEvento, useEliminarEvento } from "@/hooks/useEventos";
 import { usePlantillasEmail, useVariablesPlantilla, useActualizarPlantilla, useRestaurarPlantilla } from "@/hooks/usePlantillasEmail";
 import { EditorPlantillaEmail } from "@/components/configuracion/EditorPlantillaEmail";
+import { SelectorTema } from "@/components/configuracion/SelectorTema";
 import { BackupTab } from "@/components/configuracion/BackupTab";
 import type { Evento, ParametroBioConfig, ConfiguracionRgpd, PlantillaEmail } from "@/types";
 import { cn } from "@/lib/utils";
-import { TEMAS_PRECONFIGURADOS, getColoresParaConfig } from "@/lib/coloresMarca";
+import { getColoresParaConfig } from "@/lib/coloresMarca";
 import { applyThemeToDocument } from "@/lib/theme";
 import type { ParametroReferencia, ColoresMarca } from "@/types";
 import { format } from "date-fns";
@@ -55,7 +56,7 @@ const GRUPOS_INFO: Record<string, { label: string; color: string }> = {
 /** Vista previa de cómo se verá un informe con los colores actuales */
 function VistaPreviaInforme({ colores }: { colores: ColoresMarca }) {
   const primario = colores.primario ?? "#79438f";
-  const secundario = colores.secundario ?? "#6495a8";
+  const secundario = colores.secundario ?? "#4a7484";
   const texto = colores.texto ?? "#1e293b";
   const textoSec = colores.textoSecundario ?? "#475569";
   const linea = colores.linea ?? secundario;
@@ -429,225 +430,12 @@ export default function Configuracion() {
               </CardDescription>
             </CardHeader>
             <CardContent className="space-y-6">
-              <div className="space-y-2">
-                <Label>Tema preconfigurado</Label>
-                <Select
-                  value={farmaciaData.temaActivo || "default"}
-                  onValueChange={(value) => {
-                    const tema = TEMAS_PRECONFIGURADOS[value];
-                    setFarmaciaData((prev) => ({
-                      ...prev,
-                      temaActivo: value,
-                      coloresMarca: value === "custom" ? (prev.coloresMarca ?? TEMAS_PRECONFIGURADOS.default.colores) : tema?.colores,
-                    }));
-                  }}
-                >
-                  <SelectTrigger className="w-full max-w-xs">
-                    <SelectValue placeholder="Seleccionar tema" />
-                  </SelectTrigger>
-                  <SelectContent>
-                    {Object.entries(TEMAS_PRECONFIGURADOS).map(([id, { nombre }]) => (
-                      <SelectItem key={id} value={id}>
-                        {nombre}
-                      </SelectItem>
-                    ))}
-                    <SelectItem value="custom">Personalizado</SelectItem>
-                  </SelectContent>
-                </Select>
-              </div>
-              {farmaciaData.temaActivo === "custom" && (
-                <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 pt-2 border-t">
-                  <div className="space-y-2">
-                    <Label htmlFor="colorPrimario">Color primario (títulos, cabeceras)</Label>
-                    <div className="flex gap-2 items-center">
-                      <Input
-                        id="colorPrimario"
-                        type="color"
-                        className="w-14 h-10 p-1 cursor-pointer"
-                        value={farmaciaData.coloresMarca?.primario ?? "#79438f"}
-                        onChange={(e) =>
-                          setFarmaciaData((prev) => ({
-                            ...prev,
-                            coloresMarca: { ...prev.coloresMarca, primario: e.target.value },
-                          }))
-                        }
-                      />
-                      <Input
-                        className="flex-1 font-mono text-sm"
-                        value={farmaciaData.coloresMarca?.primario ?? "#79438f"}
-                        onChange={(e) =>
-                          setFarmaciaData((prev) => ({
-                            ...prev,
-                            coloresMarca: { ...prev.coloresMarca, primario: e.target.value },
-                          }))
-                        }
-                      />
-                    </div>
-                  </div>
-                  <div className="space-y-2">
-                    <Label htmlFor="colorSecundario">Color secundario (bloques, secciones)</Label>
-                    <div className="flex gap-2 items-center">
-                      <Input
-                        id="colorSecundario"
-                        type="color"
-                        className="w-14 h-10 p-1 cursor-pointer"
-                        value={farmaciaData.coloresMarca?.secundario ?? "#6495a8"}
-                        onChange={(e) =>
-                          setFarmaciaData((prev) => ({
-                            ...prev,
-                            coloresMarca: { ...prev.coloresMarca, secundario: e.target.value },
-                          }))
-                        }
-                      />
-                      <Input
-                        className="flex-1 font-mono text-sm"
-                        value={farmaciaData.coloresMarca?.secundario ?? "#6495a8"}
-                        onChange={(e) =>
-                          setFarmaciaData((prev) => ({
-                            ...prev,
-                            coloresMarca: { ...prev.coloresMarca, secundario: e.target.value },
-                          }))
-                        }
-                      />
-                    </div>
-                  </div>
-                  <div className="space-y-2">
-                    <Label htmlFor="colorFondo">Fondo (informes)</Label>
-                    <div className="flex gap-2 items-center">
-                      <Input
-                        id="colorFondo"
-                        type="color"
-                        className="w-14 h-10 p-1 cursor-pointer"
-                        value={farmaciaData.coloresMarca?.fondo ?? "#f8fafc"}
-                        onChange={(e) =>
-                          setFarmaciaData((prev) => ({
-                            ...prev,
-                            coloresMarca: { ...prev.coloresMarca, fondo: e.target.value },
-                          }))
-                        }
-                      />
-                      <Input
-                        className="flex-1 font-mono text-sm"
-                        value={farmaciaData.coloresMarca?.fondo ?? "#f8fafc"}
-                        onChange={(e) =>
-                          setFarmaciaData((prev) => ({
-                            ...prev,
-                            coloresMarca: { ...prev.coloresMarca, fondo: e.target.value },
-                          }))
-                        }
-                      />
-                    </div>
-                  </div>
-                  <div className="space-y-2">
-                    <Label htmlFor="colorTexto">Texto principal</Label>
-                    <div className="flex gap-2 items-center">
-                      <Input
-                        id="colorTexto"
-                        type="color"
-                        className="w-14 h-10 p-1 cursor-pointer"
-                        value={farmaciaData.coloresMarca?.texto ?? "#1e293b"}
-                        onChange={(e) =>
-                          setFarmaciaData((prev) => ({
-                            ...prev,
-                            coloresMarca: { ...prev.coloresMarca, texto: e.target.value },
-                          }))
-                        }
-                      />
-                      <Input
-                        className="flex-1 font-mono text-sm"
-                        value={farmaciaData.coloresMarca?.texto ?? "#1e293b"}
-                        onChange={(e) =>
-                          setFarmaciaData((prev) => ({
-                            ...prev,
-                            coloresMarca: { ...prev.coloresMarca, texto: e.target.value },
-                          }))
-                        }
-                      />
-                    </div>
-                  </div>
-                  <div className="space-y-2">
-                    <Label htmlFor="colorTextoSecundario">Texto secundario / subtítulos</Label>
-                    <div className="flex gap-2 items-center">
-                      <Input
-                        id="colorTextoSecundario"
-                        type="color"
-                        className="w-14 h-10 p-1 cursor-pointer"
-                        value={farmaciaData.coloresMarca?.textoSecundario ?? farmaciaData.coloresMarca?.secundario ?? "#475569"}
-                        onChange={(e) =>
-                          setFarmaciaData((prev) => ({
-                            ...prev,
-                            coloresMarca: { ...prev.coloresMarca, textoSecundario: e.target.value },
-                          }))
-                        }
-                      />
-                      <Input
-                        className="flex-1 font-mono text-sm"
-                        value={farmaciaData.coloresMarca?.textoSecundario ?? farmaciaData.coloresMarca?.secundario ?? "#475569"}
-                        onChange={(e) =>
-                          setFarmaciaData((prev) => ({
-                            ...prev,
-                            coloresMarca: { ...prev.coloresMarca, textoSecundario: e.target.value },
-                          }))
-                        }
-                      />
-                    </div>
-                  </div>
-                  <div className="space-y-2">
-                    <Label htmlFor="colorAcento">Acento (botones, ítem activo)</Label>
-                    <div className="flex gap-2 items-center">
-                      <Input
-                        id="colorAcento"
-                        type="color"
-                        className="w-14 h-10 p-1 cursor-pointer"
-                        value={farmaciaData.coloresMarca?.acento ?? farmaciaData.coloresMarca?.primario ?? "#79438f"}
-                        onChange={(e) =>
-                          setFarmaciaData((prev) => ({
-                            ...prev,
-                            coloresMarca: { ...prev.coloresMarca, acento: e.target.value },
-                          }))
-                        }
-                      />
-                      <Input
-                        className="flex-1 font-mono text-sm"
-                        value={farmaciaData.coloresMarca?.acento ?? farmaciaData.coloresMarca?.primario ?? "#79438f"}
-                        onChange={(e) =>
-                          setFarmaciaData((prev) => ({
-                            ...prev,
-                            coloresMarca: { ...prev.coloresMarca, acento: e.target.value },
-                          }))
-                        }
-                      />
-                    </div>
-                  </div>
-                  <div className="space-y-2">
-                    <Label htmlFor="colorLinea">Líneas divisorias y bordes</Label>
-                    <div className="flex gap-2 items-center">
-                      <Input
-                        id="colorLinea"
-                        type="color"
-                        className="w-14 h-10 p-1 cursor-pointer"
-                        value={farmaciaData.coloresMarca?.linea ?? farmaciaData.coloresMarca?.secundario ?? "#6495a8"}
-                        onChange={(e) =>
-                          setFarmaciaData((prev) => ({
-                            ...prev,
-                            coloresMarca: { ...prev.coloresMarca, linea: e.target.value },
-                          }))
-                        }
-                      />
-                      <Input
-                        className="flex-1 font-mono text-sm"
-                        value={farmaciaData.coloresMarca?.linea ?? farmaciaData.coloresMarca?.secundario ?? "#6495a8"}
-                        onChange={(e) =>
-                          setFarmaciaData((prev) => ({
-                            ...prev,
-                            coloresMarca: { ...prev.coloresMarca, linea: e.target.value },
-                          }))
-                        }
-                      />
-                    </div>
-                  </div>
-                </div>
-              )}
+              <SelectorTema
+                valor={{ temaActivo: farmaciaData.temaActivo || "default", coloresMarca: farmaciaData.coloresMarca }}
+                onChange={({ temaActivo, coloresMarca }) =>
+                  setFarmaciaData((prev) => ({ ...prev, temaActivo, coloresMarca }))
+                }
+              />
 
               {/* Vista previa de informe */}
               <VistaPreviaInforme

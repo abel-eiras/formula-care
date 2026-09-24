@@ -4,6 +4,7 @@ import { useConfiguracion } from "@/hooks/useConfiguracion";
 import { usePaciente } from "@/hooks/usePacientes";
 import { useProgramaNutricion, useVisitaNutricion } from "@/hooks/useNutricion";
 import { getColoresParaConfig } from "@/lib/coloresMarca";
+import { textoSobre } from "@/lib/contraste";
 import {
   CALIDAD_SUENO,
   CANTIDADES,
@@ -90,7 +91,7 @@ function Documento({
         .header-title { text-align: right; color: ${colores.primario}; }
         .header-title h1 { font-size: 1.9rem; font-weight: 300; line-height: 1.1; }
         .section-header {
-          color: white;
+          color: ${textoSobre(colores.secundario ?? "#4a7484")};
           background-color: ${colores.secundario};
           font-weight: 600;
           font-size: 0.85rem;

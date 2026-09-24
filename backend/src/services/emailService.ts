@@ -265,16 +265,25 @@ function htmlATexto(html: string): string {
 /** Colores por defecto cuando no hay tema/colores configurados (alineados con frontend) */
 const COLORES_DEFAULT = {
   primario: '#79438f',
-  secundario: '#6495a8',
+  secundario: '#4a7484',
   acento: '#79438f',
 };
 
-/** Temas preconfigurados (coinciden con src/lib/coloresMarca.ts) */
+/**
+ * Temas preconfigurados: DEBEN coincidir con TEMAS_PRECONFIGURADOS de
+ * src/lib/coloresMarca.ts (frontend). Los emails ponen texto blanco sobre
+ * primario y secundario, que en todos los temas tienen contraste suficiente.
+ */
 const TEMAS_PRECONFIGURADOS: Record<string, { primario: string; secundario: string; acento: string }> = {
-  default: { primario: '#79438f', secundario: '#6495a8', acento: '#79438f' },
-  porDefecto: { primario: '#79438f', secundario: '#6495a8', acento: '#79438f' },
-  verde: { primario: '#0d9488', secundario: '#14b8a6', acento: '#0d9488' },
-  azul: { primario: '#2563eb', secundario: '#3b82f6', acento: '#2563eb' },
+  default: { primario: '#79438f', secundario: '#4a7484', acento: '#79438f' },
+  porDefecto: { primario: '#79438f', secundario: '#4a7484', acento: '#79438f' },
+  verdeFarmacia: { primario: '#3e551b', secundario: '#56732b', acento: '#a4c639' },
+  verde: { primario: '#0c7f75', secundario: '#0f766e', acento: '#0c7f75' },
+  azul: { primario: '#2563eb', secundario: '#1d4ed8', acento: '#2563eb' },
+  oceano: { primario: '#0b4f6c', secundario: '#1a6f8a', acento: '#2bb3a8' },
+  pizarraAmbar: { primario: '#334155', secundario: '#475569', acento: '#f59e0b' },
+  burdeos: { primario: '#7a1f3d', secundario: '#8f4a5e', acento: '#d4a373' },
+  terracota: { primario: '#8c3f26', secundario: '#56695a', acento: '#e07a5f' },
 };
 
 /**
@@ -1337,7 +1346,7 @@ function generarPlantillaCancelacionDefault(datos: DatosEmail): string {
  */
 function generarPlantillaModificacionDefault(datos: DatosEmail): string {
   const { logo, whatsapp, telefono } = bloquesDesdeDatos(datos);
-  const colorSec = datos.colorSecundario || '#6495a8';
+  const colorSec = datos.colorSecundario || COLORES_DEFAULT.secundario;
   return `
 <!DOCTYPE html>
 <html lang="es">
