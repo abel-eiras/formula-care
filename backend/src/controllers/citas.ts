@@ -2,7 +2,8 @@ import { Request, Response } from 'express';
 import { prisma } from '../lib/prisma.js';
 import { z } from 'zod';
 import { getQueryString, getParamString } from '../lib/queryHelpers.js';
-import { enviarConfirmacionCita, enviarModificacionCita } from '../services/emailService.js';
+import { enviarCancelacionCita, enviarConfirmacionCita, enviarModificacionCita } from '../services/emailService.js';
+import { hoyISO } from '../lib/fechas.js';
 
 // Esquema de validación para crear cita
 const crearCitaSchema = z.object({
@@ -10,7 +11,7 @@ const crearCitaSchema = z.object({
   pacienteId: z.string().min(1, 'El ID del paciente es requerido'),
   fecha: z.string(), // Fecha en formato ISO
   hora: z.string().regex(/^([0-1]?[0-9]|2[0-3]):[0-5][0-9]$/, 'Formato de hora inválido (HH:mm)'),
-  tipo: z.enum(['dermo', 'bio', 'consulta', 'seguimiento']),
+  tipo: z.enum(['dermo', 'bio', 'nutricion', 'consulta', 'seguimiento']),
   notas: z.string().optional(),
 });
 
@@ -235,9 +236,25 @@ export async function eliminarCita(req: Request, res: Response) {
   try {
     const id = getParamString(req.params.id);
 
-    await prisma.cita.delete({
+    const cita = await prisma.cita.delete({
       where: { id },
+      include: { paciente: { select: { name: true, email: true } } },
     });
+
+    // Avisar al paciente si la cita era futura (en segundo plano: borrar no
+    // espera al servidor de correo)
+    const email = cita.paciente.email;
+    if (email && cita.fecha.slice(0, 10) >= hoyISO() && cita.estado !== 'cancelada') {
+      enviarCancelacionCita(email, {
+        citaId: cita.id,
+        tipo: cita.tipo,
+        fecha: cita.fecha,
+        hora: cita.hora,
+        nombreCliente: cita.paciente.name,
+      })
+        .then((ok) => !ok && console.warn(`⚠️  No se pudo enviar la cancelación a ${email}`))
+        .catch((err) => console.error('⚠️  Error al enviar email de cancelación:', err));
+    }
 
     res.status(204).send();
   } catch (error) {

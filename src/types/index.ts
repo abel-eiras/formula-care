@@ -262,7 +262,7 @@ export interface Cita {
   pacienteId: string;
   fecha: string; // Formato ISO
   hora: string; // Formato "HH:mm"
-  tipo: 'dermo' | 'bio' | 'consulta' | 'seguimiento';
+  tipo: 'dermo' | 'bio' | 'nutricion' | 'consulta' | 'seguimiento';
   notas?: string;
   recordatorioEnviado?: boolean;
   createdAt?: string;
