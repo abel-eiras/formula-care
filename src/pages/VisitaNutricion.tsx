@@ -2,7 +2,7 @@ import { useSearchParams } from "react-router-dom";
 import { LoadingSpinner } from "@/components/ui/LoadingSpinner";
 import { FormularioVisita } from "@/components/nutricion/FormularioVisita";
 import { useProgramaNutricion } from "@/hooks/useNutricion";
-import { usePacientes } from "@/hooks/usePacientes";
+import { usePaciente } from "@/hooks/usePacientes";
 
 /**
  * Página de visita de nutrición (inicial o de seguimiento).
@@ -14,7 +14,8 @@ export default function VisitaNutricion() {
   const visitaId = searchParams.get("id") ?? undefined;
 
   const { data: programa, isLoading, isFetching, isError } = useProgramaNutricion(programaId);
-  const { data: pacientes = [] } = usePacientes();
+  // Solo el paciente del programa (no la lista completa)
+  const { data: paciente } = usePaciente(programa?.pacienteId ?? "");
 
   if (!programaId || isError) {
     return <p className="text-muted-foreground">No se ha encontrado el programa de nutrición.</p>;
@@ -29,8 +30,6 @@ export default function VisitaNutricion() {
     if (isFetching) return <LoadingSpinner />;
     return <p className="text-muted-foreground">No se ha encontrado la visita.</p>;
   }
-
-  const paciente = pacientes.find((p) => p.id === programa.pacienteId);
 
   // La key reinicia el formulario al pasar de "nueva" a "guardada" o cambiar de visita
   return (

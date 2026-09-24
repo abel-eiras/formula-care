@@ -4,6 +4,32 @@ import { getQueryLimit } from '../lib/queryHelpers.js';
 import { decryptPacienteData, decryptPacientesList } from '../services/encryptionService.js';
 
 /**
+ * Pacientes con más de una visita (análisis dermo, bio o visitas de nutrición).
+ * Se cuenta con agregados en la base de datos: cargar los análisis completos
+ * de todos los pacientes tardaba segundos con unos miles de pacientes.
+ */
+async function contarPacientesRecurrentes(): Promise<number> {
+  const [dermo, bio, nutricion] = await Promise.all([
+    prisma.analisisDermo.groupBy({ by: ['pacienteId'], _count: { _all: true } }),
+    prisma.analisisBio.groupBy({ by: ['pacienteId'], _count: { _all: true } }),
+    // Las visitas de nutrición cuelgan del programa: se suman por paciente del programa
+    prisma.$queryRaw<{ pacienteId: string; total: bigint }[]>`
+      SELECT p."pacienteId" AS "pacienteId", COUNT(v."id") AS "total"
+      FROM "VisitaNutricion" v JOIN "ProgramaNutricion" p ON p."id" = v."programaId"
+      GROUP BY p."pacienteId"`,
+  ]);
+
+  const visitasPorPaciente = new Map<string, number>();
+  const sumar = (pacienteId: string, n: number) =>
+    visitasPorPaciente.set(pacienteId, (visitasPorPaciente.get(pacienteId) ?? 0) + n);
+  dermo.forEach((f) => sumar(f.pacienteId, f._count._all));
+  bio.forEach((f) => sumar(f.pacienteId, f._count._all));
+  nutricion.forEach((f) => sumar(f.pacienteId, Number(f.total)));
+
+  return [...visitasPorPaciente.values()].filter((n) => n > 1).length;
+}
+
+/**
  * Obtener estadísticas generales del dashboard
  */
 export async function obtenerEstadisticas(req: Request, res: Response) {
@@ -13,69 +39,34 @@ export async function obtenerEstadisticas(req: Request, res: Response) {
     const inicioMesAnterior = new Date(ahora.getFullYear(), ahora.getMonth() - 1, 1);
     const finMesAnterior = new Date(ahora.getFullYear(), ahora.getMonth(), 0);
 
-    // Total de pacientes
-    const totalPacientes = await prisma.paciente.count();
-    const pacientesEsteMes = await prisma.paciente.count({
-      where: {
-        createdAt: {
-          gte: inicioMes.toISOString(),
-        },
-      },
-    });
-    const pacientesMesAnterior = await prisma.paciente.count({
-      where: {
-        createdAt: {
-          gte: inicioMesAnterior.toISOString(),
-          lte: finMesAnterior.toISOString(),
-        },
-      },
-    });
+    const mesActual = { gte: inicioMes.toISOString().split('T')[0] };
+    const mesAnterior = {
+      gte: inicioMesAnterior.toISOString().split('T')[0],
+      lte: finMesAnterior.toISOString().split('T')[0],
+    };
 
-    // Análisis dermocosméticos
-    const analisisDermoEsteMes = await prisma.analisisDermo.count({
-      where: {
-        fecha: {
-          gte: inicioMes.toISOString().split('T')[0],
-        },
-      },
-    });
-    const analisisDermoMesAnterior = await prisma.analisisDermo.count({
-      where: {
-        fecha: {
-          gte: inicioMesAnterior.toISOString().split('T')[0],
-          lte: finMesAnterior.toISOString().split('T')[0],
-        },
-      },
-    });
-
-    // Análisis bioquímicos
-    const analisisBioEsteMes = await prisma.analisisBio.count({
-      where: {
-        fecha: {
-          gte: inicioMes.toISOString().split('T')[0],
-        },
-      },
-    });
-    const analisisBioMesAnterior = await prisma.analisisBio.count({
-      where: {
-        fecha: {
-          gte: inicioMesAnterior.toISOString().split('T')[0],
-          lte: finMesAnterior.toISOString().split('T')[0],
-        },
-      },
-    });
-
-    // Calcular tasa de retorno (pacientes con más de un análisis)
-    const pacientesConAnalisis = await prisma.paciente.findMany({
-      include: {
-        analisisDermo: true,
-        analisisBio: true,
-      },
-    });
-
-    const pacientesRecurrentes = pacientesConAnalisis.filter(
-      (p) => p.analisisDermo.length + p.analisisBio.length > 1
-    ).length;
+    // Todas las consultas son independientes: en paralelo
+    const [
+      totalPacientes,
+      pacientesEsteMes,
+      pacientesMesAnterior,
+      analisisDermoEsteMes,
+      analisisDermoMesAnterior,
+      analisisBioEsteMes,
+      analisisBioMesAnterior,
+      pacientesRecurrentes,
+    ] = await Promise.all([
+      prisma.paciente.count(),
+      prisma.paciente.count({ where: { createdAt: { gte: inicioMes.toISOString() } } }),
+      prisma.paciente.count({
+        where: { createdAt: { gte: inicioMesAnterior.toISOString(), lte: finMesAnterior.toISOString() } },
+      }),
+      prisma.analisisDermo.count({ where: { fecha: mesActual } }),
+      prisma.analisisDermo.count({ where: { fecha: mesAnterior } }),
+      prisma.analisisBio.count({ where: { fecha: mesActual } }),
+      prisma.analisisBio.count({ where: { fecha: mesAnterior } }),
+      contarPacientesRecurrentes(),
+    ]);
 
     const tasaRetorno = totalPacientes > 0 
       ? Math.round((pacientesRecurrentes / totalPacientes) * 100) 

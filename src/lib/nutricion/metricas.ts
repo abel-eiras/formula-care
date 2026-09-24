@@ -89,15 +89,19 @@ export function semanasEntre(desde: string, hasta: string): number {
   return (new Date(hasta).getTime() - new Date(desde).getTime()) / MS_POR_SEMANA;
 }
 
-/** Visitas ordenadas por fecha ascendente (sin mutar el array original) */
+/**
+ * Visitas ordenadas por fecha ascendente y, en el mismo día, por creación
+ * (mismo criterio que el servidor para decidir cuál es la inicial).
+ */
 export function ordenarVisitas(visitas: readonly VisitaNutricion[]): VisitaNutricion[] {
-  return [...visitas].sort((a, b) => new Date(a.fecha).getTime() - new Date(b.fecha).getTime());
+  return [...visitas].sort(
+    (a, b) => a.fecha.localeCompare(b.fecha) || (a.createdAt ?? "").localeCompare(b.createdAt ?? "")
+  );
 }
 
-/** Visita de referencia: la marcada como inicial o, si no hay, la más antigua */
+/** Visita de referencia para la evolución: la más antigua (la inicial) */
 export function visitaReferencia(visitas: readonly VisitaNutricion[]): VisitaNutricion | undefined {
-  const ordenadas = ordenarVisitas(visitas);
-  return ordenadas.find((v) => v.tipo === "inicial") ?? ordenadas[0];
+  return ordenarVisitas(visitas)[0];
 }
 
 /** Número de sesión de una visita dentro del programa (la inicial es la 1) */
