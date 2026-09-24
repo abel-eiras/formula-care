@@ -24,6 +24,7 @@ import { useAnalisisBioPorPaciente } from "@/hooks/useAnalisisBio";
 import { useProgramasNutricion } from "@/hooks/useNutricion";
 import { LoadingSpinner } from "@/components/ui/LoadingSpinner";
 import { EvolutionChartBio } from "@/components/patient/EvolutionChartBio";
+import { EvolucionMediciones } from "@/components/patient/EvolucionMediciones";
 
 const getInitials = (name: string) => {
   return name.split(" ").map(n => n[0]).slice(0, 2).join("").toUpperCase();
@@ -61,7 +62,7 @@ export default function PacienteDetalle() {
       fecha: a.fecha,
       tipo: "bio" as const,
       titulo: "Análisis Bioquímico",
-      resumen: `IMC: ${a.imc || "N/A"} | Glucemia: ${a.glucemia || a.glucose || "N/A"}`,
+      resumen: `IMC: ${a.imc ?? "N/A"} | Glucemia: ${a.glucemia ?? "N/A"}`,
     })),
     ...programasNutricion.flatMap((programa) =>
       programa.visitas.map((v) => ({
@@ -188,9 +189,9 @@ export default function PacienteDetalle() {
             <FileText className="h-4 w-4" />
             Historial
           </TabsTrigger>
-          <TabsTrigger value="evolucion" className="gap-2" disabled={analisisBio.length === 0}>
+          <TabsTrigger value="evolucion" className="gap-2">
             <TrendingUp className="h-4 w-4" />
-            Evolución ({analisisBio.length})
+            Evolución
           </TabsTrigger>
         </TabsList>
 
@@ -278,7 +279,19 @@ export default function PacienteDetalle() {
 
         {/* Tab: Evolución */}
         <TabsContent value="evolucion">
-          <EvolutionChartBio pacienteId={id!} />
+          <div className="space-y-8">
+            {/* Medidas de todos los servicios (tabla única de mediciones) */}
+            <section className="space-y-3">
+              <h2 className="text-lg font-semibold">Medidas y constantes</h2>
+              <EvolucionMediciones pacienteId={id!} />
+            </section>
+            {analisisBio.length > 0 && (
+              <section className="space-y-3">
+                <h2 className="text-lg font-semibold">Parámetros bioquímicos</h2>
+                <EvolutionChartBio pacienteId={id!} />
+              </section>
+            )}
+          </div>
         </TabsContent>
       </Tabs>
     </div>

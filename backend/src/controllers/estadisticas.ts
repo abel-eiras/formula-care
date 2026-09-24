@@ -1,7 +1,6 @@
 import { Request, Response } from 'express';
 import { prisma } from '../lib/prisma.js';
 import { getQueryLimit } from '../lib/queryHelpers.js';
-import { decryptPacienteData, decryptPacientesList } from '../services/encryptionService.js';
 
 /**
  * Pacientes con más de una visita (análisis dermo, bio o visitas de nutrición).
@@ -171,7 +170,7 @@ export async function obtenerPacientesRecientes(req: Request, res: Response) {
       },
     });
 
-    res.json(decryptPacientesList(pacientes));
+    res.json(pacientes);
   } catch (error) {
     console.error('Error al obtener pacientes recientes:', error);
     res.status(500).json({ error: 'Error al obtener pacientes recientes' });
@@ -212,7 +211,7 @@ export async function obtenerProximasRevisiones(req: Request, res: Response) {
 
     const resultado = analisisConRevision.map((analisis) => ({
       ...analisis,
-      paciente: analisis.paciente ? decryptPacienteData(analisis.paciente) : analisis.paciente,
+      paciente: analisis.paciente,
     }));
 
     res.json(resultado);

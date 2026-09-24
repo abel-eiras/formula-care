@@ -1,9 +1,10 @@
 import { Request, Response } from 'express';
 import { z } from 'zod';
-import type { ProgramaNutricion, VisitaNutricion, RegistroAlimentacion } from '@prisma/client';
+import type { Medicion, ProgramaNutricion, VisitaNutricion, RegistroAlimentacion } from '@prisma/client';
 import { prisma } from '../lib/prisma.js';
 import { getParamString, getQueryString } from '../lib/queryHelpers.js';
 import { crearNotificacionRevision } from '../services/notificacionesService.js';
+import { aplanarMedicion, guardarMedicion, medicionSchema, separarMedicion } from '../services/medicionService.js';
 
 // ==========================================
 // VALIDACIÓN
@@ -75,22 +76,13 @@ const visitaSchema = z.object({
   ejercicioDiasSemana: z.number().int().min(0).max(7).nullish(),
   ejercicioMinutosSesion: z.number().int().min(0).max(600).nullish(),
   ejercicioDetalle: textoOpcional,
-  peso: z.number().positive().max(400).nullish(),
-  altura: z.number().positive().max(250).nullish(),
-  cintura: z.number().positive().max(300).nullish(),
-  cadera: z.number().positive().max(300).nullish(),
-  porcentajeGrasa: z.number().min(0).max(100).nullish(),
-  masaGrasa: z.number().min(0).max(400).nullish(),
-  masaMagra: z.number().min(0).max(400).nullish(),
-  systolic: z.number().int().positive().max(300).nullish(),
-  diastolic: z.number().int().positive().max(200).nullish(),
   dificultades: textoOpcional,
   observaciones: textoOpcional,
   objetivosProximaSesion: textoOpcional,
   recomendaciones: textoOpcional,
   proximaRevision: fecha.nullish(),
   farmaceutico: textoOpcional,
-});
+}).merge(medicionSchema); // medidas: se guardan en la tabla única Medicion
 
 const registroSchema = z.object({
   programaId: z.string().min(1, 'El ID del programa es requerido'),
@@ -127,9 +119,13 @@ function serializarPrograma(programa: ProgramaNutricion) {
 
 type TipoVisita = 'inicial' | 'seguimiento';
 
-function serializarVisita(visita: VisitaNutricion, tipo: TipoVisita) {
+type VisitaConMedicion = VisitaNutricion & { medicion: Medicion | null };
+
+function serializarVisita(visita: VisitaConMedicion, tipo: TipoVisita) {
+  const { medicion, ...datos } = visita;
   return {
-    ...visita,
+    ...datos,
+    ...aplanarMedicion(medicion),
     tipo,
     efectosSecundarios: parsearArray<{ id: string; intensidad: string }>(visita.efectosSecundarios),
     picoteoCausas: parsearArray<string>(visita.picoteoCausas),
@@ -139,14 +135,15 @@ function serializarVisita(visita: VisitaNutricion, tipo: TipoVisita) {
 
 // Orden canónico de las visitas: por fecha y, en el mismo día, por creación
 const ORDEN_VISITAS = [{ fecha: 'asc' as const }, { createdAt: 'asc' as const }];
+const CON_MEDICION = { medicion: true } as const;
 
 /** Serializa las visitas de un programa (ya ordenadas): la primera es la inicial */
-function serializarVisitas(visitasOrdenadas: VisitaNutricion[]) {
+function serializarVisitas(visitasOrdenadas: VisitaConMedicion[]) {
   return visitasOrdenadas.map((v, i) => serializarVisita(v, i === 0 ? 'inicial' : 'seguimiento'));
 }
 
 /** Serializa una visita suelta consultando cuál es la inicial de su programa */
-async function serializarVisitaSuelta(visita: VisitaNutricion) {
+async function serializarVisitaSuelta(visita: VisitaConMedicion) {
   const primera = await prisma.visitaNutricion.findFirst({
     where: { programaId: visita.programaId },
     orderBy: ORDEN_VISITAS,
@@ -157,16 +154,6 @@ async function serializarVisitaSuelta(visita: VisitaNutricion) {
 
 function serializarRegistro(registro: RegistroAlimentacion) {
   return { ...registro, sensaciones: parsearArray<string>(registro.sensaciones) };
-}
-
-/**
- * IMC e ICC se calculan en el servidor para que el dato guardado sea
- * coherente aunque el cliente no los envíe.
- */
-function calcularDerivados(peso?: number | null, altura?: number | null, cintura?: number | null, cadera?: number | null) {
-  const imc = peso && altura ? Number((peso / (altura / 100) ** 2).toFixed(1)) : null;
-  const icc = cintura && cadera ? Number((cintura / cadera).toFixed(2)) : null;
-  return { imc, icc };
 }
 
 function responderError(res: Response, error: unknown, mensaje: string) {
@@ -194,7 +181,7 @@ export async function obtenerProgramas(req: Request, res: Response) {
     const programas = await prisma.programaNutricion.findMany({
       where: { pacienteId },
       include: {
-        visitas: { orderBy: ORDEN_VISITAS },
+        visitas: { orderBy: ORDEN_VISITAS, include: CON_MEDICION },
         _count: { select: { registros: true } },
       },
       orderBy: { fechaInicio: 'desc' },
@@ -221,7 +208,7 @@ export async function obtenerPrograma(req: Request, res: Response) {
     const programa = await prisma.programaNutricion.findUnique({
       where: { id },
       include: {
-        visitas: { orderBy: ORDEN_VISITAS },
+        visitas: { orderBy: ORDEN_VISITAS, include: CON_MEDICION },
         registros: { orderBy: [{ fecha: 'asc' }, { hora: 'asc' }] },
       },
     });
@@ -326,7 +313,7 @@ export async function actualizarPrograma(req: Request, res: Response) {
 export async function obtenerVisita(req: Request, res: Response) {
   try {
     const id = getParamString(req.params.id);
-    const visita = await prisma.visitaNutricion.findUnique({ where: { id } });
+    const visita = await prisma.visitaNutricion.findUnique({ where: { id }, include: CON_MEDICION });
 
     if (!visita) {
       return res.status(404).json({ error: 'Visita no encontrada' });
@@ -350,14 +337,24 @@ export async function crearVisita(req: Request, res: Response) {
       return res.status(404).json({ error: 'Programa no encontrado' });
     }
 
-    const visita = await prisma.visitaNutricion.create({
-      data: {
-        ...datos,
-        ...calcularDerivados(datos.peso, datos.altura, datos.cintura, datos.cadera),
-        efectosSecundarios: JSON.stringify(datos.efectosSecundarios),
-        picoteoCausas: JSON.stringify(datos.picoteoCausas),
-        ejercicioTipos: JSON.stringify(datos.ejercicioTipos),
-      },
+    const { medicion, resto } = separarMedicion(datos);
+
+    // Visita y medición se guardan juntas o no se guarda ninguna
+    const visita = await prisma.$transaction(async (tx) => {
+      const creada = await tx.visitaNutricion.create({
+        data: {
+          ...resto,
+          efectosSecundarios: JSON.stringify(resto.efectosSecundarios),
+          picoteoCausas: JSON.stringify(resto.picoteoCausas),
+          ejercicioTipos: JSON.stringify(resto.ejercicioTipos),
+        },
+      });
+      const medicionGuardada = await guardarMedicion(
+        tx,
+        { origen: 'nutricion', visitaNutricionId: creada.id, pacienteId: programa.pacienteId, fecha: creada.fecha },
+        medicion
+      );
+      return { ...creada, medicion: medicionGuardada };
     });
 
     if (visita.proximaRevision) {
@@ -386,19 +383,30 @@ export async function actualizarVisita(req: Request, res: Response) {
       return res.status(404).json({ error: 'Visita no encontrada' });
     }
 
-    // Recalcular derivados con los valores nuevos o, si no llegan, los guardados
-    const valor = <K extends 'peso' | 'altura' | 'cintura' | 'cadera'>(campo: K) =>
-      datos[campo] !== undefined ? datos[campo] : existente[campo];
+    const { medicion, resto } = separarMedicion(datos);
 
-    const visita = await prisma.visitaNutricion.update({
-      where: { id },
-      data: {
-        ...datos,
-        ...calcularDerivados(valor('peso'), valor('altura'), valor('cintura'), valor('cadera')),
-        efectosSecundarios: datos.efectosSecundarios ? JSON.stringify(datos.efectosSecundarios) : undefined,
-        picoteoCausas: datos.picoteoCausas ? JSON.stringify(datos.picoteoCausas) : undefined,
-        ejercicioTipos: datos.ejercicioTipos ? JSON.stringify(datos.ejercicioTipos) : undefined,
-      },
+    const visita = await prisma.$transaction(async (tx) => {
+      const actualizada = await tx.visitaNutricion.update({
+        where: { id },
+        data: {
+          ...resto,
+          efectosSecundarios: resto.efectosSecundarios ? JSON.stringify(resto.efectosSecundarios) : undefined,
+          picoteoCausas: resto.picoteoCausas ? JSON.stringify(resto.picoteoCausas) : undefined,
+          ejercicioTipos: resto.ejercicioTipos ? JSON.stringify(resto.ejercicioTipos) : undefined,
+        },
+      });
+      // Siempre se llama: aunque no cambien las medidas, la fecha de la visita puede haber cambiado
+      const medicionGuardada = await guardarMedicion(
+        tx,
+        {
+          origen: 'nutricion',
+          visitaNutricionId: id,
+          pacienteId: existente.programa.pacienteId,
+          fecha: actualizada.fecha,
+        },
+        medicion
+      );
+      return { ...actualizada, medicion: medicionGuardada };
     });
 
     if (visita.proximaRevision) {

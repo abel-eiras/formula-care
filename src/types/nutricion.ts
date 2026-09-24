@@ -1,3 +1,5 @@
+import type { CamposMedicion } from './index';
+
 // ==========================================
 // SERVICIO DE NUTRICIÓN (con seguimiento GLP-1 opcional)
 // ==========================================
@@ -60,7 +62,8 @@ export interface ProgramaNutricionDetalle extends ProgramaNutricion {
   registros: RegistroAlimentacion[];
 }
 
-export interface VisitaNutricion {
+/** Visita de nutrición. Sus medidas (peso, cintura, tensión...) se guardan en la tabla única de mediciones */
+export interface VisitaNutricion extends CamposMedicion {
   id: string;
   programaId: string;
   fecha: string;
@@ -94,17 +97,6 @@ export interface VisitaNutricion {
   ejercicioDiasSemana?: number | null;
   ejercicioMinutosSesion?: number | null;
   ejercicioDetalle?: string | null;
-  peso?: number | null;
-  altura?: number | null;
-  cintura?: number | null;
-  cadera?: number | null;
-  imc?: number | null;
-  icc?: number | null;
-  porcentajeGrasa?: number | null;
-  masaGrasa?: number | null;
-  masaMagra?: number | null;
-  systolic?: number | null;
-  diastolic?: number | null;
   dificultades?: string | null;
   observaciones?: string | null;
   objetivosProximaSesion?: string | null;
