@@ -3,7 +3,7 @@
  * Carga plantillas dinámicas desde la base de datos
  */
 
-import nodemailer from 'nodemailer';
+import nodemailer, { type Transporter } from 'nodemailer';
 import { Resend } from 'resend';
 import { prisma } from '../lib/prisma.js';
 import { RESERVA_ONLINE_DISPONIBLE } from '../config/funciones.js';
@@ -68,7 +68,7 @@ export interface ResultadoDiagnosticoEmail {
 // VARIABLES GLOBALES
 // ==========================================
 
-let smtpTransporter: nodemailer.Transporter | null = null;
+let smtpTransporter: Transporter | null = null;
 let resendClient: Resend | null = null;
 
 // ==========================================
@@ -118,7 +118,7 @@ const esDesarrollo = () => process.env.NODE_ENV !== 'production';
  *   pruebas externo con datos de pacientes y nunca llegarían al destinatario.
  *   Se devuelve null y el envío se considera fallido.
  */
-async function inicializarSMTP(config: ConfigEmail): Promise<nodemailer.Transporter | null> {
+async function inicializarSMTP(config: ConfigEmail): Promise<Transporter | null> {
   const completa = !!(config.smtpHost && config.smtpUser && config.smtpPass);
   const huella = completa
     ? JSON.stringify([config.smtpHost, config.smtpPort, config.smtpSecure, config.smtpAcceptSelfSigned, config.smtpUser, config.smtpPass])

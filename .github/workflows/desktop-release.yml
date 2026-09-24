@@ -79,6 +79,11 @@ jobs:
           # usa su propio fichero temporal internamente.
           DATABASE_URL: "file:./ci-placeholder.db"
 
+      - name: Quitar dependencias de desarrollo del backend empaquetado
+        # backend/node_modules se copia entero al instalador: sin tipos,
+        # TypeScript ni tsx (el CLI de prisma sí se queda, hace falta para migrar)
+        run: npm --prefix backend prune --omit=dev
+
       - name: Descargar el runtime de Node.js como sidecar
         run: npm run predesktop:node-sidecar
 
