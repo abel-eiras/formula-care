@@ -94,7 +94,7 @@ export function EditorPlantillaEmail({
       html = html.replace(regex, value);
     }
     return DOMPurify.sanitize(html, { ALLOWED_TAGS: ['p', 'br', 'strong', 'em', 'u', 'a', 'ul', 'ol', 'li', 'h1', 'h2', 'h3', 'span', 'div', 'table', 'tr', 'td', 'th', 'tbody', 'thead'] });
-  }, [contenidoHtml]);
+  }, [contenidoHtml, DATOS_PREVIEW]);
 
   const asuntoPreview = useMemo(() => {
     let texto = asunto;
@@ -103,7 +103,7 @@ export function EditorPlantillaEmail({
       texto = texto.replace(regex, value);
     }
     return texto;
-  }, [asunto]);
+  }, [asunto, DATOS_PREVIEW]);
 
   // Copiar variable al portapapeles e insertar en el cursor
   const handleCopyVariable = useCallback((nombre: string) => {

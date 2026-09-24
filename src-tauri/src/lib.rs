@@ -246,6 +246,8 @@ fn spawn_backend_release(
         .env("PID_APP", std::process::id().to_string())
         // Se guarda en las copias de seguridad (para avisar si se restauran en una versión antigua)
         .env("APP_VERSION", &version)
+        // Registro del backend en fichero (Configuración → Copias → Exportar diagnóstico)
+        .env("CARPETA_REGISTRO", app_data_dir.join("logs"))
         .spawn()?;
 
     // Reenvía stdout/stderr del backend a la salida de la app (equivalente al
