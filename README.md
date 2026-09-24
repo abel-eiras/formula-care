@@ -276,6 +276,7 @@ Para más detalles, ver [context/guias/ESTRUCTURA_PROYECTO.md](context/guias/EST
 
 ### Calendario
 - Vista mensual de citas
+- Cumpleaños de pacientes (calculados desde su fecha de nacimiento), con aviso el mismo día y felicitación por WhatsApp (mensaje ya escrito), email (plantilla editable) o registro de felicitación por llamada o en persona
 - Creación y gestión de citas
 - Diferentes tipos de citas (dermo, bio, consulta, seguimiento)
 

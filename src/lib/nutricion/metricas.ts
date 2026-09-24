@@ -1,4 +1,5 @@
 import type { VisitaNutricion } from "@/types";
+import { parsearFecha } from "@/lib/fechas";
 
 /**
  * Cálculos antropométricos y de evolución del servicio de nutrición.
@@ -76,14 +77,8 @@ export function clasificarTension(sistolica: number, diastolica: number): Clasif
 
 const MS_POR_SEMANA = 7 * 24 * 60 * 60 * 1000;
 
-/**
- * Las fechas del módulo se guardan como "YYYY-MM-DD". new Date() las
- * interpreta como medianoche UTC, lo que en zonas horarias negativas muestra
- * el día anterior; se fija el mediodía local para evitarlo.
- */
-export function parsearFecha(fecha: string): Date {
-  return new Date(/^\d{4}-\d{2}-\d{2}$/.test(fecha) ? `${fecha}T12:00:00` : fecha);
-}
+// Implementación común en @/lib/fechas (reexportada por compatibilidad del módulo)
+export { parsearFecha } from "@/lib/fechas";
 
 export function semanasEntre(desde: string, hasta: string): number {
   return (new Date(hasta).getTime() - new Date(desde).getTime()) / MS_POR_SEMANA;

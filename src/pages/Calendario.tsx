@@ -12,12 +12,15 @@ import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { CalendarDays, Plus, Clock, User, Trash2, Gift, Users, Calendar as CalendarIcon } from "lucide-react";
-import { format, isSameDay, parseISO, isAfter, startOfToday, isSameMonth, getDate, getMonth } from "date-fns";
+import { format, isSameDay, parseISO, isAfter, startOfToday, isSameMonth, addDays, startOfMonth, endOfMonth } from "date-fns";
 import { es } from "date-fns/locale";
 import { cn } from "@/lib/utils";
 import { useToast } from "@/hooks/use-toast";
 import { useCitas, useCrearCita, useEliminarCita } from "@/hooks/useCitas";
 import { usePacientes } from "@/hooks/usePacientes";
+import { useCumpleanos } from "@/hooks/useCumpleanos";
+import { ListaCumpleanos } from "@/components/cumpleanos/ListaCumpleanos";
+import { hoyISO, parsearFecha } from "@/lib/fechas";
 import { useEventos } from "@/hooks/useEventos";
 import { LoadingSpinner } from "@/components/ui/LoadingSpinner";
 import type { Cita } from "@/types";
@@ -52,6 +55,7 @@ const formInicial: NuevaCitaForm = {
 
 export default function Calendario() {
   const [date, setDate] = useState<Date | undefined>(new Date());
+  const [mesVisible, setMesVisible] = useState<Date>(() => startOfMonth(new Date()));
   const [dialogOpen, setDialogOpen] = useState(false);
   const [nuevaCita, setNuevaCita] = useState<NuevaCitaForm>(formInicial);
   const { toast } = useToast();
@@ -99,39 +103,28 @@ export default function Calendario() {
     return todasLasCitas.map((cita) => parseISO(cita.fecha));
   }, [todasLasCitas]);
 
-  // Obtener cumpleaños de pacientes en el mes actual
-  const cumpleanosMesActual = useMemo(() => {
-    if (!date) return [];
-    
-    return pacientes
-      .filter((p) => p.birthDate)
-      .map((p) => {
-        const birthDate = parseISO(p.birthDate);
-        return {
-          paciente: p,
-          dia: getDate(birthDate),
-          mes: getMonth(birthDate),
-        };
-      })
-      .filter((c) => c.mes === getMonth(date));
-  }, [pacientes, date]);
+  // Cumpleaños del mes visible (más una semana a cada lado para los días de
+  // meses contiguos que muestra el calendario). Se calculan en el servidor
+  // desde la fecha de nacimiento de cada paciente.
+  const desdeCumpleanos = hoyISO(addDays(startOfMonth(mesVisible), -7));
+  const hastaCumpleanos = hoyISO(addDays(endOfMonth(mesVisible), 7));
+  const { data: cumpleanos = [] } = useCumpleanos(desdeCumpleanos, hastaCumpleanos);
 
-  // Obtener días con cumpleaños para marcar en el calendario
-  const diasConCumpleanos = useMemo(() => {
-    if (!date) return [];
-    
-    return cumpleanosMesActual.map((c) => {
-      const fecha = new Date(date.getFullYear(), c.mes, c.dia);
-      return fecha;
-    });
-  }, [cumpleanosMesActual, date]);
+  // Días con cumpleaños para marcar en el calendario
+  const diasConCumpleanos = useMemo(() => cumpleanos.map((c) => parsearFecha(c.fecha)), [cumpleanos]);
 
-  // Verificar si un día tiene cumpleaños
+  // Cumpleaños del día seleccionado
   const cumpleanosDelDia = useMemo(() => {
     if (!date) return [];
-    
-    return cumpleanosMesActual.filter((c) => c.dia === getDate(date));
-  }, [cumpleanosMesActual, date]);
+    const dia = hoyISO(date);
+    return cumpleanos.filter((c) => c.fecha === dia);
+  }, [cumpleanos, date]);
+
+  const seleccionarDia = (dia: Date | undefined) => {
+    setDate(dia);
+    // Si se pulsa un día de otro mes, el calendario pasa a ese mes
+    if (dia) setMesVisible(startOfMonth(dia));
+  };
 
   // Crear nueva cita
   const handleCrearCita = async () => {
@@ -516,7 +509,9 @@ export default function Calendario() {
                 <Calendar
                   mode="single"
                   selected={date}
-                  onSelect={setDate}
+                  onSelect={seleccionarDia}
+                  month={mesVisible}
+                  onMonthChange={setMesVisible}
                   locale={es}
                   weekStartsOn={1}
                   className="rounded-md border w-full pointer-events-auto"
@@ -543,19 +538,8 @@ export default function Calendario() {
                       Cumpleaños
                     </CardTitle>
                   </CardHeader>
-                  <CardContent className="space-y-2">
-                    {cumpleanosDelDia.map((c) => (
-                      <div key={c.paciente.id} className="flex items-center gap-2 p-2 rounded-lg bg-white">
-                        <Gift className="h-4 w-4 text-pink-500" />
-                        <span className="font-medium">{c.paciente.name}</span>
-                        {/* Años que cumple en el año que se está viendo en el calendario */}
-                        {date && (
-                          <Badge variant="outline" className="ml-auto text-pink-600 border-pink-300">
-                            Cumple {date.getFullYear() - Number(c.paciente.birthDate.slice(0, 4))} años
-                          </Badge>
-                        )}
-                      </div>
-                    ))}
+                  <CardContent>
+                    <ListaCumpleanos cumpleanos={cumpleanosDelDia} />
                   </CardContent>
                 </Card>
               )}

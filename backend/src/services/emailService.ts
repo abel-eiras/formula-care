@@ -1107,6 +1107,58 @@ export async function enviarInvitacionUsuario(
 }
 
 // ==========================================
+// FELICITACIÓN DE CUMPLEAÑOS
+// ==========================================
+
+/**
+ * Envía la felicitación de cumpleaños al paciente con la plantilla
+ * "cumpleanos" (editable en Configuración) o, si no existe, la de por defecto.
+ * Si la plantilla está desactivada no se envía nada.
+ */
+export async function enviarFelicitacionCumpleanos(emailDestinatario: string, nombrePaciente: string): Promise<boolean> {
+  try {
+    const datosFarmacia = await obtenerDatosFarmacia();
+    const datos: DatosEmail = {
+      nombrePaciente,
+      // Campos de cita: no aplican a una felicitación
+      fechaCita: '',
+      horaCita: '',
+      tipoServicio: '',
+      nombreFarmacia: datosFarmacia.nombre,
+      direccionFarmacia: [datosFarmacia.direccion, datosFarmacia.ciudad].filter(Boolean).join(', '),
+      telefonoFarmacia: datosFarmacia.telefono,
+      emailFarmacia: datosFarmacia.email,
+      webFarmacia: datosFarmacia.web,
+      urlSolicitarCita: datosFarmacia.urlSolicitarCita,
+      urlWhatsapp: datosFarmacia.urlWhatsapp,
+      urlTelefono: datosFarmacia.urlTelefono,
+      logoFarmacia: datosFarmacia.logoFarmacia,
+      colorPrimario: datosFarmacia.colorPrimario,
+      colorSecundario: datosFarmacia.colorSecundario,
+      colorAcento: datosFarmacia.colorAcento,
+    };
+
+    const existente = await prisma.plantillaEmail.findUnique({ where: { tipo: 'cumpleanos' } });
+    if (existente && !existente.activa) {
+      console.log('ℹ️  Plantilla de cumpleaños desactivada: no se envía la felicitación');
+      return false;
+    }
+
+    const html = existente
+      ? reemplazarVariables(existente.contenidoHtml, datos)
+      : generarPlantillaCumpleanosDefault(datos);
+    const asunto = existente
+      ? reemplazarVariables(existente.asunto, datos)
+      : `¡Feliz cumpleaños, ${nombrePaciente}!`;
+
+    return await enviarEmail(emailDestinatario, asunto, html);
+  } catch (error) {
+    console.error('❌ Error al enviar felicitación de cumpleaños:', error);
+    return false;
+  }
+}
+
+// ==========================================
 // PLANTILLAS POR DEFECTO
 // ==========================================
 
@@ -1329,6 +1381,34 @@ function generarPlantillaModificacionDefault(datos: DatosEmail): string {
   <p style="text-align: center; color: #999; font-size: 12px; margin-top: 20px;">
     © ${new Date().getFullYear()} ${datos.nombreFarmacia}
   </p>
+</body>
+</html>`;
+}
+
+/**
+ * Genera plantilla HTML de felicitación de cumpleaños por defecto
+ */
+function generarPlantillaCumpleanosDefault(datos: DatosEmail): string {
+  const { logo, whatsapp, telefono, color } = bloquesDesdeDatos(datos);
+  return `
+<!DOCTYPE html>
+<html lang="es">
+<head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1.0"></head>
+<body style="font-family: 'Segoe UI', Arial, sans-serif; line-height: 1.6; color: #333; max-width: 600px; margin: 0 auto; padding: 20px; background-color: #f5f5f5;">
+  <div style="background: white; border-radius: 10px; overflow: hidden;">
+    ${logo}
+    <div style="background: ${color}; color: white; padding: 28px; text-align: center;">
+      <p style="font-size: 40px; margin: 0;">🎉</p>
+      <h1 style="margin: 8px 0 0; font-size: 26px;">¡Feliz cumpleaños, ${datos.nombrePaciente}!</h1>
+    </div>
+    <div style="padding: 28px; text-align: center;">
+      <p>Todo el equipo de <strong>${datos.nombreFarmacia}</strong> te desea un día estupendo.</p>
+      <p>Gracias por confiar en nosotros para cuidar de tu salud.</p>
+    </div>
+    <div style="padding: 16px 28px; border-top: 1px solid #eee; font-size: 13px; color: #666; text-align: center;">
+      ${datos.nombreFarmacia}${datos.direccionFarmacia ? ` · ${datos.direccionFarmacia}` : ''}${telefono}${whatsapp}
+    </div>
+  </div>
 </body>
 </html>`;
 }

@@ -29,9 +29,8 @@ export function deNumero(valor?: number | null): string {
   return valor == null ? "" : String(valor);
 }
 
-export function hoyISO(): string {
-  return new Date().toISOString().split("T")[0];
-}
+// Reexportada para los formularios de nutrición (implementación común en @/lib/fechas)
+export { hoyISO } from "@/lib/fechas";
 
 // ==========================================
 // FORMATO

@@ -81,6 +81,16 @@ backend/
 - `PUT /api/pacientes/:id` - Actualizar paciente
 - `DELETE /api/pacientes/:id` - Eliminar paciente
 
+### Cumpleaños
+
+Se calculan desde la fecha de nacimiento (no se guardan como eventos). Cada día
+se crea un aviso interno por paciente que cumple años (al arrancar y cada hora,
+sin duplicados).
+
+- `GET /api/cumpleanos?desde=YYYY-MM-DD&hasta=YYYY-MM-DD` - Cumpleaños del rango (máx. 400 días) con la edad que se cumple y si ya se ha felicitado
+- `POST /api/cumpleanos/:pacienteId/felicitacion` - Registrar felicitación `{ anio, canal }` (`whatsapp`, `email`, `llamada`, `en_persona`); con `email` además se envía la plantilla "cumpleanos"
+- `DELETE /api/cumpleanos/:pacienteId/felicitacion/:anio` - Deshacer felicitación
+
 ### Citas
 
 - `GET /api/citas?fecha=YYYY-MM-DD` - Listar citas (opcional: filtrar por fecha)

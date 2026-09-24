@@ -62,6 +62,7 @@ model Paciente {
   analisisBio   AnalisisBio[]
   programasNutricion ProgramaNutricion[]
   mediciones    Medicion[]
+  felicitaciones FelicitacionCumpleanos[]
   citas         Cita[]
   notificaciones Notificacion[]
 
@@ -318,6 +319,25 @@ model RegistroAlimentacion {
   programa ProgramaNutricion @relation(fields: [programaId], references: [id], onDelete: Cascade)
 
   @@index([programaId, fecha])
+}
+
+// ==========================================
+// FELICITACIONES DE CUMPLEAÑOS
+// ==========================================
+// Los cumpleaños no se guardan como eventos: se calculan desde
+// Paciente.birthDate. Aquí solo se registra que ya se ha felicitado al
+// paciente en un año concreto (y por qué canal), para no repetirlo.
+model FelicitacionCumpleanos {
+  id         String   @id @default(cuid())
+  pacienteId String
+  anio       Int      // Año del cumpleaños felicitado
+  canal      String   // "whatsapp", "email", "llamada", "en_persona"
+  usuario    String?  // Quién lo registró
+  createdAt  DateTime @default(now())
+
+  paciente Paciente @relation(fields: [pacienteId], references: [id], onDelete: Cascade)
+
+  @@unique([pacienteId, anio])
 }
 
 // ==========================================

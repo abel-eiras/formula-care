@@ -4,6 +4,7 @@ import { EvolutionChart } from "@/components/dashboard/EvolutionChart";
 import { QuickActions } from "@/components/dashboard/QuickActions";
 import { NotificacionesWidget } from "@/components/dashboard/NotificacionesWidget";
 import { ProximasRevisiones } from "@/components/dashboard/ProximasRevisiones";
+import { ProximosCumpleanos } from "@/components/dashboard/ProximosCumpleanos";
 import { Users, Sparkles, FlaskConical, TrendingUp } from "lucide-react";
 import { useEstadisticas } from "@/hooks/useEstadisticas";
 import { useConfiguracion } from "@/hooks/useConfiguracion";
@@ -80,8 +81,9 @@ export default function Dashboard() {
       {/* Main Content Grid */}
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
         {/* Chart - Takes 2 columns */}
-        <div className="lg:col-span-2">
+        <div className="lg:col-span-2 space-y-6">
           <EvolutionChart />
+          <ProximosCumpleanos />
         </div>
         
         {/* Quick Actions */}
