@@ -30,7 +30,6 @@ CREATE TABLE "VisitaNutricion" (
     "id" TEXT NOT NULL PRIMARY KEY,
     "programaId" TEXT NOT NULL,
     "fecha" TEXT NOT NULL,
-    "tipo" TEXT NOT NULL,
     "evolucionSubjetiva" TEXT,
     "adherencia" INTEGER,
     "motivacion" INTEGER,
@@ -104,20 +103,11 @@ CREATE TABLE "RegistroAlimentacion" (
 );
 
 -- CreateIndex
-CREATE INDEX "ProgramaNutricion_pacienteId_idx" ON "ProgramaNutricion"("pacienteId");
+CREATE INDEX "ProgramaNutricion_pacienteId_estado_idx" ON "ProgramaNutricion"("pacienteId", "estado");
 
 -- CreateIndex
-CREATE INDEX "ProgramaNutricion_estado_idx" ON "ProgramaNutricion"("estado");
+CREATE INDEX "VisitaNutricion_programaId_fecha_idx" ON "VisitaNutricion"("programaId", "fecha");
 
 -- CreateIndex
-CREATE INDEX "VisitaNutricion_programaId_idx" ON "VisitaNutricion"("programaId");
-
--- CreateIndex
-CREATE INDEX "VisitaNutricion_fecha_idx" ON "VisitaNutricion"("fecha");
-
--- CreateIndex
-CREATE INDEX "RegistroAlimentacion_programaId_idx" ON "RegistroAlimentacion"("programaId");
-
--- CreateIndex
-CREATE INDEX "RegistroAlimentacion_fecha_idx" ON "RegistroAlimentacion"("fecha");
+CREATE INDEX "RegistroAlimentacion_programaId_fecha_idx" ON "RegistroAlimentacion"("programaId", "fecha");
 

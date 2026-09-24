@@ -1,7 +1,7 @@
 import { useEffect, type ReactNode } from "react";
 import { useSearchParams } from "react-router-dom";
 import { useConfiguracion } from "@/hooks/useConfiguracion";
-import { usePacientes } from "@/hooks/usePacientes";
+import { usePaciente } from "@/hooks/usePacientes";
 import { useProgramaNutricion, useVisitaNutricion } from "@/hooks/useNutricion";
 import { getColoresParaConfig } from "@/lib/coloresMarca";
 import {
@@ -436,15 +436,14 @@ export default function ServicioNutricionPrint() {
   const visitaId = esHojaRegistro ? undefined : searchParams.get("visitaId") ?? undefined;
 
   const { data: config, isLoading: cargandoConfig } = useConfiguracion();
-  const { data: pacientes = [], isLoading: cargandoPacientes } = usePacientes();
   const { data: visita } = useVisitaNutricion(visitaId);
   const programaId = searchParams.get("programaId") ?? visita?.programaId;
   const { data: programa, isLoading: cargandoPrograma } = useProgramaNutricion(programaId);
 
-  const paciente = pacientes.find((p) => p.id === programa?.pacienteId);
+  const { data: paciente, isLoading: cargandoPaciente } = usePaciente(programa?.pacienteId ?? "");
   const listo = esHojaRegistro
-    ? !cargandoConfig && !cargandoPacientes && !cargandoPrograma
-    : !!visita && !!programa && !cargandoConfig && !cargandoPacientes;
+    ? !cargandoConfig && !cargandoPaciente && !cargandoPrograma
+    : !!visita && !!programa && !!paciente && !cargandoConfig;
 
   useAutoImprimir(listo);
 

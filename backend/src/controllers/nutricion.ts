@@ -11,14 +11,16 @@ import { crearNotificacionRevision } from '../services/notificacionesService.js'
 // Los catálogos (antecedentes, efectos secundarios, causas de picoteo...) viven
 // en el frontend; aquí solo se limita el tamaño de los ids para no aceptar basura.
 const idCatalogo = z.string().min(1).max(60);
+// Fechas siempre "YYYY-MM-DD": se guardan como texto y así ordenan correctamente
+const fecha = z.string().regex(/^\d{4}-\d{2}-\d{2}$/, 'Formato de fecha YYYY-MM-DD');
 const textoOpcional = z.string().max(5000).nullish();
 const escala0a10 = z.number().int().min(0).max(10).nullish();
 
 const programaSchema = z.object({
   pacienteId: z.string().min(1, 'El ID del paciente es requerido'),
-  fechaInicio: z.string().min(1),
+  fechaInicio: fecha,
   estado: z.enum(['activo', 'pausado', 'finalizado']).default('activo'),
-  fechaFin: z.string().nullish(),
+  fechaFin: fecha.nullish(),
   motivoConsulta: textoOpcional,
   objetivoPrincipal: textoOpcional,
   pesoObjetivo: z.number().positive().max(400).nullish(),
@@ -43,7 +45,7 @@ const efectoSecundarioSchema = z.object({
 
 const visitaSchema = z.object({
   programaId: z.string().min(1, 'El ID del programa es requerido'),
-  fecha: z.string().min(1),
+  fecha,
   evolucionSubjetiva: z.enum(['muy_buena', 'buena', 'regular', 'dificultosa']).nullish(),
   adherencia: escala0a10,
   motivacion: escala0a10,
@@ -52,7 +54,7 @@ const visitaSchema = z.object({
   glp1Activo: z.boolean().default(false),
   glp1Farmaco: idCatalogo.nullish(),
   glp1Dosis: z.string().max(100).nullish(),
-  glp1FechaInicio: z.string().nullish(),
+  glp1FechaInicio: fecha.nullish(),
   glp1DosisOlvidadas: z.number().int().min(0).max(100).nullish(),
   efectosSecundarios: z.array(efectoSecundarioSchema).max(30).default([]),
   toleranciaObservaciones: textoOpcional,
@@ -86,13 +88,13 @@ const visitaSchema = z.object({
   observaciones: textoOpcional,
   objetivosProximaSesion: textoOpcional,
   recomendaciones: textoOpcional,
-  proximaRevision: z.string().nullish(),
+  proximaRevision: fecha.nullish(),
   farmaceutico: textoOpcional,
 });
 
 const registroSchema = z.object({
   programaId: z.string().min(1, 'El ID del programa es requerido'),
-  fecha: z.string().min(1),
+  fecha,
   hora: z.string().regex(/^\d{2}:\d{2}$/, 'Formato de hora HH:mm').nullish(),
   momento: z.enum(['desayuno', 'media_manana', 'comida', 'merienda', 'cena', 'recena', 'picoteo']),
   descripcion: z.string().min(1, 'Indica qué se ha comido').max(2000),
@@ -123,13 +125,34 @@ function serializarPrograma(programa: ProgramaNutricion) {
   return { ...programa, antecedentes: parsearArray<string>(programa.antecedentes) };
 }
 
-function serializarVisita(visita: VisitaNutricion) {
+type TipoVisita = 'inicial' | 'seguimiento';
+
+function serializarVisita(visita: VisitaNutricion, tipo: TipoVisita) {
   return {
     ...visita,
+    tipo,
     efectosSecundarios: parsearArray<{ id: string; intensidad: string }>(visita.efectosSecundarios),
     picoteoCausas: parsearArray<string>(visita.picoteoCausas),
     ejercicioTipos: parsearArray<string>(visita.ejercicioTipos),
   };
+}
+
+// Orden canónico de las visitas: por fecha y, en el mismo día, por creación
+const ORDEN_VISITAS = [{ fecha: 'asc' as const }, { createdAt: 'asc' as const }];
+
+/** Serializa las visitas de un programa (ya ordenadas): la primera es la inicial */
+function serializarVisitas(visitasOrdenadas: VisitaNutricion[]) {
+  return visitasOrdenadas.map((v, i) => serializarVisita(v, i === 0 ? 'inicial' : 'seguimiento'));
+}
+
+/** Serializa una visita suelta consultando cuál es la inicial de su programa */
+async function serializarVisitaSuelta(visita: VisitaNutricion) {
+  const primera = await prisma.visitaNutricion.findFirst({
+    where: { programaId: visita.programaId },
+    orderBy: ORDEN_VISITAS,
+    select: { id: true },
+  });
+  return serializarVisita(visita, primera?.id === visita.id ? 'inicial' : 'seguimiento');
 }
 
 function serializarRegistro(registro: RegistroAlimentacion) {
@@ -163,11 +186,15 @@ function responderError(res: Response, error: unknown, mensaje: string) {
  */
 export async function obtenerProgramas(req: Request, res: Response) {
   try {
+    // Siempre por paciente: sin filtro devolvería todas las visitas de la farmacia
     const pacienteId = getQueryString(req.query.pacienteId);
+    if (!pacienteId) {
+      return res.status(400).json({ error: 'El parámetro pacienteId es requerido' });
+    }
     const programas = await prisma.programaNutricion.findMany({
-      where: pacienteId ? { pacienteId } : {},
+      where: { pacienteId },
       include: {
-        visitas: { orderBy: { fecha: 'asc' } },
+        visitas: { orderBy: ORDEN_VISITAS },
         _count: { select: { registros: true } },
       },
       orderBy: { fechaInicio: 'desc' },
@@ -176,7 +203,7 @@ export async function obtenerProgramas(req: Request, res: Response) {
     res.json(
       programas.map(({ visitas, _count, ...programa }) => ({
         ...serializarPrograma(programa),
-        visitas: visitas.map(serializarVisita),
+        visitas: serializarVisitas(visitas),
         totalRegistros: _count.registros,
       }))
     );
@@ -194,7 +221,7 @@ export async function obtenerPrograma(req: Request, res: Response) {
     const programa = await prisma.programaNutricion.findUnique({
       where: { id },
       include: {
-        visitas: { orderBy: { fecha: 'asc' } },
+        visitas: { orderBy: ORDEN_VISITAS },
         registros: { orderBy: [{ fecha: 'asc' }, { hora: 'asc' }] },
       },
     });
@@ -206,7 +233,7 @@ export async function obtenerPrograma(req: Request, res: Response) {
     const { visitas, registros, ...datos } = programa;
     res.json({
       ...serializarPrograma(datos),
-      visitas: visitas.map(serializarVisita),
+      visitas: serializarVisitas(visitas),
       registros: registros.map(serializarRegistro),
     });
   } catch (error) {
@@ -305,25 +332,20 @@ export async function obtenerVisita(req: Request, res: Response) {
       return res.status(404).json({ error: 'Visita no encontrada' });
     }
 
-    res.json(serializarVisita(visita));
+    res.json(await serializarVisitaSuelta(visita));
   } catch (error) {
     responderError(res, error, 'Error al obtener la visita');
   }
 }
 
-/**
- * Crear una visita. El tipo lo decide el servidor: la primera del programa
- * es la inicial (referencia para la evolución) y el resto son de seguimiento.
- */
 export async function crearVisita(req: Request, res: Response) {
   try {
     const datos = visitaSchema.parse(req.body);
 
-    const [programa, visitasPrevias] = await Promise.all([
-      prisma.programaNutricion.findUnique({ where: { id: datos.programaId }, select: { pacienteId: true } }),
-      prisma.visitaNutricion.count({ where: { programaId: datos.programaId } }),
-    ]);
-
+    const programa = await prisma.programaNutricion.findUnique({
+      where: { id: datos.programaId },
+      select: { pacienteId: true },
+    });
     if (!programa) {
       return res.status(404).json({ error: 'Programa no encontrado' });
     }
@@ -331,7 +353,6 @@ export async function crearVisita(req: Request, res: Response) {
     const visita = await prisma.visitaNutricion.create({
       data: {
         ...datos,
-        tipo: visitasPrevias === 0 ? 'inicial' : 'seguimiento',
         ...calcularDerivados(datos.peso, datos.altura, datos.cintura, datos.cadera),
         efectosSecundarios: JSON.stringify(datos.efectosSecundarios),
         picoteoCausas: JSON.stringify(datos.picoteoCausas),
@@ -345,7 +366,7 @@ export async function crearVisita(req: Request, res: Response) {
       );
     }
 
-    res.status(201).json(serializarVisita(visita));
+    res.status(201).json(await serializarVisitaSuelta(visita));
   } catch (error) {
     responderError(res, error, 'Error al crear la visita');
   }
@@ -386,37 +407,25 @@ export async function actualizarVisita(req: Request, res: Response) {
       );
     }
 
-    res.json(serializarVisita(visita));
+    res.json(await serializarVisitaSuelta(visita));
   } catch (error) {
     responderError(res, error, 'Error al actualizar la visita');
   }
 }
 
 /**
- * Eliminar una visita. Si era la inicial, la siguiente pasa a serlo para que
- * el programa siempre tenga una referencia.
+ * Eliminar una visita. Si era la inicial, la siguiente por fecha pasa a
+ * serlo automáticamente (el tipo se deriva, no se guarda).
  */
 export async function eliminarVisita(req: Request, res: Response) {
   try {
     const id = getParamString(req.params.id);
-    const visita = await prisma.visitaNutricion.findUnique({ where: { id } });
+    const visita = await prisma.visitaNutricion.findUnique({ where: { id }, select: { id: true } });
     if (!visita) {
       return res.status(404).json({ error: 'Visita no encontrada' });
     }
 
-    await prisma.$transaction(async (tx) => {
-      await tx.visitaNutricion.delete({ where: { id } });
-      if (visita.tipo === 'inicial') {
-        const siguiente = await tx.visitaNutricion.findFirst({
-          where: { programaId: visita.programaId },
-          orderBy: { fecha: 'asc' },
-        });
-        if (siguiente) {
-          await tx.visitaNutricion.update({ where: { id: siguiente.id }, data: { tipo: 'inicial' } });
-        }
-      }
-    });
-
+    await prisma.visitaNutricion.delete({ where: { id } });
     res.status(204).send();
   } catch (error) {
     responderError(res, error, 'Error al eliminar la visita');

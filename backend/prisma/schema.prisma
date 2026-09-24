@@ -159,12 +159,14 @@ model AnalisisBio {
 // ==========================================
 // Un programa agrupa todo el proceso de un paciente: datos de partida
 // (motivo, antecedentes, historia GLP-1), las visitas y el registro de
-// alimentación. La primera visita es la "inicial" y sirve de referencia para
-// calcular la evolución de las siguientes.
+// alimentación. La visita más antigua es la "inicial" y sirve de referencia
+// para calcular la evolución de las siguientes.
+// Todas las fechas del módulo son texto "YYYY-MM-DD" (validado en la API),
+// así que ordenar y comparar como texto equivale a hacerlo por fecha.
 model ProgramaNutricion {
   id                    String   @id @default(cuid())
   pacienteId            String
-  fechaInicio           String   // Fecha en formato ISO
+  fechaInicio           String   // YYYY-MM-DD
   estado                String   @default("activo") // "activo", "pausado", "finalizado"
   fechaFin              String?
   // Motivación y objetivo
@@ -192,17 +194,18 @@ model ProgramaNutricion {
   visitas   VisitaNutricion[]
   registros RegistroAlimentacion[]
 
-  @@index([pacienteId])
-  @@index([estado])
+  // Consultas habituales: programas de un paciente y su programa activo
+  @@index([pacienteId, estado])
 }
 
 // Visita del programa. La inicial y las de seguimiento comparten estructura
-// para que todos los datos sean comparables entre sesiones.
+// para que todos los datos sean comparables entre sesiones. El tipo
+// (inicial/seguimiento) NO se guarda: se deriva del orden por fecha, así no
+// puede quedar incoherente si se corrige la fecha de una visita.
 model VisitaNutricion {
   id                    String   @id @default(cuid())
   programaId            String
-  fecha                 String   // Fecha en formato ISO
-  tipo                  String   // "inicial", "seguimiento"
+  fecha                 String   // YYYY-MM-DD
   // Evolución percibida (solo tiene sentido en seguimiento)
   evolucionSubjetiva    String?  // "muy_buena", "buena", "regular", "dificultosa"
   adherencia            Int?     // 0-10
@@ -254,15 +257,14 @@ model VisitaNutricion {
   observaciones         String?
   objetivosProximaSesion String?
   recomendaciones       String?
-  proximaRevision       String?  // Fecha en formato ISO
+  proximaRevision       String?  // YYYY-MM-DD
   farmaceutico          String?
   createdAt             DateTime @default(now())
   updatedAt             DateTime @updatedAt
 
   programa ProgramaNutricion @relation(fields: [programaId], references: [id], onDelete: Cascade)
 
-  @@index([programaId])
-  @@index([fecha])
+  @@index([programaId, fecha])
 }
 
 // Registro de alimentación: el paciente lo apunta en papel y el farmacéutico
@@ -287,8 +289,7 @@ model RegistroAlimentacion {
 
   programa ProgramaNutricion @relation(fields: [programaId], references: [id], onDelete: Cascade)
 
-  @@index([programaId])
-  @@index([fecha])
+  @@index([programaId, fecha])
 }
 
 // ==========================================
