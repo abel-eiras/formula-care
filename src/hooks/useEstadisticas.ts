@@ -2,7 +2,9 @@ import { useQuery } from '@tanstack/react-query';
 import { api } from '@/lib/api';
 import type { AnalisisDermo, Paciente } from '@/types';
 
+/** Revisión programada en Dermo o en Nutrición */
 export interface RevisionProxima extends Pick<AnalisisDermo, 'id' | 'pacienteId' | 'proximaRevision'> {
+  servicio: 'dermo' | 'nutricion';
   paciente?: Pick<Paciente, 'id' | 'name' | 'phone' | 'email'>;
 }
 

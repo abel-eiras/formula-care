@@ -39,6 +39,7 @@ interface NuevaCitaForm {
 const tiposCita: Record<Cita["tipo"], { label: string; color: string }> = {
   dermo: { label: "Dermocosmética", color: "bg-secondary text-secondary-foreground" },
   bio: { label: "Bioquímica", color: "bg-primary text-primary-foreground" },
+  nutricion: { label: "Nutrición", color: "bg-success text-white" },
   consulta: { label: "Consulta General", color: "bg-accent text-accent-foreground" },
   seguimiento: { label: "Seguimiento", color: "bg-muted text-muted-foreground" }
 };
@@ -289,6 +290,7 @@ export default function Calendario() {
                     <SelectContent>
                       <SelectItem value="dermo">Dermocosmética</SelectItem>
                       <SelectItem value="bio">Bioquímica</SelectItem>
+                      <SelectItem value="nutricion">Nutrición</SelectItem>
                       <SelectItem value="consulta">Consulta General</SelectItem>
                       <SelectItem value="seguimiento">Seguimiento</SelectItem>
                     </SelectContent>

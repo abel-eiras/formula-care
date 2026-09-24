@@ -413,6 +413,7 @@ function obtenerNombreTipoServicio(tipo: string): string {
   const nombres: Record<string, string> = {
     dermo: 'Dermocosmética',
     bio: 'Análisis Bioquímico',
+    nutricion: 'Nutrición',
     consulta: 'Consulta General',
     seguimiento: 'Seguimiento',
   };

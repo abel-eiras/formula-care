@@ -1,7 +1,6 @@
 import { Request, Response } from 'express';
 import { prisma } from '../lib/prisma.js';
 import { z } from 'zod';
-import { crearNotificacionRevision } from '../services/notificacionesService.js';
 import type { Prisma } from '@prisma/client';
 import { getQueryString, getParamString, getQueryNumber, getQueryLimit } from '../lib/queryHelpers.js';
 import { normalizarBusqueda } from '../lib/textoBusqueda.js';
@@ -115,13 +114,6 @@ export async function crearAnalisisDermo(req: Request, res: Response) {
         },
       },
     });
-
-    // Crear notificación si hay próxima revisión
-    if (analisis.proximaRevision) {
-      crearNotificacionRevision(analisis.id, analisis.pacienteId, analisis.proximaRevision).catch(
-        (err) => console.error('Error al crear notificación:', err)
-      );
-    }
 
     // Parsear JSON strings de vuelta a objetos/arrays
     res.status(201).json({
@@ -339,13 +331,6 @@ export async function actualizarAnalisisDermo(req: Request, res: Response) {
         },
       },
     });
-
-    // Crear notificación si hay próxima revisión nueva o actualizada
-    if (analisis.proximaRevision) {
-      crearNotificacionRevision(analisis.id, analisis.pacienteId, analisis.proximaRevision).catch(
-        (err) => console.error('Error al crear notificación:', err)
-      );
-    }
 
     // Parsear JSON strings de vuelta a objetos/arrays
     res.json({

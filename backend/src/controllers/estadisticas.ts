@@ -1,6 +1,8 @@
 import { Request, Response } from 'express';
 import { prisma } from '../lib/prisma.js';
 import { getQueryLimit } from '../lib/queryHelpers.js';
+import { hoyISO } from '../lib/fechas.js';
+import { obtenerRevisionesProximas } from '../services/notificacionesService.js';
 
 /**
  * Pacientes con más de una visita (análisis dermo, bio o visitas de nutrición).
@@ -182,37 +184,11 @@ export async function obtenerPacientesRecientes(req: Request, res: Response) {
  */
 export async function obtenerProximasRevisiones(req: Request, res: Response) {
   try {
-    const hoy = new Date().toISOString().split('T')[0];
+    const hoy = hoyISO();
     const limite = getQueryLimit(req.query.limit, 10, 100);
 
-    // Obtener análisis dermocosméticos con próxima revisión
-    const analisisConRevision = await prisma.analisisDermo.findMany({
-      where: {
-        AND: [
-          { proximaRevision: { not: null } },
-          { proximaRevision: { gte: hoy } },
-        ],
-      },
-      include: {
-        paciente: {
-          select: {
-            id: true,
-            name: true,
-            phone: true,
-            email: true,
-          },
-        },
-      },
-      orderBy: {
-        proximaRevision: 'asc',
-      },
-      take: limite,
-    });
-
-    const resultado = analisisConRevision.map((analisis) => ({
-      ...analisis,
-      paciente: analisis.paciente,
-    }));
+    // Revisiones de Dermo y de Nutrición
+    const resultado = await obtenerRevisionesProximas(hoy, undefined, limite);
 
     res.json(resultado);
   } catch (error) {

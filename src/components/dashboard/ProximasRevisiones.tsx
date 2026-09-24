@@ -5,10 +5,11 @@ import { ChevronRight, Calendar, Clock, User } from "lucide-react";
 import { Link } from "react-router-dom";
 import { useProximasRevisiones, type RevisionProxima } from "@/hooks/useEstadisticas";
 import { LoadingSpinner } from "@/components/ui/LoadingSpinner";
+import { hoyISO, parsearFecha } from "@/lib/fechas";
 
 const formatearFecha = (fecha: string): string => {
   try {
-    return new Date(fecha).toLocaleDateString("es-ES", {
+    return parsearFecha(fecha).toLocaleDateString("es-ES", {
       day: "numeric",
       month: "short",
       year: "numeric",
@@ -53,11 +54,11 @@ export function ProximasRevisiones() {
       <CardContent className="space-y-3">
         {revisiones.length > 0 ? (
           revisiones.map((revision: RevisionProxima) => {
-            // El backend solo devuelve análisis con proximaRevision definida
-            // (filtro `proximaRevision: { not: null }`), de ahí la aserción.
-            const fechaRevision = new Date(revision.proximaRevision!);
-            const diasRestantes = Math.ceil(
-              (fechaRevision.getTime() - new Date().getTime()) / (1000 * 60 * 60 * 24)
+            // El backend solo devuelve revisiones con fecha, de ahí la aserción.
+            // Días de calendario entre hoy y la revisión (ambos a mediodía local)
+            const diasRestantes = Math.round(
+              (parsearFecha(revision.proximaRevision!.slice(0, 10)).getTime() - parsearFecha(hoyISO()).getTime()) /
+                (1000 * 60 * 60 * 24)
             );
             const esUrgente = diasRestantes <= 7;
             const esMuyUrgente = diasRestantes <= 3;
@@ -87,6 +88,7 @@ export function ProximasRevisiones() {
                     <div className="flex items-center gap-2 text-xs text-muted-foreground">
                       <Clock className="h-3 w-3" />
                       <span>{formatearFecha(revision.proximaRevision)}</span>
+                      <span>· {revision.servicio === "nutricion" ? "Nutrición" : "Dermo"}</span>
                       {diasRestantes >= 0 && (
                         <Badge
                           variant={esMuyUrgente ? "destructive" : esUrgente ? "default" : "secondary"}

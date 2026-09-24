@@ -3,7 +3,6 @@ import { z } from 'zod';
 import type { Medicion, ProgramaNutricion, VisitaNutricion, RegistroAlimentacion } from '@prisma/client';
 import { prisma } from '../lib/prisma.js';
 import { getParamString, getQueryString } from '../lib/queryHelpers.js';
-import { crearNotificacionRevision } from '../services/notificacionesService.js';
 import { aplanarMedicion, guardarMedicion, medicionSchema, separarMedicion } from '../services/medicionService.js';
 
 // ==========================================
@@ -357,12 +356,6 @@ export async function crearVisita(req: Request, res: Response) {
       return { ...creada, medicion: medicionGuardada };
     });
 
-    if (visita.proximaRevision) {
-      crearNotificacionRevision(visita.id, programa.pacienteId, visita.proximaRevision).catch((err) =>
-        console.error('Error al crear notificación:', err)
-      );
-    }
-
     res.status(201).json(await serializarVisitaSuelta(visita));
   } catch (error) {
     responderError(res, error, 'Error al crear la visita');
@@ -408,12 +401,6 @@ export async function actualizarVisita(req: Request, res: Response) {
       );
       return { ...actualizada, medicion: medicionGuardada };
     });
-
-    if (visita.proximaRevision) {
-      crearNotificacionRevision(visita.id, existente.programa.pacienteId, visita.proximaRevision).catch((err) =>
-        console.error('Error al crear notificación:', err)
-      );
-    }
 
     res.json(await serializarVisitaSuelta(visita));
   } catch (error) {

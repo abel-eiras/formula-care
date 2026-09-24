@@ -8,7 +8,6 @@ import { citasRouter } from './routes/citas.js';
 import { serviciosRouter } from './routes/servicios.js';
 import { nutricionRouter } from './routes/nutricion.js';
 import { cumpleanosRouter } from './routes/cumpleanos.js';
-import { generarAvisosCumpleanos } from './services/cumpleanosService.js';
 import { configuracionRouter } from './routes/configuracion.js';
 import { estadisticasRouter } from './routes/estadisticas.js';
 import { notificacionesRouter } from './routes/notificaciones.js';
@@ -17,7 +16,7 @@ import { authRouter } from './routes/auth.js';
 import { plantillasEmailRouter } from './routes/plantillasEmail.js';
 import { backupsRouter } from './routes/backups.js';
 import { verificarToken } from './middleware/auth.js';
-import { verificarYEjecutarBackupProgramado } from './services/backupService.js';
+import { iniciarTareasPeriodicas } from './services/tareasProgramadas.js';
 
 // Cargar variables de entorno
 dotenv.config();
@@ -88,18 +87,6 @@ app.listen(PORT, () => {
   console.log(`🚀 Servidor corriendo en http://localhost:${PORT}`);
   console.log(`📡 CORS habilitado para: ${CORS_ORIGINS.join(', ')}`);
 
-  // Copias de seguridad automáticas: se comprueba al arrancar (por si la app
-  // llevaba tiempo cerrada) y cada hora mientras esté abierta, para no
-  // depender de que el proceso siga vivo exactamente en el instante del
-  // aniversario de la periodicidad configurada.
-  void verificarYEjecutarBackupProgramado();
-  // Avisos de cumpleaños del día: mismo criterio (al arrancar y cada hora;
-  // no se duplican dentro del mismo día)
-  const avisarCumpleanos = () =>
-    generarAvisosCumpleanos().catch((err) => console.error('Error al generar avisos de cumpleaños:', err));
-  void avisarCumpleanos();
-  setInterval(() => {
-    void verificarYEjecutarBackupProgramado();
-    void avisarCumpleanos();
-  }, 60 * 60 * 1000);
+  // Copias de seguridad, avisos y recordatorios (al arrancar y cada hora)
+  iniciarTareasPeriodicas();
 });
