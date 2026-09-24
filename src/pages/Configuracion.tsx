@@ -13,10 +13,10 @@ import { Calendar } from "@/components/ui/calendar";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
 import { Textarea } from "@/components/ui/textarea";
-import { ArrowLeft, Save, Settings, Building2, FlaskConical, Calendar as CalendarIcon, Plus, Trash2, GripVertical, Eye, EyeOff, Pencil, Shield, FileText, AlertTriangle, Mail, Palette, DatabaseBackup, Users, UserCircle } from "lucide-react";
+import { ArrowLeft, Save, Settings, Building2, FlaskConical, Calendar as CalendarIcon, Plus, Trash2, GripVertical, Eye, EyeOff, Pencil, Shield, FileText, AlertTriangle, Mail, Palette, DatabaseBackup, Users, UserCircle, Globe } from "lucide-react";
 import { Link } from "react-router-dom";
 import { toast } from "sonner";
-import { useConfiguracion, useActualizarFarmacia, useActualizarParametrosReferencia, useActualizarValoracionBio, useActualizarParametrosBioConfig, useConfiguracionCalendario, useActualizarConfiguracionCalendario, useConfiguracionRgpd, useActualizarRgpd } from "@/hooks/useConfiguracion";
+import { useConfiguracion, useActualizarFarmacia, useActualizarParametrosReferencia, useActualizarValoracionBio, useActualizarParametrosBioConfig, useConfiguracionRgpd, useActualizarRgpd } from "@/hooks/useConfiguracion";
 import { useEventos, useCrearEvento, useActualizarEvento, useEliminarEvento } from "@/hooks/useEventos";
 import { usePlantillasEmail, useVariablesPlantilla, useActualizarPlantilla, useRestaurarPlantilla } from "@/hooks/usePlantillasEmail";
 import { EditorPlantillaEmail } from "@/components/configuracion/EditorPlantillaEmail";
@@ -24,6 +24,7 @@ import { SelectorTema } from "@/components/configuracion/SelectorTema";
 import { BackupTab } from "@/components/configuracion/BackupTab";
 import { UsuariosTab } from "@/components/configuracion/UsuariosTab";
 import { MiCuentaTab } from "@/components/configuracion/MiCuentaTab";
+import { ReservaOnlineTab } from "@/components/configuracion/ReservaOnlineTab";
 import { useAuthContext } from "@/contexts/AuthContext";
 import type { Evento, ParametroBioConfig, ConfiguracionRgpd, PlantillaEmail } from "@/types";
 import { cn } from "@/lib/utils";
@@ -283,6 +284,13 @@ export default function Configuracion() {
             <span className="sm:hidden">Copias</span>
           </TabsTrigger>
           {esAdmin && (
+            <TabsTrigger value="reserva" className="gap-2">
+              <Globe className="h-4 w-4" />
+              <span className="hidden sm:inline">Reserva online</span>
+              <span className="sm:hidden">Reserva</span>
+            </TabsTrigger>
+          )}
+          {esAdmin && (
             <TabsTrigger value="usuarios" className="gap-2">
               <Users className="h-4 w-4" />
               Usuarios
@@ -518,6 +526,13 @@ export default function Configuracion() {
         <TabsContent value="backup">
           <BackupTab />
         </TabsContent>
+
+        {/* Tab: Reserva online (solo administradores) */}
+        {esAdmin && (
+          <TabsContent value="reserva">
+            <ReservaOnlineTab />
+          </TabsContent>
+        )}
 
         {/* Tab: Usuarios (solo administradores) */}
         {esAdmin && (
@@ -1113,17 +1128,10 @@ function ParametrosBioquimicosTab({
 
 // Componente para el tab de Calendario
 function CalendarioTab() {
-  const { data: configCalendario, isLoading: cargandoConfig } = useConfiguracionCalendario();
-  const actualizarConfig = useActualizarConfiguracionCalendario();
   const { data: eventos = [], isLoading: cargandoEventos } = useEventos();
   const crearEvento = useCrearEvento();
   const actualizarEvento = useActualizarEvento();
   const eliminarEvento = useEliminarEvento();
-
-  const [duraciones, setDuraciones] = useState({
-    dermo: 45,
-    bio: 20,
-  });
 
   const [nuevoEvento, setNuevoEvento] = useState({
     nombre: '',
@@ -1136,27 +1144,6 @@ function CalendarioTab() {
   });
 
   const [editandoEvento, setEditandoEvento] = useState<Evento | null>(null);
-
-  useEffect(() => {
-    if (configCalendario) {
-      setDuraciones({
-        dermo: configCalendario.duracionPorTipo?.dermo || 45,
-        bio: configCalendario.duracionPorTipo?.bio || 20,
-      });
-    }
-  }, [configCalendario]);
-
-  const handleGuardarDuraciones = async () => {
-    try {
-      await actualizarConfig.mutateAsync({
-        duracionPorTipo: duraciones,
-      });
-      toast.success('Duraciones actualizadas correctamente');
-    } catch (error) {
-      console.error('Error al guardar:', error);
-      toast.error('Error al guardar las duraciones');
-    }
-  };
 
   const handleCrearEvento = async () => {
     try {
@@ -1213,58 +1200,18 @@ function CalendarioTab() {
 
   const DIAS_SEMANA = ['lunes', 'martes', 'miercoles', 'jueves', 'viernes', 'sabado', 'domingo'] as const;
 
-  if (cargandoConfig || cargandoEventos) {
+  if (cargandoEventos) {
     return <div className="text-center py-8">Cargando configuración del calendario...</div>;
   }
 
   return (
     <div className="space-y-6">
-      {/* Duraciones por tipo de servicio */}
-      <Card>
-        <CardHeader>
-          <CardTitle>Duración de Servicios</CardTitle>
-          <CardDescription>
-            Configura la duración en minutos para cada tipo de servicio
-          </CardDescription>
-        </CardHeader>
-        <CardContent className="space-y-4">
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-            <div className="space-y-2">
-              <Label htmlFor="duracionDermo">Dermocosmética (minutos)</Label>
-              <Input
-                id="duracionDermo"
-                type="number"
-                min="1"
-                value={duraciones.dermo}
-                onChange={(e) => setDuraciones({ ...duraciones, dermo: parseInt(e.target.value) || 45 })}
-              />
-            </div>
-            <div className="space-y-2">
-              <Label htmlFor="duracionBio">Análisis Bioquímico (minutos)</Label>
-              <Input
-                id="duracionBio"
-                type="number"
-                min="1"
-                value={duraciones.bio}
-                onChange={(e) => setDuraciones({ ...duraciones, bio: parseInt(e.target.value) || 20 })}
-              />
-            </div>
-          </div>
-          <div className="flex justify-end">
-            <Button onClick={handleGuardarDuraciones} disabled={actualizarConfig.isPending}>
-              <Save className="h-4 w-4 mr-2" />
-              Guardar Duraciones
-            </Button>
-          </div>
-        </CardContent>
-      </Card>
-
       {/* Gestión de Eventos */}
       <Card>
         <CardHeader>
           <CardTitle>Eventos Personalizados</CardTitle>
           <CardDescription>
-            Crea y gestiona eventos personalizados que aparecerán en la página de solicitud de citas
+            Talleres y jornadas con plazas. Los activos se ofrecen en la reserva online (si está activada)
           </CardDescription>
         </CardHeader>
         <CardContent className="space-y-6">
@@ -1712,9 +1659,9 @@ function RgpdTab() {
             <div className="text-sm text-amber-800">
               <p className="font-semibold mb-1">Información importante</p>
               <p>
-                Los textos legales y el banner de cookies solo se mostrarán en las páginas públicas 
-                (solicitud de citas, login). El panel interno de la farmacia no requiere estos avisos 
-                ya que es de uso exclusivo del personal autorizado.
+                El aviso legal y las políticas de privacidad y cookies se publican en la página de
+                reserva online (si está activada). Esta app es de uso exclusivo del personal de la
+                farmacia y no necesita mostrarlos.
               </p>
             </div>
           </div>

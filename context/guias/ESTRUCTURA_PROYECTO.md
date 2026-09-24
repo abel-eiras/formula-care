@@ -42,7 +42,7 @@ formula-care/
 │   └── tauri.conf.json
 │
 ├── 📁 booking-web/                # Servicio OPCIONAL y aparte: reserva pública de citas
-│                                  # (proyecto independiente, sin sincronizar con la app de escritorio)
+│                                  # (proyecto independiente; buzón cifrado que sincroniza la app)
 │
 └── 📁 .cursor/skills/             # Skills de proyecto para agentes
 ```

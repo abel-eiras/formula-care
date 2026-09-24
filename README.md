@@ -89,7 +89,7 @@ chmod +x "Formula Care_*.AppImage"
   - Política de privacidad, cookies, términos
 
 - **Reserva pública de citas (opcional, servicio aparte)**
-  - Ver [booking-web/](booking-web/): un servicio web independiente y autohospedable para quien quiera ofrecer reserva de citas online, desacoplado de la app de escritorio.
+  - Ver [booking-web/](booking-web/): un servicio web independiente y autohospedable para quien quiera ofrecer reserva de citas online. La app le publica sus huecos libres y recoge las solicitudes, cifradas con la clave de la farmacia (se configura en Configuración → Reserva online).
 
 ### 🚧 En Desarrollo
 - Mejoras de rendimiento
@@ -352,7 +352,7 @@ Formula Care es software libre. Contribuye si te apetece — programa mucho o pr
 ## 🐛 Problemas Conocidos
 
 - Los tres instaladores se generan y compilan vía CI ([`.github/workflows/desktop-release.yml`](.github/workflows/desktop-release.yml)) en su propio sistema operativo (Linux, Windows, macOS). El de Linux además se ha ejecutado e instalado de verdad en este entorno de desarrollo; Windows y macOS de momento solo están verificados por la propia compilación en CI, no por un arranque manual en esos sistemas — sin letra pequeña, es lo que hay. Ninguno de los tres está firmado digitalmente, así que Windows/macOS mostrarán un aviso de "editor no verificado" al abrirlos (ver [Descargar e instalar](#-descargar-e-instalar)).
-- `booking-web/` (reserva pública opcional) no sincroniza automáticamente sus citas con la base de datos local de la app de escritorio — ver su propio README para el alcance exacto.
+- `booking-web/` (reserva pública opcional) necesita un servidor accesible desde internet; la app de escritorio sincroniza con él cada 2 minutos mientras está abierta — ver su propio README.
 - Falta sistema de copia de seguridad automática de la base de datos local.
 
 ---

@@ -34,7 +34,7 @@ export interface Configuracion {
 // Plantillas de Email
 export interface PlantillaEmail {
   id: string;
-  tipo: 'confirmacion' | 'recordatorio' | 'cancelacion' | 'modificacion' | 'cumpleanos';
+  tipo: 'confirmacion' | 'recordatorio' | 'cancelacion' | 'modificacion' | 'cumpleanos' | 'rechazo';
   nombre: string;
   asunto: string;
   contenidoHtml: string;
@@ -271,8 +271,9 @@ export interface Cita {
   pacienteId: string;
   fecha: string; // Formato ISO
   hora: string; // Formato "HH:mm"
-  tipo: 'dermo' | 'bio' | 'nutricion' | 'consulta' | 'seguimiento';
+  tipo: 'dermo' | 'bio' | 'nutricion' | 'consulta' | 'seguimiento' | `evento:${string}`;
   notas?: string;
+  estado?: 'pendiente' | 'confirmada' | 'cancelada' | 'completada';
   recordatorioEnviado?: boolean;
   createdAt?: string;
   updatedAt?: string;

@@ -49,7 +49,7 @@ export default function LegalPublico() {
   }
 
   const Icon = pageConfig.icon;
-  const nombreFarmacia = data.farmacia.nombre;
+  const nombreFarmacia = data.farmacia;
   const contenido = data.contenido;
 
   return (

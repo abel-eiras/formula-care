@@ -139,7 +139,7 @@ export default function EditarPaciente() {
               Editar Paciente
             </h1>
             <Badge variant={esAutoregistro ? "secondary" : "default"}>
-              {esAutoregistro ? "Autoregistrado" : "Registrado manualmente"}
+              {esAutoregistro ? "Llegó por la reserva online" : "Registrado en la farmacia"}
             </Badge>
           </div>
           <p className="text-muted-foreground">Modificar datos de {paciente.name}</p>

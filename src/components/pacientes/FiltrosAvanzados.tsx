@@ -164,7 +164,7 @@ export function FiltrosAvanzados({ filtros, onFiltrosChange, onReset }: FiltrosA
               <SelectContent>
                 <SelectItem value="all">Todos</SelectItem>
                 <SelectItem value="manual">Registrado manualmente</SelectItem>
-                <SelectItem value="autoregistro">Autoregistrado</SelectItem>
+                <SelectItem value="autoregistro">Reserva online</SelectItem>
               </SelectContent>
             </Select>
           </div>

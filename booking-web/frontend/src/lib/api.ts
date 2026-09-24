@@ -1,7 +1,5 @@
 /**
- * Cliente HTTP mínimo para la API de booking-web.
- * Envía cookies en todas las peticiones (credentials: 'include') porque la
- * sesión de staff viaja en una cookie HttpOnly.
+ * Cliente HTTP mínimo para la API pública de booking-web (sin sesión ni cookies).
  */
 
 function getApiBaseUrl(): string {
@@ -27,7 +25,6 @@ export class ApiError extends Error {
 async function request<T>(path: string, options: RequestInit = {}): Promise<T> {
   const response = await fetch(`${API_BASE_URL}${path}`, {
     ...options,
-    credentials: 'include',
     headers: {
       'Content-Type': 'application/json',
       ...(options.headers || {}),
