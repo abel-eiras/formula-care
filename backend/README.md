@@ -95,6 +95,17 @@ backend/
 - `POST /api/servicios/bio` - Crear análisis bioquímico
 - `GET /api/servicios/bio/:id` - Obtener análisis bio
 
+### Nutrición (seguimiento con GLP-1 opcional)
+
+- `GET /api/nutricion/programas?pacienteId=` - Programas de un paciente (con visitas)
+- `POST /api/nutricion/programas` - Iniciar programa (409 si el paciente ya tiene uno activo)
+- `GET /api/nutricion/programas/:id` - Programa con visitas y registro de alimentación
+- `PUT /api/nutricion/programas/:id` - Actualizar datos de partida o estado
+- `POST /api/nutricion/visitas` - Crear visita (la primera del programa es la inicial)
+- `GET|PUT|DELETE /api/nutricion/visitas/:id` - Obtener, actualizar o eliminar visita
+- `POST /api/nutricion/registros` - Añadir ingesta al registro de alimentación
+- `PUT|DELETE /api/nutricion/registros/:id` - Actualizar o eliminar ingesta
+
 ## 🛠️ Scripts Disponibles
 
 - `npm run dev` - Servidor en modo desarrollo

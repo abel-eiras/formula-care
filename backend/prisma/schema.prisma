@@ -56,6 +56,7 @@ model Paciente {
   // Relaciones
   analisisDermo AnalisisDermo[]
   analisisBio   AnalisisBio[]
+  programasNutricion ProgramaNutricion[]
   citas         Cita[]
   notificaciones Notificacion[]
 
@@ -150,6 +151,143 @@ model AnalisisBio {
   paciente Paciente @relation(fields: [pacienteId], references: [id], onDelete: Cascade)
 
   @@index([pacienteId])
+  @@index([fecha])
+}
+
+// ==========================================
+// SERVICIO DE NUTRICIÓN (con seguimiento GLP-1 opcional)
+// ==========================================
+// Un programa agrupa todo el proceso de un paciente: datos de partida
+// (motivo, antecedentes, historia GLP-1), las visitas y el registro de
+// alimentación. La primera visita es la "inicial" y sirve de referencia para
+// calcular la evolución de las siguientes.
+model ProgramaNutricion {
+  id                    String   @id @default(cuid())
+  pacienteId            String
+  fechaInicio           String   // Fecha en formato ISO
+  estado                String   @default("activo") // "activo", "pausado", "finalizado"
+  fechaFin              String?
+  // Motivación y objetivo
+  motivoConsulta        String?
+  objetivoPrincipal     String?
+  pesoObjetivo          Float?   // kg
+  dietasPrevias         String?  // Texto libre con las dietas intentadas (vacío = ninguna)
+  // Antecedentes
+  antecedentes          String   @default("[]") // JSON array de ids de catálogo: ["diabetes_2", "hipertension", ...]
+  otrosProblemasMedicos String?
+  antecedentesFamiliares String?
+  tabaco                String?  // "no", "exfumador", "si"
+  alcohol               String?  // "nunca", "ocasional", "semanal", "diario"
+  // Historia de tratamiento farmacológico para el peso
+  glp1Previo            Boolean  @default(false)
+  glp1PrevioFarmaco     String?
+  glp1PrevioMotivoAbandono String?
+  medicoPrescriptor     String?
+  otroTratamientoPeso   String?  // Tratamientos distintos a GLP-1 (orlistat, naltrexona/bupropión...)
+  farmaceutico          String?
+  createdAt             DateTime @default(now())
+  updatedAt             DateTime @updatedAt
+
+  paciente  Paciente               @relation(fields: [pacienteId], references: [id], onDelete: Cascade)
+  visitas   VisitaNutricion[]
+  registros RegistroAlimentacion[]
+
+  @@index([pacienteId])
+  @@index([estado])
+}
+
+// Visita del programa. La inicial y las de seguimiento comparten estructura
+// para que todos los datos sean comparables entre sesiones.
+model VisitaNutricion {
+  id                    String   @id @default(cuid())
+  programaId            String
+  fecha                 String   // Fecha en formato ISO
+  tipo                  String   // "inicial", "seguimiento"
+  // Evolución percibida (solo tiene sentido en seguimiento)
+  evolucionSubjetiva    String?  // "muy_buena", "buena", "regular", "dificultosa"
+  adherencia            Int?     // 0-10
+  motivacion            Int?     // 0-10
+  // Medicación
+  medicacionHabitual    String?
+  suplementacion        String?
+  // Tratamiento GLP-1 (sección opcional)
+  glp1Activo            Boolean  @default(false)
+  glp1Farmaco           String?  // id de catálogo (semaglutida_sc, tirzepatida...)
+  glp1Dosis             String?  // Texto: "0,5 mg semanal"
+  glp1FechaInicio       String?  // Inicio de la dosis actual
+  glp1DosisOlvidadas    Int?     // Desde la última visita
+  efectosSecundarios    String   @default("[]") // JSON: [{ id: "nauseas", intensidad: "leve" }]
+  toleranciaObservaciones String?
+  // Alimentación y hábitos
+  cambioDieteticoIniciado Boolean?
+  pautaDietetica        String?  // Estrategia, pauta, menú adaptado...
+  comidasDia            Int?
+  racionesProteinaDia   Int?
+  racionesFrutaVerduraDia Int?
+  picoteo               Boolean?
+  picoteoFrecuencia     String?  // "ocasional", "diario", "varias_diarias"
+  picoteoCausas         String   @default("[]") // JSON array de ids de catálogo
+  aguaLitros            Float?
+  suenoHoras            Float?
+  suenoCalidad          String?  // "buena", "regular", "mala"
+  estres                String?  // "bajo", "moderado", "alto"
+  // Actividad física
+  ejercicio             String?  // "no", "parcial", "si"
+  ejercicioTipos        String   @default("[]") // JSON array de ids de catálogo
+  ejercicioDiasSemana   Int?
+  ejercicioMinutosSesion Int?
+  ejercicioDetalle      String?
+  // Antropometría, bioimpedancia y tensión
+  peso                  Float?   // kg
+  altura                Float?   // cm
+  cintura               Float?   // cm
+  cadera                Float?   // cm
+  imc                   Float?   // Calculado en el servidor
+  icc                   Float?   // Índice cintura-cadera, calculado en el servidor
+  porcentajeGrasa       Float?
+  masaGrasa             Float?   // kg
+  masaMagra             Float?   // kg (masa libre de grasa)
+  systolic              Int?
+  diastolic             Int?
+  // Valoración profesional
+  dificultades          String?
+  observaciones         String?
+  objetivosProximaSesion String?
+  recomendaciones       String?
+  proximaRevision       String?  // Fecha en formato ISO
+  farmaceutico          String?
+  createdAt             DateTime @default(now())
+  updatedAt             DateTime @updatedAt
+
+  programa ProgramaNutricion @relation(fields: [programaId], references: [id], onDelete: Cascade)
+
+  @@index([programaId])
+  @@index([fecha])
+}
+
+// Registro de alimentación: el paciente lo apunta en papel y el farmacéutico
+// lo transcribe. Cada fila es una ingesta (incluidos los picoteos).
+model RegistroAlimentacion {
+  id                    String   @id @default(cuid())
+  programaId            String
+  fecha                 String   // Día (YYYY-MM-DD)
+  hora                  String?  // "HH:mm"
+  momento               String   // "desayuno", "media_manana", "comida", "merienda", "cena", "recena", "picoteo"
+  descripcion           String
+  cantidad              String?  // "pequena", "normal", "grande"
+  hambreAntes           Int?     // 0-10
+  saciedadDespues       Int?     // 0-10
+  sensaciones           String   @default("[]") // JSON array de ids de catálogo
+  compania              String?  // "solo", "familia", "amigos", "trabajo"
+  lugar                 String?  // "casa", "trabajo", "fuera", "otro"
+  causaPicoteo          String?  // id de catálogo, solo si momento = "picoteo"
+  notas                 String?
+  createdAt             DateTime @default(now())
+  updatedAt             DateTime @updatedAt
+
+  programa ProgramaNutricion @relation(fields: [programaId], references: [id], onDelete: Cascade)
+
+  @@index([programaId])
   @@index([fecha])
 }
 

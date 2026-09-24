@@ -262,6 +262,14 @@ Para más detalles, ver [context/guias/ESTRUCTURA_PROYECTO.md](context/guias/EST
 - Alertas visuales para valores fuera de rango
 - Seguimiento de evolución
 
+### Nutrición (con seguimiento GLP-1 opcional)
+- Programa por paciente: motivo, objetivo, antecedentes e historia de tratamiento
+- Visita inicial y de seguimiento con la misma estructura (medidas, bioimpedancia, tensión, hábitos, actividad, tratamiento GLP-1 y efectos secundarios)
+- Evolución respecto a la visita inicial: % de peso perdido, hitos del 5/10/15 %, cintura y masa grasa frente a masa magra
+- Registro de alimentación transcrito por el farmacéutico, con análisis de picoteo, hambre, saciedad y malestar
+- Sugerencias basadas en reglas explicables (cada una indica el dato que la dispara) para que el farmacéutico decida qué recomendar
+- Informe de visita imprimible y hoja de registro en blanco para el paciente, con la marca de la farmacia
+
 ### Calendario
 - Vista mensual de citas
 - Creación y gestión de citas

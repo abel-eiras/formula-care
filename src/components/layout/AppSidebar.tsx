@@ -3,6 +3,7 @@ import {
   Users,
   Sparkles,
   FlaskConical,
+  Salad,
   CalendarDays,
   Settings,
   LogOut,
@@ -41,6 +42,11 @@ const navigationItems = [
     title: "Bioquímica",
     url: "/servicios/bio",
     icon: FlaskConical,
+  },
+  {
+    title: "Nutrición",
+    url: "/servicios/nutricion",
+    icon: Salad,
   },
 ];
 
