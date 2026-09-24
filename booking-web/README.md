@@ -3,6 +3,11 @@
 Servicio **opcional** y **autoalojable** para que los pacientes pidan cita por
 internet a una farmacia que usa la app de escritorio de este repositorio.
 
+> **Desactivado por ahora en la app.** Hasta que la farmacia tenga dónde
+> alojarlo y el correo configurado, la app no muestra nada de la reserva
+> online ni sincroniza. Para activarlo, pon `RESERVA_ONLINE_DISPONIBLE = true`
+> en `src/lib/funciones.ts` y en `backend/src/config/funciones.ts`.
+
 Funciona como un **buzón cifrado**: la app de escritorio es la única fuente de
 verdad de la agenda y booking-web solo guarda lo imprescindible para que la
 página de reserva funcione mientras la farmacia está cerrada o con el equipo

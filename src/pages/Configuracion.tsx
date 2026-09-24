@@ -25,6 +25,7 @@ import { BackupTab } from "@/components/configuracion/BackupTab";
 import { UsuariosTab } from "@/components/configuracion/UsuariosTab";
 import { MiCuentaTab } from "@/components/configuracion/MiCuentaTab";
 import { ReservaOnlineTab } from "@/components/configuracion/ReservaOnlineTab";
+import { PLANTILLAS_RESERVA_ONLINE, RESERVA_ONLINE_DISPONIBLE, VARIABLES_RESERVA_ONLINE } from "@/lib/funciones";
 import { useAuthContext } from "@/contexts/AuthContext";
 import type { Evento, ParametroBioConfig, ConfiguracionRgpd, PlantillaEmail } from "@/types";
 import { cn } from "@/lib/utils";
@@ -283,7 +284,7 @@ export default function Configuracion() {
             <span className="hidden sm:inline">Copias de Seguridad</span>
             <span className="sm:hidden">Copias</span>
           </TabsTrigger>
-          {esAdmin && (
+          {esAdmin && RESERVA_ONLINE_DISPONIBLE && (
             <TabsTrigger value="reserva" className="gap-2">
               <Globe className="h-4 w-4" />
               <span className="hidden sm:inline">Reserva online</span>
@@ -528,7 +529,7 @@ export default function Configuracion() {
         </TabsContent>
 
         {/* Tab: Reserva online (solo administradores) */}
-        {esAdmin && (
+        {esAdmin && RESERVA_ONLINE_DISPONIBLE && (
           <TabsContent value="reserva">
             <ReservaOnlineTab />
           </TabsContent>
@@ -1211,7 +1212,7 @@ function CalendarioTab() {
         <CardHeader>
           <CardTitle>Eventos Personalizados</CardTitle>
           <CardDescription>
-            Talleres y jornadas con plazas. Los activos se ofrecen en la reserva online (si está activada)
+            Talleres y jornadas con plazas{RESERVA_ONLINE_DISPONIBLE ? ". Los activos se ofrecen en la reserva online (si está activada)" : ""}
           </CardDescription>
         </CardHeader>
         <CardContent className="space-y-6">
@@ -1659,9 +1660,10 @@ function RgpdTab() {
             <div className="text-sm text-amber-800">
               <p className="font-semibold mb-1">Información importante</p>
               <p>
-                El aviso legal y las políticas de privacidad y cookies se publican en la página de
-                reserva online (si está activada). Esta app es de uso exclusivo del personal de la
-                farmacia y no necesita mostrarlos.
+                {RESERVA_ONLINE_DISPONIBLE
+                  ? "El aviso legal y las políticas de privacidad y cookies se publican en la página de reserva online (si está activada). "
+                  : "Puedes guardar aquí el aviso legal y las políticas de privacidad y cookies para tenerlos a mano. "}
+                Esta app es de uso exclusivo del personal de la farmacia y no necesita mostrarlos.
               </p>
             </div>
           </div>
@@ -1961,8 +1963,15 @@ function RgpdTab() {
 // ==========================================
 function PlantillasEmailTab() {
   const { data: config } = useConfiguracion(); // Para el preview del editor
-  const { data: plantillas, isLoading } = usePlantillasEmail();
-  const { data: variables = [] } = useVariablesPlantilla();
+  const { data: todasLasPlantillas, isLoading } = usePlantillasEmail();
+  const { data: todasLasVariables = [] } = useVariablesPlantilla();
+  // Sin reserva online, se ocultan su plantilla (rechazo) y sus variables
+  const plantillas = RESERVA_ONLINE_DISPONIBLE
+    ? todasLasPlantillas
+    : todasLasPlantillas?.filter((p) => !PLANTILLAS_RESERVA_ONLINE.includes(p.tipo));
+  const variables = RESERVA_ONLINE_DISPONIBLE
+    ? todasLasVariables
+    : todasLasVariables.filter((v) => !VARIABLES_RESERVA_ONLINE.includes(v.nombre));
   const actualizarPlantilla = useActualizarPlantilla();
   const restaurarPlantilla = useRestaurarPlantilla();
   const [plantillaSeleccionada, setPlantillaSeleccionada] = useState<string | null>(null);

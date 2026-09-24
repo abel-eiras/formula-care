@@ -89,7 +89,7 @@ chmod +x "Formula Care_*.AppImage"
   - Política de privacidad, cookies, términos
 
 - **Reserva pública de citas (opcional, servicio aparte)**
-  - Ver [booking-web/](booking-web/): un servicio web independiente y autohospedable para quien quiera ofrecer reserva de citas online. La app le publica sus huecos libres y recoge las solicitudes, cifradas con la clave de la farmacia (se configura en Configuración → Reserva online).
+  - Ver [booking-web/](booking-web/): un servicio web independiente y autohospedable para quien quiera ofrecer reserva de citas online. La app le publica sus huecos libres y recoge las solicitudes, cifradas con la clave de la farmacia (**desactivado por ahora**: para activarlo, `RESERVA_ONLINE_DISPONIBLE` en `src/lib/funciones.ts` y `backend/src/config/funciones.ts`; después se configura en Configuración → Reserva online).
 
 ### 🚧 En Desarrollo
 - Mejoras de rendimiento

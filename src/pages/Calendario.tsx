@@ -25,6 +25,7 @@ import { useEventos } from "@/hooks/useEventos";
 import { LoadingSpinner } from "@/components/ui/LoadingSpinner";
 import type { Cita } from "@/types";
 import { SolicitudesOnline } from "@/components/calendario/SolicitudesOnline";
+import { RESERVA_ONLINE_DISPONIBLE } from "@/lib/funciones";
 
 // Tipos para el formulario de nueva cita
 interface NuevaCitaForm {
@@ -334,7 +335,7 @@ export default function Calendario() {
       </div>
 
       {/* Solicitudes de la reserva online pendientes de aceptar o rechazar */}
-      <SolicitudesOnline />
+      {RESERVA_ONLINE_DISPONIBLE && <SolicitudesOnline />}
 
       {/* Tabs: Vista Calendario y Vista Lista */}
       <Tabs defaultValue="lista" className="space-y-4">

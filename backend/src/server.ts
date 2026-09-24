@@ -19,6 +19,7 @@ import { verificarToken } from './middleware/auth.js';
 import { iniciarTareasPeriodicas } from './services/tareasProgramadas.js';
 import { iniciarSincronizacionReservaOnline } from './services/reservaOnline/sincronizacion.js';
 import { reservaOnlineRouter } from './routes/reservaOnline.js';
+import { RESERVA_ONLINE_DISPONIBLE } from './config/funciones.js';
 
 // Cargar variables de entorno
 dotenv.config();
@@ -72,7 +73,7 @@ app.use('/api/notificaciones', verificarToken, notificacionesRouter);
 app.use('/api/eventos', verificarToken, eventosRouter);
 app.use('/api/plantillas-email', verificarToken, plantillasEmailRouter);
 app.use('/api/backups', verificarToken, backupsRouter);
-app.use('/api/reserva-online', verificarToken, reservaOnlineRouter);
+if (RESERVA_ONLINE_DISPONIBLE) app.use('/api/reserva-online', verificarToken, reservaOnlineRouter);
 
 // Ruta de salud
 app.get('/api/health', (req, res) => {
@@ -95,5 +96,5 @@ app.listen(PORT, () => {
 
   // Copias de seguridad, avisos y recordatorios (al arrancar y cada hora)
   iniciarTareasPeriodicas();
-  iniciarSincronizacionReservaOnline();
+  if (RESERVA_ONLINE_DISPONIBLE) iniciarSincronizacionReservaOnline();
 });
