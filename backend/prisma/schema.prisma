@@ -41,14 +41,15 @@ model Usuario {
 model Paciente {
   id          String   @id @default(cuid())
   name        String
-  age         Int
   sex         String   // "M" (masculino), "F" (femenino), "O" (otro)
   phone       String
   email       String?
   // Nombre, teléfono y email normalizados (minúsculas, sin tildes) para buscar
   // desde la base de datos sin distinguir mayúsculas ni acentos
   textoBusqueda String @default("")
-  birthDate   String?  // Fecha en formato ISO
+  // YYYY-MM-DD, obligatoria. La edad NO se guarda: se calcula siempre a partir
+  // de esta fecha para que nunca quede desfasada.
+  birthDate   String
   address     String?
   notes       String?
   lastVisit   String?  // Fecha en formato ISO
@@ -65,6 +66,7 @@ model Paciente {
   notificaciones Notificacion[]
 
   @@index([origen])
+  @@index([birthDate]) // Filtros y orden por edad
 }
 
 // ==========================================

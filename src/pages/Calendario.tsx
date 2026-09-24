@@ -106,7 +106,7 @@ export default function Calendario() {
     return pacientes
       .filter((p) => p.birthDate)
       .map((p) => {
-        const birthDate = parseISO(p.birthDate!);
+        const birthDate = parseISO(p.birthDate);
         return {
           paciente: p,
           dia: getDate(birthDate),
@@ -548,9 +548,10 @@ export default function Calendario() {
                       <div key={c.paciente.id} className="flex items-center gap-2 p-2 rounded-lg bg-white">
                         <Gift className="h-4 w-4 text-pink-500" />
                         <span className="font-medium">{c.paciente.name}</span>
-                        {c.paciente.age && (
+                        {/* Años que cumple en el año que se está viendo en el calendario */}
+                        {date && (
                           <Badge variant="outline" className="ml-auto text-pink-600 border-pink-300">
-                            {c.paciente.age + 1} años
+                            Cumple {date.getFullYear() - Number(c.paciente.birthDate.slice(0, 4))} años
                           </Badge>
                         )}
                       </div>

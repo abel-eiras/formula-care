@@ -74,10 +74,10 @@ backend/
 
 ### Pacientes
 
-- `GET /api/pacientes` - Listar pacientes (`busqueda` sin distinguir mayúsculas ni tildes, `limit` opcional)
+- `GET /api/pacientes` - Listar pacientes (`busqueda` sin distinguir mayúsculas ni tildes, `edadMin`/`edadMax`, `limit` opcional)
 - `GET /api/pacientes/:id` - Obtener un paciente
 - `GET /api/pacientes/:id/mediciones` - Historial único de medidas y constantes (todos los servicios)
-- `POST /api/pacientes` - Crear paciente
+- `POST /api/pacientes` - Crear paciente (`birthDate` obligatoria en formato YYYY-MM-DD; la edad no se guarda ni se acepta: se calcula siempre a partir de la fecha)
 - `PUT /api/pacientes/:id` - Actualizar paciente
 - `DELETE /api/pacientes/:id` - Eliminar paciente
 
