@@ -25,6 +25,7 @@ import { useProgramasNutricion } from "@/hooks/useNutricion";
 import { LoadingSpinner } from "@/components/ui/LoadingSpinner";
 import { EvolutionChartBio } from "@/components/patient/EvolutionChartBio";
 import { EvolucionMediciones } from "@/components/patient/EvolucionMediciones";
+import { textoEdad } from "@/lib/edad";
 
 const getInitials = (name: string) => {
   return name.split(" ").map(n => n[0]).slice(0, 2).join("").toUpperCase();
@@ -102,7 +103,7 @@ export default function PacienteDetalle() {
                 <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
                   <div>
                     <h1 className="text-2xl font-bold text-foreground">{paciente.name}</h1>
-                    <p className="text-muted-foreground">{paciente.age} años • {paciente.sex === "M" ? "Hombre" : paciente.sex === "F" ? "Mujer" : "Otro"}</p>
+                    <p className="text-muted-foreground">{textoEdad(paciente.birthDate)} • {paciente.sex === "M" ? "Hombre" : paciente.sex === "F" ? "Mujer" : "Otro"}</p>
                   </div>
                   <Button variant="outline" className="gap-2" onClick={() => navigate(`/pacientes/${id}/editar`)}>
                     <Edit className="h-4 w-4" />

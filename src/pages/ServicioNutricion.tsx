@@ -20,6 +20,7 @@ import { ESTADOS_PROGRAMA, etiqueta, FARMACOS_GLP1 } from "@/lib/nutricion/catal
 import { ordenarVisitas, visitaReferencia } from "@/lib/nutricion/metricas";
 import { generarSugerencias } from "@/lib/nutricion/sugerencias";
 import type { ProgramaNutricionDetalle } from "@/types";
+import { textoEdad } from "@/lib/edad";
 
 const COLOR_ESTADO: Record<string, string> = {
   activo: "bg-success-soft text-success border-success/20",
@@ -248,7 +249,7 @@ export default function ServicioNutricion() {
             </Select>
             {paciente && (
               <p className="text-sm text-muted-foreground">
-                {paciente.age} años · {paciente.sex === "M" ? "Hombre" : paciente.sex === "F" ? "Mujer" : "Otro"}
+                {textoEdad(paciente.birthDate)} · {paciente.sex === "M" ? "Hombre" : paciente.sex === "F" ? "Mujer" : "Otro"}
               </p>
             )}
           </div>

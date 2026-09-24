@@ -6,6 +6,7 @@ import { getQueryString, getParamString, getQueryNumber } from '../lib/queryHelp
 import type { Paciente } from '@prisma/client';
 import { aplanarMedicion } from '../services/medicionService.js';
 import { normalizarBusqueda, textoBusquedaPaciente } from '../lib/textoBusqueda.js';
+import { fechaHaceAnios, hoyISO } from '../lib/fechas.js';
 
 /** El texto de búsqueda es un detalle interno: no se envía al cliente */
 function serializarPaciente<T extends Pick<Paciente, 'textoBusqueda'>>({ textoBusqueda: _texto, ...paciente }: T) {
@@ -15,11 +16,16 @@ function serializarPaciente<T extends Pick<Paciente, 'textoBusqueda'>>({ textoBu
 // Esquema de validación para crear paciente
 const crearPacienteSchema = z.object({
   name: z.string().min(2, 'El nombre debe tener al menos 2 caracteres'),
-  age: z.number().int().positive().max(150),
   sex: z.enum(['M', 'F', 'O']),
   phone: z.string().min(9, 'El teléfono debe tener al menos 9 caracteres'),
   email: z.string().email().optional().or(z.literal('')),
-  birthDate: z.string().optional(),
+  // Obligatoria: la edad se calcula siempre a partir de ella (no se admite edad manual;
+  // un campo "age" en la petición se descarta)
+  birthDate: z
+    .string()
+    .regex(/^\d{4}-\d{2}-\d{2}$/, 'La fecha de nacimiento debe tener formato YYYY-MM-DD')
+    .refine((f) => !Number.isNaN(Date.parse(f)), 'Fecha de nacimiento no válida')
+    .refine((f) => f >= '1900-01-01' && f <= hoyISO(), 'La fecha de nacimiento debe estar entre 1900 y hoy'),
   address: z.string().optional(),
   notes: z.string().optional(),
 });
@@ -44,8 +50,11 @@ export async function obtenerPacientes(req: Request, res: Response) {
     const tieneBio = getQueryString(req.query.tieneBio);
     const fechaDesde = getQueryString(req.query.fechaDesde);
     const fechaHasta = getQueryString(req.query.fechaHasta);
-    const ordenarPor = getQueryString(req.query.ordenarPor) ?? 'createdAt';
-    const orden = getQueryString(req.query.orden) ?? 'desc';
+    const ordenarPorParam = getQueryString(req.query.ordenarPor) ?? 'createdAt';
+    const ordenParam = getQueryString(req.query.orden) === 'asc' ? 'asc' : 'desc';
+    // Ordenar por edad = ordenar por fecha de nacimiento en sentido inverso
+    const ordenarPor = ordenarPorParam === 'age' ? 'birthDate' : ordenarPorParam;
+    const orden = ordenarPorParam === 'age' ? (ordenParam === 'asc' ? 'desc' : 'asc') : ordenParam;
     // Opcional: los selectores con búsqueda piden solo los primeros resultados
     const limite = getQueryNumber(req.query.limit);
 
@@ -70,8 +79,16 @@ export async function obtenerPacientes(req: Request, res: Response) {
       condiciones.push({ origen });
     }
 
+    // La edad no se guarda: se traduce a un rango de fecha de nacimiento
+    //   edad >= min  ⇔  nacido como tarde hace `min` años
+    //   edad <= max  ⇔  nacido después de hace `max + 1` años
     if (edadMin !== undefined || edadMax !== undefined) {
-      condiciones.push({ age: { gte: edadMin, lte: edadMax } });
+      condiciones.push({
+        birthDate: {
+          lte: edadMin !== undefined ? fechaHaceAnios(edadMin) : undefined,
+          gt: edadMax !== undefined ? fechaHaceAnios(edadMax + 1) : undefined,
+        },
+      });
     }
 
     if (fechaDesde || fechaHasta) {
@@ -93,7 +110,7 @@ export async function obtenerPacientes(req: Request, res: Response) {
 
     const pacientes = await prisma.paciente.findMany({
       where: condiciones.length > 0 ? { AND: condiciones } : {},
-      orderBy: { [ordenarPor]: orden === 'asc' ? 'asc' : 'desc' },
+      orderBy: { [ordenarPor]: orden },
       take: limite && limite > 0 ? Math.min(limite, 500) : undefined,
       include: {
         _count: {

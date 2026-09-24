@@ -197,11 +197,11 @@ export interface AnalisisDermo {
 export interface Paciente {
   id: string;
   name: string;
-  age: number;
   sex: string;
   phone: string;
   email?: string;
-  birthDate?: string;
+  /** YYYY-MM-DD. La edad no se guarda: se calcula con calcularEdad() de @/lib/edad */
+  birthDate: string;
   address?: string;
   notes?: string;
   lastVisit?: string;

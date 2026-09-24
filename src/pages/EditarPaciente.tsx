@@ -11,21 +11,7 @@ import { Link, useNavigate, useParams } from "react-router-dom";
 import { toast } from "sonner";
 import { usePacientes, useActualizarPaciente } from "@/hooks/usePacientes";
 import { LoadingSpinner } from "@/components/ui/LoadingSpinner";
-
-/**
- * Calcula la edad a partir de la fecha de nacimiento
- */
-const calcularEdad = (birthDate: string): number | null => {
-  if (!birthDate) return null;
-  const hoy = new Date();
-  const nacimiento = new Date(birthDate);
-  let edad = hoy.getFullYear() - nacimiento.getFullYear();
-  const mes = hoy.getMonth() - nacimiento.getMonth();
-  if (mes < 0 || (mes === 0 && hoy.getDate() < nacimiento.getDate())) {
-    edad--;
-  }
-  return edad;
-};
+import { calcularEdad } from "@/lib/edad";
 
 export default function EditarPaciente() {
   const { id } = useParams<{ id: string }>();
@@ -89,15 +75,20 @@ export default function EditarPaciente() {
       return;
     }
 
+    // La edad no se introduce: se calcula siempre desde la fecha de nacimiento
+    if (edad == null) {
+      toast.error("Indica una fecha de nacimiento válida");
+      return;
+    }
+
     try {
       await actualizarPaciente.mutateAsync({
         id,
         name: formData.name,
-        age: edad || paciente?.age || 0,
         sex: formData.sex as "M" | "F" | "O",
         phone: formData.phone,
         email: formData.email || undefined,
-        birthDate: formData.birthDate || undefined,
+        birthDate: formData.birthDate,
         address: formData.address || undefined,
         notes: formData.notes || undefined,
       });
@@ -174,12 +165,13 @@ export default function EditarPaciente() {
                 />
               </div>
               <div className="space-y-2">
-                <Label htmlFor="birthDate">Fecha de Nacimiento</Label>
+                <Label htmlFor="birthDate">Fecha de Nacimiento *</Label>
                 <Input
                   id="birthDate"
                   type="date"
                   value={formData.birthDate}
                   onChange={(e) => handleChange("birthDate", e.target.value)}
+                  required
                 />
                 {edad !== null && (
                   <p className="text-sm text-muted-foreground">

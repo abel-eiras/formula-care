@@ -125,7 +125,6 @@ async function main() {
     const paciente1 = await prisma.paciente.create({
       data: {
         name: 'María García López',
-        age: 45,
         sex: 'F',
         phone: '600123456',
         email: 'maria.garcia@email.com',
@@ -139,7 +138,6 @@ async function main() {
     const paciente2 = await prisma.paciente.create({
       data: {
         name: 'Juan Martínez Ruiz',
-        age: 62,
         sex: 'M',
         phone: '600654321',
         email: 'juan.martinez@email.com',

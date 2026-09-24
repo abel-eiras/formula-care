@@ -18,6 +18,7 @@ import { usePacientes } from "@/hooks/usePacientes";
 import { LoadingSpinner } from "@/components/ui/LoadingSpinner";
 import { FiltrosAvanzados, type FiltrosPacientes } from "@/components/pacientes/FiltrosAvanzados";
 import type { Paciente } from "@/types";
+import { textoEdad } from "@/lib/edad";
 
 /**
  * Obtiene las iniciales del nombre completo
@@ -156,13 +157,13 @@ export default function Pacientes() {
                               {patient.name}
                             </p>
                             <p className="text-sm text-muted-foreground sm:hidden">
-                              {patient.age} años • {patient.sex === "M" ? "Hombre" : patient.sex === "F" ? "Mujer" : "Otro"}
+                              {textoEdad(patient.birthDate)} • {patient.sex === "M" ? "Hombre" : patient.sex === "F" ? "Mujer" : "Otro"}
                             </p>
                           </div>
                         </div>
                       </TableCell>
                       <TableCell className="hidden sm:table-cell">
-                        {patient.age} años
+                        {textoEdad(patient.birthDate)}
                       </TableCell>
                       <TableCell className="hidden md:table-cell">
                         {patient.phone}
