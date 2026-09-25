@@ -68,7 +68,7 @@
   },
   "plugins": {
     "updater": {
-      "pubkey": "PENDIENTE_CLAVE_PUBLICA",
+      "pubkey": "dW50cnVzdGVkIGNvbW1lbnQ6IG1pbmlzaWduIHB1YmxpYyBrZXk6IDlDMjY5RTlFMEQ4NTM2MzMKUldRek5vVU5ucDRtbkRlWE1IVGFaMS8yc3dJTWF5NWNXaDFQejVxb1BqSGJrd01UWmxWYUlrcUkK",
       "endpoints": [
         "https://github.com/abel-eiras/formula-care/releases/latest/download/latest.json"
       ],
