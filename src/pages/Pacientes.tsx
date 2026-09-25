@@ -21,6 +21,7 @@ import type { Paciente, ServicioPaciente } from "@/types";
 import { textoFechaRelativa } from "@/lib/fechas";
 import { NOMBRE_SERVICIO, VARIANTE_SERVICIO } from "@/lib/servicios";
 import { textoEdad } from "@/lib/edad";
+import { BotonExportarCsv } from "@/components/informes/BotonExportarCsv";
 
 /**
  * Obtiene las iniciales del nombre completo
@@ -85,12 +86,15 @@ export default function Pacientes() {
           <h1 className="text-3xl font-bold text-foreground">Pacientes</h1>
           <p className="text-muted-foreground">Gestión de pacientes registrados</p>
         </div>
+        <div className="flex flex-wrap gap-2">
+        <BotonExportarCsv tipo="pacientes" etiqueta="Exportar a Excel" />
         <Button size="lg" className="shadow-md hover:shadow-lg transition-shadow" asChild>
           <Link to="/pacientes/nuevo">
             <UserPlus className="mr-2 h-5 w-5" />
             Nuevo Paciente
           </Link>
         </Button>
+        </div>
       </div>
 
       {/* Search & Filters */}

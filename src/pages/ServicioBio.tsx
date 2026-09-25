@@ -17,9 +17,8 @@ import { evaluarValor, getMensajeValoracion } from "@/lib/valoracionBio";
 import { cn } from "@/lib/utils";
 import type { AnalisisBio, ParametroReferencia, ParametroBioConfig } from "@/types";
 import { imprimirRuta } from "@/lib/imprimir";
-// Importación dinámica para reducir el bundle inicial
-const loadPDFGenerator = () => import("@/lib/pdfGenerator");
-
+import { BotonesInforme } from "@/components/informes/BotonesInforme";
+import { nombreInforme } from "@/lib/informePdf";
 // Parámetros por defecto (usados si no hay configuración guardada)
 const PARAMETROS_DEFAULT: ParametroBioConfig[] = [
   // Básicos: glucemia y tensión arterial
@@ -311,87 +310,6 @@ export default function ServicioBio() {
     imprimirRuta(`/servicios/bio/print?id=${analisisId}`);
   };
 
-  const handleDescargarPDF = async () => {
-    if (!analisisId) {
-      toast.info("Guarde el análisis primero para descargar el PDF");
-      return;
-    }
-
-    try {
-      toast.info("Generando PDF...", { duration: 2000 });
-      
-      // Cargar el generador de PDF dinámicamente
-      const { generatePDFFromElement, generatePDFFilename } = await loadPDFGenerator();
-      
-      // Abrir la página de impresión en un iframe oculto
-      const iframe = document.createElement('iframe');
-      iframe.style.position = 'fixed';
-      iframe.style.right = '-9999px';
-      iframe.style.bottom = '-9999px';
-      iframe.style.width = '210mm';
-      iframe.style.height = '297mm';
-      iframe.style.opacity = '0';
-      document.body.appendChild(iframe);
-
-      // Marcar que es una descarga de PDF para evitar auto-impresión
-      sessionStorage.setItem('pdfDownload', 'true');
-
-      // Esperar a que el iframe cargue completamente
-      await new Promise<void>((resolve, reject) => {
-        const timeout = setTimeout(() => {
-          sessionStorage.removeItem('pdfDownload');
-          reject(new Error('Timeout al cargar la página de impresión'));
-        }, 10000);
-
-        iframe.onload = () => {
-          clearTimeout(timeout);
-          // Esperar un poco más para que los estilos se apliquen
-          setTimeout(() => {
-            resolve();
-          }, 1000);
-        };
-
-        iframe.onerror = () => {
-          clearTimeout(timeout);
-          sessionStorage.removeItem('pdfDownload');
-          reject(new Error('Error al cargar la página de impresión'));
-        };
-
-        iframe.src = `/servicios/bio/print?id=${analisisId}`;
-      });
-
-      const printPage = iframe.contentDocument?.querySelector('.print-page') as HTMLElement;
-      if (!printPage) {
-        throw new Error('No se encontr? el contenido para imprimir');
-      }
-
-      const filename = generatePDFFilename(
-        'bio',
-        paciente?.name,
-        analisisExistente?.fecha
-      );
-
-      await generatePDFFromElement(printPage, { 
-        filename,
-        quality: 2, // Alta calidad
-        format: 'a4',
-        margin: 10,
-      });
-
-      toast.success("PDF descargado correctamente");
-      document.body.removeChild(iframe);
-      sessionStorage.removeItem('pdfDownload');
-    } catch (error) {
-      console.error("Error al descargar PDF:", error);
-      toast.error("Error al generar el PDF. Prueba con Imprimir y elige «Guardar como PDF».");
-      sessionStorage.removeItem('pdfDownload');
-      // Limpiar iframe si existe
-      const iframe = document.querySelector('iframe[style*="-9999px"]');
-      if (iframe && iframe.parentNode) {
-        iframe.parentNode.removeChild(iframe);
-      }
-    }
-  };
 
   const isLoading = crearAnalisis.isPending || actualizarAnalisis.isPending;
 
@@ -419,10 +337,14 @@ export default function ServicioBio() {
             <Printer className="h-4 w-4" />
             Imprimir
           </Button>
-          <Button variant="outline" onClick={handleDescargarPDF} className="gap-2" disabled={isLoading || !analisisId}>
-            <Download className="h-4 w-4" />
-            Descargar PDF
-          </Button>
+          <BotonesInforme
+            ruta={`/servicios/bio/print?id=${analisisId}`}
+            pacienteId={paciente?.id}
+            emailPaciente={paciente?.email}
+            titulo="Informe de análisis bioquímico"
+            nombreFichero={nombreInforme("bio", paciente?.name, analisisExistente?.fecha)}
+            deshabilitado={isLoading || !analisisId}
+          />
           <Button size="lg" onClick={handleSubmit} className="shadow-md gap-2" disabled={isLoading}>
             <Save className="h-5 w-5" />
             {isLoading ? "Guardando..." : analisisId ? "Actualizar" : "Guardar Análisis"}

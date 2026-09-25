@@ -21,6 +21,8 @@ import { iniciarTareasPeriodicas } from './services/tareasProgramadas.js';
 import { iniciarSincronizacionReservaOnline } from './services/reservaOnline/sincronizacion.js';
 import { reservaOnlineRouter } from './routes/reservaOnline.js';
 import { exportarDiagnostico } from './controllers/diagnostico.js';
+import { enviarInforme, guardarPdf } from './controllers/informes.js';
+import { exportarCsv } from './controllers/exportaciones.js';
 import { verificarRol } from './middleware/auth.js';
 import { RESERVA_ONLINE_DISPONIBLE } from './config/funciones.js';
 
@@ -42,6 +44,8 @@ app.use(cors({
   origin: CORS_ORIGINS,
   credentials: true,
 }));
+// Los informes en PDF viajan en base64: límite mayor solo para esas rutas (antes del general)
+app.use('/api/informes', express.json({ limit: '25mb' }));
 app.use(express.json({ limit: '512kb' }));
 app.use(cookieParser());
 
@@ -78,6 +82,10 @@ app.use('/api/notificaciones', verificarToken, notificacionesRouter);
 app.use('/api/eventos', verificarToken, eventosRouter);
 app.use('/api/plantillas-email', verificarToken, plantillasEmailRouter);
 app.use('/api/backups', verificarToken, backupsRouter);
+app.post('/api/informes/enviar', verificarToken, enviarInforme);
+app.post('/api/informes/guardar', verificarToken, guardarPdf);
+app.get('/api/exportar/:tipo', verificarToken, exportarCsv);
+app.post('/api/exportar/:tipo', verificarToken, exportarCsv);
 app.get('/api/diagnostico', verificarToken, verificarRol('admin'), exportarDiagnostico);
 app.post('/api/diagnostico', verificarToken, verificarRol('admin'), exportarDiagnostico);
 if (RESERVA_ONLINE_DISPONIBLE) app.use('/api/reserva-online', verificarToken, reservaOnlineRouter);

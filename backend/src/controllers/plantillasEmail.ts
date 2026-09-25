@@ -253,6 +253,43 @@ const PLANTILLAS_DEFAULT = {
 </body>
 </html>`,
   },
+  informe: {
+    nombre: 'Envío de informe',
+    asunto: '{{tituloInforme}} - {{nombreFarmacia}}',
+    contenidoHtml: `<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>{{tituloInforme}}</title>
+</head>
+<body style="font-family: 'Segoe UI', Arial, sans-serif; line-height: 1.6; color: #333; max-width: 600px; margin: 0 auto; padding: 20px; background-color: #f5f5f5;">
+  {{bloqueLogo}}
+  <div style="background-color: {{colorPrimario}}; color: white; padding: 30px 20px; text-align: center; border-radius: 10px 10px 0 0;">
+    <h1 style="margin: 0; font-size: 24px;">{{tituloInforme}}</h1>
+  </div>
+  
+  <div style="background-color: white; padding: 30px; border-radius: 0 0 10px 10px; box-shadow: 0 2px 10px rgba(0,0,0,0.1);">
+    <p style="font-size: 16px;">Hola <strong>{{nombrePaciente}}</strong>,</p>
+    
+    <p>Te enviamos adjunto el informe de tu visita. Si tienes cualquier duda, estaremos encantados de ayudarte.</p>
+    
+    <hr style="border: none; border-top: 1px solid #eee; margin: 30px 0;">
+    
+    <div style="color: #666; font-size: 14px;">
+      <p><strong>{{nombreFarmacia}}</strong></p>
+      <p style="margin: 3px 0;">{{direccionFarmacia}}</p>
+      <p style="margin: 3px 0;">📞 {{telefonoFarmacia}}{{bloqueWhatsapp}}{{bloqueTelefono}}</p>
+      <p style="margin: 3px 0;">✉️ {{emailFarmacia}}</p>
+    </div>
+  </div>
+  
+  <p style="text-align: center; color: #999; font-size: 12px; margin-top: 20px;">
+    © {{anioActual}} {{nombreFarmacia}}
+  </p>
+</body>
+</html>`,
+  },
   cumpleanos: {
     nombre: 'Felicitación de Cumpleaños',
     asunto: '¡Feliz cumpleaños, {{nombrePaciente}}! 🎉',
@@ -309,6 +346,7 @@ export const VARIABLES_DISPONIBLES = [
   { nombre: 'bloqueMotivo', descripcion: 'Motivo del rechazo o cancelación, si se indicó' },
   { nombre: 'motivoRechazo', descripcion: 'Motivo del rechazo (texto)' },
   { nombre: 'urlCancelar', descripcion: 'URL para cancelar la cita (solo reserva online)' },
+  { nombre: 'tituloInforme', descripcion: 'Título del informe enviado (plantilla de informe)' },
   { nombre: 'colorPrimario', descripcion: 'Color primario del tema de la farmacia' },
   { nombre: 'colorSecundario', descripcion: 'Color secundario del tema' },
   { nombre: 'colorAcento', descripcion: 'Color de acento' },

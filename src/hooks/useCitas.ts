@@ -54,3 +54,20 @@ export function useEliminarCita() {
     },
   });
 }
+
+/**
+ * Hook para modificar una cita (día, hora, datos o estado).
+ * El servidor avisa al paciente si cambia el día/hora o si se cancela.
+ */
+export function useActualizarCita() {
+  const queryClient = useQueryClient();
+
+  return useMutation({
+    mutationFn: async ({ id, ...datos }: Partial<Omit<Cita, 'paciente'>> & { id: string }) => {
+      return api.put<Cita>(`/citas/${id}`, datos);
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['citas'] });
+    },
+  });
+}

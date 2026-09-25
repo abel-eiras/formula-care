@@ -9,6 +9,7 @@ import { Users, Sparkles, FlaskConical, Salad, TrendingUp } from "lucide-react";
 import { useEstadisticas } from "@/hooks/useEstadisticas";
 import { useConfiguracion } from "@/hooks/useConfiguracion";
 import { LoadingSpinner } from "@/components/ui/LoadingSpinner";
+import { BotonExportarCsv } from "@/components/informes/BotonExportarCsv";
 
 export default function Dashboard() {
   const { data: estadisticas, isLoading } = useEstadisticas();
@@ -26,13 +27,16 @@ export default function Dashboard() {
   return (
     <div className="space-y-8 animate-fade-in">
       {/* Header */}
-      <div className="flex flex-col gap-2">
-        <h1 className="text-3xl font-bold text-foreground">
-          Bienvenido a {nombreFarmacia}
-        </h1>
-        <p className="text-muted-foreground">
-          Panel de gestión de servicios asistenciales
-        </p>
+      <div className="flex flex-col sm:flex-row sm:items-end sm:justify-between gap-4">
+        <div className="flex flex-col gap-2">
+          <h1 className="text-3xl font-bold text-foreground">
+            Bienvenido a {nombreFarmacia}
+          </h1>
+          <p className="text-muted-foreground">
+            Panel de gestión de servicios asistenciales
+          </p>
+        </div>
+        <BotonExportarCsv tipo="actividad" etiqueta="Actividad de 12 meses (Excel)" />
       </div>
 
       {/* Stats Grid */}

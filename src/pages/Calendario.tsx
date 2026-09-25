@@ -11,12 +11,12 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import { CalendarDays, Plus, Clock, User, Trash2, Gift, Users, Calendar as CalendarIcon } from "lucide-react";
+import { CalendarDays, Plus, Clock, User, Gift, Users, Calendar as CalendarIcon } from "lucide-react";
 import { format, isSameDay, parseISO, isAfter, startOfToday, isSameMonth, addDays, startOfMonth, endOfMonth } from "date-fns";
 import { es } from "date-fns/locale";
 import { cn } from "@/lib/utils";
 import { useToast } from "@/hooks/use-toast";
-import { useCitas, useCrearCita, useEliminarCita } from "@/hooks/useCitas";
+import { useCitas, useCrearCita } from "@/hooks/useCitas";
 import { usePacientes } from "@/hooks/usePacientes";
 import { useCumpleanos } from "@/hooks/useCumpleanos";
 import { ListaCumpleanos } from "@/components/cumpleanos/ListaCumpleanos";
@@ -25,6 +25,8 @@ import { useEventos } from "@/hooks/useEventos";
 import { LoadingSpinner } from "@/components/ui/LoadingSpinner";
 import type { Cita } from "@/types";
 import { SolicitudesOnline } from "@/components/calendario/SolicitudesOnline";
+import { AccionesCita } from "@/components/calendario/AccionesCita";
+import { ESTADOS_CITA } from "@/lib/estadosCita";
 import { RESERVA_ONLINE_DISPONIBLE } from "@/lib/funciones";
 
 // Tipos para el formulario de nueva cita
@@ -45,6 +47,17 @@ const tiposCita: Record<string, { label: string; color: string }> = {
   consulta: { label: "Consulta General", color: "bg-accent text-accent-foreground" },
   seguimiento: { label: "Seguimiento", color: "bg-muted text-muted-foreground" }
 };
+
+/** Estado de la cita (no se muestra si está pendiente, el caso normal) */
+function EstadoCitaBadge({ estado }: { estado?: Cita["estado"] }) {
+  if (!estado || estado === "pendiente") return null;
+  const { label, clase } = ESTADOS_CITA[estado];
+  return (
+    <Badge variant="outline" className={cn("ml-1 text-xs", clase)}>
+      {label}
+    </Badge>
+  );
+}
 
 // Estado inicial del formulario
 const formInicial: NuevaCitaForm = {
@@ -68,7 +81,6 @@ export default function Calendario() {
   const { data: pacientes = [], isLoading: isLoadingPacientes } = usePacientes();
   const { data: eventos = [] } = useEventos();
   const crearCitaMutation = useCrearCita();
-  const eliminarCitaMutation = useEliminarCita();
 
   const hoy = startOfToday();
 
@@ -176,22 +188,8 @@ export default function Calendario() {
     }
   };
 
-  // Eliminar cita
-  const handleEliminarCita = async (citaId: string) => {
-    try {
-      await eliminarCitaMutation.mutateAsync(citaId);
-      toast({
-        title: "Cita eliminada",
-        description: "La cita ha sido eliminada correctamente"
-      });
-    } catch (error) {
-      toast({
-        title: "Error al eliminar cita",
-        description: error instanceof Error ? error.message : "Error desconocido",
-        variant: "destructive"
-      });
-    }
-  };
+  const getTelefonoPaciente = (cita: Cita): string | undefined =>
+    cita.paciente?.phone ?? pacientes.find((p) => p.id === cita.pacienteId)?.phone;
 
   // Obtener nombre del paciente
   const getNombrePaciente = (cita: Cita): string => {
@@ -410,20 +408,17 @@ export default function Calendario() {
                             <Badge className={cn("text-xs", etiquetaTipo(cita.tipo).color)}>
                               {etiquetaTipo(cita.tipo).label}
                             </Badge>
+                            <EstadoCitaBadge estado={cita.estado} />
                           </TableCell>
                           <TableCell className="max-w-[200px] truncate">
                             {cita.titulo}
                           </TableCell>
                           <TableCell className="text-right">
-                            <Button
-                              variant="ghost"
-                              size="icon"
-                              className="h-8 w-8 text-muted-foreground hover:text-destructive"
-                              onClick={() => handleEliminarCita(cita.id)}
-                              disabled={eliminarCitaMutation.isPending}
-                            >
-                              <Trash2 className="h-4 w-4" />
-                            </Button>
+                            <AccionesCita
+                              cita={cita}
+                              nombrePaciente={getNombrePaciente(cita)}
+                              telefonoPaciente={getTelefonoPaciente(cita)}
+                            />
                           </TableCell>
                         </TableRow>
                       ))}
@@ -600,7 +595,7 @@ export default function Calendario() {
                               <span className={cn("font-semibold text-foreground truncate", cita.estado === "cancelada" && "line-through")}>
                                 {cita.titulo}
                               </span>
-                              {cita.estado === "cancelada" && <Badge variant="outline">Cancelada</Badge>}
+                              <EstadoCitaBadge estado={cita.estado} />
                             </div>
                             <div className="flex items-center gap-2 text-sm text-muted-foreground mb-2">
                               <Clock className="h-3.5 w-3.5" />
@@ -615,15 +610,11 @@ export default function Calendario() {
                             <Badge className={cn("flex-shrink-0 text-xs", etiquetaTipo(cita.tipo).color)}>
                               {etiquetaTipo(cita.tipo).label}
                             </Badge>
-                            <Button
-                              variant="ghost"
-                              size="icon"
-                              className="h-8 w-8 text-muted-foreground hover:text-destructive"
-                              onClick={() => handleEliminarCita(cita.id)}
-                              disabled={eliminarCitaMutation.isPending}
-                            >
-                              <Trash2 className="h-4 w-4" />
-                            </Button>
+                            <AccionesCita
+                              cita={cita}
+                              nombrePaciente={getNombrePaciente(cita)}
+                              telefonoPaciente={getTelefonoPaciente(cita)}
+                            />
                           </div>
                         </div>
                         {cita.notas && (
