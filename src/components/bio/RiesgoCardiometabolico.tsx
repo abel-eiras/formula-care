@@ -11,6 +11,7 @@ import { Label } from "@/components/ui/label";
 import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group";
 import { Badge } from "@/components/ui/badge";
 import { cn } from "@/lib/utils";
+import { EnlaceAyuda } from "@/components/ayuda/EnlaceAyuda";
 import {
   calcularScore2,
   faltaParaScore2,
@@ -203,10 +204,13 @@ export function RiesgoCardiometabolico({ datos, fumador, onFumador, findrisc, on
   return (
     <Card className="shadow-sm border-border/50">
       <CardContent className="space-y-6 pt-6">
-        <h3 className="flex items-center gap-2 text-lg font-semibold text-primary">
-          <HeartPulse className="h-5 w-5" />
-          Riesgo cardiovascular y de diabetes
-        </h3>
+        <div className="flex flex-wrap items-center justify-between gap-2">
+          <h3 className="flex items-center gap-2 text-lg font-semibold text-primary">
+            <HeartPulse className="h-5 w-5" />
+            Riesgo cardiovascular y de diabetes
+          </h3>
+          <EnlaceAyuda tema="score2-findrisc" texto="Cómo se calcula" />
+        </div>
         <Score2 datos={datos} fumador={fumador} onFumador={onFumador} />
         {ofrecerFindrisc && <Findrisc datos={datos} findrisc={findrisc} onFindrisc={onFindrisc} />}
         {!ofrecerFindrisc && (

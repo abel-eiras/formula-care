@@ -19,6 +19,7 @@ import {
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { api } from "@/lib/api";
 import { guardarArchivo } from "@/lib/guardarArchivo";
+import { EnlaceAyuda } from "@/components/ayuda/EnlaceAyuda";
 
 interface Revision {
   validas: { fila: number; nombre: string; telefono: string; fechaNacimiento: string }[];
@@ -214,7 +215,9 @@ export function ImportarPacientes() {
             </div>
           )}
 
-          <DialogFooter>
+          <DialogFooter className="sm:justify-between">
+            <EnlaceAyuda tema="importar" texto="Cómo rellenar la plantilla" />
+            <div className="flex gap-2">
             <Button variant="outline" onClick={() => setAbierto(false)} disabled={ocupado !== null}>
               Cancelar
             </Button>
@@ -222,6 +225,7 @@ export function ImportarPacientes() {
               {ocupado === "importando" && <Loader2 className="h-4 w-4 animate-spin" />}
               Importar {numValidas > 0 ? numValidas : ""} {numValidas === 1 ? "paciente" : "pacientes"}
             </Button>
+            </div>
           </DialogFooter>
         </DialogContent>
       </Dialog>
