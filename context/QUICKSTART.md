@@ -86,10 +86,14 @@ El frontend quedará en **http://localhost:5173**.
 | Raíz | `npm run dev` | Dev frontend (Vite), sin Tauri |
 | Raíz | `npm run build` | Build frontend |
 | Raíz | `npm run lint` | Lint frontend |
+| Raíz | `npx vitest run` | Tests del frontend |
 | Backend | `npm run dev` | Dev backend (Express) |
 | Backend | `npm run prisma:studio` | Abrir Prisma Studio (BD) |
 | Backend | `npm run prisma:migrate` | Aplicar migraciones |
 | Backend | `npm run build:desktop` | Compila el backend y genera la plantilla de BD para empaquetar |
+| Backend | `npm test` | Tests del backend (crea una BD temporal con todas las migraciones) |
+
+En cada PR, `.github/workflows/comprobaciones.yml` ejecuta tipos, lint, tests y builds de la app, el backend, booking-web y el código Rust. En la app instalada, el registro del backend se guarda en la carpeta de datos (`logs/backend.log`) y se puede exportar desde Configuración → Copias de seguridad → Exportar diagnóstico.
 
 ## Más información
 

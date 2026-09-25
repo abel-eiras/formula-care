@@ -18,7 +18,9 @@ const crearCitaSchema = z.object({
 });
 
 // Esquema de validación para actualizar cita
-const actualizarCitaSchema = crearCitaSchema.partial();
+// Estados de una cita. "no_presentado": el paciente no vino (útil para seguimiento)
+export const ESTADOS_CITA = ['pendiente', 'confirmada', 'completada', 'cancelada', 'no_presentado'] as const;
+const actualizarCitaSchema = crearCitaSchema.partial().extend({ estado: z.enum(ESTADOS_CITA).optional() });
 
 /**
  * Obtener citas con filtro de fecha opcional
@@ -184,9 +186,13 @@ export async function actualizarCita(req: Request, res: Response) {
       return res.status(404).json({ error: 'Paciente no encontrado' });
     }
 
+    const fechaCambio = datos.fecha !== undefined && datos.fecha !== citaAnterior.fecha;
+    const horaCambio = datos.hora !== undefined && datos.hora !== citaAnterior.hora;
+
     const cita = await prisma.cita.update({
       where: { id },
-      data: datos,
+      // Si cambia el día o la hora, el recordatorio se vuelve a enviar para la nueva fecha
+      data: { ...datos, ...(fechaCambio || horaCambio ? { recordatorioEnviado: false } : {}) },
       include: {
         paciente: {
           select: {
@@ -201,10 +207,19 @@ export async function actualizarCita(req: Request, res: Response) {
 
     const paciente = cita.paciente;
 
-    // Si se modificó fecha u hora, enviar email de modificación
-    const fechaCambio = datos.fecha !== undefined && datos.fecha !== citaAnterior.fecha;
-    const horaCambio = datos.hora !== undefined && datos.hora !== citaAnterior.hora;
-    if ((fechaCambio || horaCambio) && paciente?.email) {
+    const seCancela = datos.estado === 'cancelada' && citaAnterior.estado !== 'cancelada';
+    const esFutura = cita.fecha.slice(0, 10) >= hoyISO();
+
+    // Aviso al paciente (en segundo plano): cancelación, o cambio de día/hora
+    if (seCancela && esFutura && paciente?.email) {
+      enviarCancelacionCita(paciente.email, {
+        citaId: cita.id,
+        tipo: cita.tipo,
+        fecha: cita.fecha,
+        hora: cita.hora,
+        nombreCliente: paciente.name,
+      }).catch((err) => console.error('Error al enviar email de cancelación:', err));
+    } else if ((fechaCambio || horaCambio) && cita.estado !== 'cancelada' && paciente?.email) {
       enviarModificacionCita(paciente.email, {
         citaId: cita.id,
         tipo: cita.tipo,

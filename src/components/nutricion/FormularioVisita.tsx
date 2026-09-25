@@ -66,6 +66,8 @@ import { BadgeClasificacion, CampoNumero, CampoSiNo, CampoTexto, Escala0a10, Opc
 import { aEntero, aNumero, aTexto, deNumero, formatearDiferencia, formatearFecha, hoyISO } from "@/lib/nutricion/formulario";
 import { PanelSugerencias } from "./PanelSugerencias";
 import { imprimirRuta } from "@/lib/imprimir";
+import { BotonesInforme } from "@/components/informes/BotonesInforme";
+import { nombreInforme } from "@/lib/informePdf";
 
 // ==========================================
 // ESTADO DEL FORMULARIO
@@ -261,9 +263,11 @@ interface FormularioVisitaProps {
   /** Sexo del paciente con la codificación de la app ("M", "F", "O") */
   sexoPaciente?: string;
   nombrePaciente?: string;
+  /** Para enviarle el informe de la visita por email */
+  emailPaciente?: string | null;
 }
 
-export function FormularioVisita({ programa, visita, sexoPaciente, nombrePaciente }: FormularioVisitaProps) {
+export function FormularioVisita({ programa, visita, sexoPaciente, nombrePaciente, emailPaciente }: FormularioVisitaProps) {
   const navigate = useNavigate();
   const { usuario } = useAuthContext();
   const crear = useCrearVisitaNutricion();
@@ -418,6 +422,13 @@ export function FormularioVisita({ programa, visita, sexoPaciente, nombrePacient
                 <Printer className="h-4 w-4" />
                 Imprimir
               </Button>
+              <BotonesInforme
+                ruta={`/servicios/nutricion/print?visitaId=${visita.id}`}
+                pacienteId={programa.pacienteId}
+                emailPaciente={emailPaciente}
+                titulo="Informe de tu visita de nutrición"
+                nombreFichero={nombreInforme("nutricion", nombrePaciente, visita.fecha)}
+              />
             </>
           )}
           <Button size="lg" className="gap-2 shadow-md" onClick={guardar} disabled={guardando}>

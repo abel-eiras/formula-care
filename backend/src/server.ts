@@ -1,3 +1,4 @@
+import { iniciarRegistro } from './lib/registro.js';
 import express from 'express';
 import cors from 'cors';
 import cookieParser from 'cookie-parser';
@@ -19,10 +20,16 @@ import { verificarToken } from './middleware/auth.js';
 import { iniciarTareasPeriodicas } from './services/tareasProgramadas.js';
 import { iniciarSincronizacionReservaOnline } from './services/reservaOnline/sincronizacion.js';
 import { reservaOnlineRouter } from './routes/reservaOnline.js';
+import { exportarDiagnostico } from './controllers/diagnostico.js';
+import { enviarInforme, guardarPdf } from './controllers/informes.js';
+import { exportarCsv } from './controllers/exportaciones.js';
+import { verificarRol } from './middleware/auth.js';
 import { RESERVA_ONLINE_DISPONIBLE } from './config/funciones.js';
 
 // Cargar variables de entorno
 dotenv.config();
+// Registro en fichero (app de escritorio): antes que nada para no perder errores de arranque
+iniciarRegistro();
 
 const app = express();
 const PORT = process.env.PORT || 3000;
@@ -37,12 +44,14 @@ app.use(cors({
   origin: CORS_ORIGINS,
   credentials: true,
 }));
+// Los informes en PDF viajan en base64: límite mayor solo para esas rutas (antes del general)
+app.use('/api/informes', express.json({ limit: '25mb' }));
 app.use(express.json({ limit: '512kb' }));
 app.use(cookieParser());
 
 // Middleware de logging simple
 app.use((req, res, next) => {
-  console.log(`${new Date().toISOString()} - ${req.method} ${req.path}`);
+  console.log(`${req.method} ${req.path}`);
   next();
 });
 
@@ -73,6 +82,12 @@ app.use('/api/notificaciones', verificarToken, notificacionesRouter);
 app.use('/api/eventos', verificarToken, eventosRouter);
 app.use('/api/plantillas-email', verificarToken, plantillasEmailRouter);
 app.use('/api/backups', verificarToken, backupsRouter);
+app.post('/api/informes/enviar', verificarToken, enviarInforme);
+app.post('/api/informes/guardar', verificarToken, guardarPdf);
+app.get('/api/exportar/:tipo', verificarToken, exportarCsv);
+app.post('/api/exportar/:tipo', verificarToken, exportarCsv);
+app.get('/api/diagnostico', verificarToken, verificarRol('admin'), exportarDiagnostico);
+app.post('/api/diagnostico', verificarToken, verificarRol('admin'), exportarDiagnostico);
 if (RESERVA_ONLINE_DISPONIBLE) app.use('/api/reserva-online', verificarToken, reservaOnlineRouter);
 
 // Ruta de salud
@@ -89,12 +104,49 @@ app.use((err: Error, req: express.Request, res: express.Response, next: express.
   });
 });
 
-// Iniciar servidor
-app.listen(PORT, () => {
-  console.log(`🚀 Servidor corriendo en http://localhost:${PORT}`);
-  console.log(`📡 CORS habilitado para: ${CORS_ORIGINS.join(', ')}`);
+// Solo este equipo: la API no debe ser accesible desde otros ordenadores de
+// la red de la farmacia (HOST permite cambiarlo en desarrollo si hiciera falta)
+const HOST = process.env.HOST || '127.0.0.1';
+const REINTENTOS_PUERTO = 10;
 
-  // Copias de seguridad, avisos y recordatorios (al arrancar y cada hora)
-  iniciarTareasPeriodicas();
-  if (RESERVA_ONLINE_DISPONIBLE) iniciarSincronizacionReservaOnline();
-});
+/**
+ * Arranca el servidor. Si el puerto sigue ocupado (p. ej. el backend de una
+ * sesión anterior que aún se está cerrando), reintenta unos segundos.
+ */
+function arrancar(intento = 1) {
+  const servidor = app.listen(Number(PORT), HOST, () => {
+    console.log(`🚀 Servidor corriendo en http://${HOST}:${PORT}`);
+    console.log(`📡 CORS habilitado para: ${CORS_ORIGINS.join(', ')}`);
+
+    // Copias de seguridad, avisos y recordatorios (al arrancar y cada hora)
+    iniciarTareasPeriodicas();
+    if (RESERVA_ONLINE_DISPONIBLE) iniciarSincronizacionReservaOnline();
+  });
+  servidor.on('error', (error: NodeJS.ErrnoException) => {
+    if (error.code === 'EADDRINUSE' && intento < REINTENTOS_PUERTO) {
+      console.warn(`⚠️  Puerto ${PORT} ocupado, reintentando (${intento}/${REINTENTOS_PUERTO})…`);
+      setTimeout(() => arrancar(intento + 1), 1000);
+      return;
+    }
+    console.error('❌ No se pudo arrancar el servidor:', error);
+    process.exit(1);
+  });
+}
+
+arrancar();
+
+// En la app de escritorio: si el proceso de la app desaparece (cierre forzoso
+// o caída), este backend se cierra también para no quedarse con el puerto
+const pidApp = Number(process.env.PID_APP);
+if (pidApp > 0) {
+  setInterval(() => {
+    try {
+      process.kill(pidApp, 0); // Solo comprueba que existe
+    } catch (error) {
+      // EPERM: existe pero es de otro usuario (no es nuestro caso, pero no es una caída)
+      if ((error as NodeJS.ErrnoException).code === 'EPERM') return;
+      console.log('La app de escritorio se ha cerrado: cerrando el backend');
+      process.exit(0);
+    }
+  }, 5000).unref();
+}

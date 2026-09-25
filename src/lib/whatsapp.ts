@@ -16,3 +16,11 @@ export function mensajeFelicitacion(nombrePaciente: string, nombreFarmacia?: str
   const equipo = nombreFarmacia ? `Todo el equipo de ${nombreFarmacia}` : "Todo nuestro equipo";
   return `¡Feliz cumpleaños, ${nombre}! 🎉 ${equipo} te desea un día estupendo.`;
 }
+
+/** Recordatorio de cita por WhatsApp (para pacientes sin email o como refuerzo) */
+export function mensajeRecordatorioCita(nombrePaciente: string, fecha: string, hora: string, nombreFarmacia?: string): string {
+  const nombre = nombrePaciente.split(" ")[0];
+  const dia = new Date(`${fecha.slice(0, 10)}T12:00:00`).toLocaleDateString("es-ES", { weekday: "long", day: "numeric", month: "long" });
+  const farmacia = nombreFarmacia ? ` en ${nombreFarmacia}` : "";
+  return `Hola ${nombre}, te recordamos tu cita${farmacia} el ${dia} a las ${hora}. Si no puedes venir, avísanos respondiendo a este mensaje. ¡Gracias!`;
+}
