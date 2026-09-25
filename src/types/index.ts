@@ -145,6 +145,10 @@ export interface AnalisisBio extends CamposMedicion {
   proteinaCReactiva?: number; // PCR
   vitaminaD?: number;
   ferritina?: number;
+  // Riesgo cardiovascular (SCORE2) y de diabetes (FINDRISC)
+  fumador?: boolean | null;
+  /** JSON con la respuesta y los puntos de cada pregunta (null = no se hizo el test) */
+  findrisc?: string | null;
   // Observaciones y recomendaciones
   observaciones?: string;
   recomendaciones?: string;

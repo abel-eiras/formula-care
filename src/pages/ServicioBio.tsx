@@ -10,7 +10,7 @@ import { ArrowLeft, Save, Printer, FlaskConical, AlertTriangle, CheckCircle, Dow
 import { Link, useNavigate, useSearchParams } from "react-router-dom";
 import { toast } from "sonner";
 import { usePacientes } from "@/hooks/usePacientes";
-import { useCrearAnalisisBio, useAnalisisBio, useActualizarAnalisisBio } from "@/hooks/useAnalisisBio";
+import { useCrearAnalisisBio, useAnalisisBio, useActualizarAnalisisBio, type DatosAnalisisBio } from "@/hooks/useAnalisisBio";
 import { DialogoNuevoPaciente } from "@/components/pacientes/DialogoNuevoPaciente";
 import { useConfiguracion } from "@/hooks/useConfiguracion";
 import { evaluarValor, getMensajeValoracion } from "@/lib/valoracionBio";
@@ -19,6 +19,10 @@ import type { AnalisisBio, ParametroReferencia, ParametroBioConfig } from "@/typ
 import { imprimirRuta } from "@/lib/imprimir";
 import { BotonesInforme } from "@/components/informes/BotonesInforme";
 import { nombreInforme } from "@/lib/informePdf";
+import { RiesgoCardiometabolico } from "@/components/bio/RiesgoCardiometabolico";
+import { respuestasAutomaticas, type DatosRiesgo } from "@/lib/riesgo/datosRiesgo";
+import { leerRespuestasFindrisc, type RespuestasFindrisc } from "@/lib/riesgo/findrisc";
+import { calcularEdad } from "@/lib/edad";
 // Parámetros por defecto (usados si no hay configuración guardada)
 const PARAMETROS_DEFAULT: ParametroBioConfig[] = [
   // Básicos: glucemia y tensión arterial
@@ -179,10 +183,16 @@ export default function ServicioBio() {
     recomendaciones: "",
   });
 
+  // SCORE2 (si fuma) y FINDRISC (null = no se hace el test)
+  const [fumador, setFumador] = useState<boolean | null>(null);
+  const [findrisc, setFindrisc] = useState<RespuestasFindrisc | null>(null);
+
   // Cargar datos existentes si estamos editando
   useEffect(() => {
     if (analisisExistente) {
       setPacienteId(analisisExistente.pacienteId);
+      setFumador(analisisExistente.fumador ?? null);
+      setFindrisc(leerRespuestasFindrisc(analisisExistente.findrisc));
       setFormData({
         fecha: analisisExistente.fecha.split("T")[0] || new Date().toISOString().split("T")[0],
         glucemia: analisisExistente.glucemia?.toString() || "",
@@ -247,6 +257,22 @@ export default function ServicioBio() {
     return evaluarValor(imc, configuracion.parametrosReferencia?.imc);
   }, [imc, configuracion]);
 
+  // Datos que usan SCORE2 y FINDRISC (edad a la fecha del análisis)
+  const datosRiesgo = useMemo<DatosRiesgo>(() => {
+    const numero = (valor: string) => (valor ? parseFloat(valor) : undefined);
+    return {
+      edad: calcularEdad(pacienteSeleccionado?.birthDate, new Date(`${formData.fecha}T12:00:00`)),
+      sexo: pacienteSeleccionado?.sex ?? null,
+      sistolica: numero(formData.systolic),
+      colesterolTotal: numero(formData.cholesterol),
+      colesterolHDL: numero(formData.cholesterolHDL),
+      imc,
+      cintura: numero(formData.cintura),
+      glucemia: numero(formData.glucemia),
+      hba1c: numero(formData.hemoglobinaGlucosilada),
+    };
+  }, [pacienteSeleccionado, formData, imc]);
+
   const handleChange = (field: keyof typeof formData, value: string) => {
     setFormData((prev) => ({ ...prev, [field]: value }));
   };
@@ -262,7 +288,7 @@ export default function ServicioBio() {
       // que al editar se pueda borrar un valor
       const medida = (valor: string, entero = false) =>
         valor ? (entero ? parseInt(valor) : parseFloat(valor)) : null;
-      const datosAnalisis: Omit<AnalisisBio, "id" | "createdAt" | "updatedAt" | "paciente" | "imc" | "icc"> = {
+      const datosAnalisis: DatosAnalisisBio = {
         pacienteId,
         fecha: new Date(formData.fecha).toISOString(),
         glucemia: formData.glucemia ? parseFloat(formData.glucemia) : undefined,
@@ -280,6 +306,9 @@ export default function ServicioBio() {
         peso: medida(formData.peso),
         altura: medida(formData.altura),
         cintura: medida(formData.cintura),
+        fumador,
+        // Las respuestas automáticas (edad, IMC, cintura) se guardan con su valor de hoy
+        findrisc: findrisc ? { ...findrisc, ...respuestasAutomaticas(datosRiesgo) } : null,
         observaciones: formData.observaciones || undefined,
         recomendaciones: formData.recomendaciones || undefined,
       };
@@ -535,6 +564,14 @@ export default function ServicioBio() {
           </Card>
         </div>
       </div>
+
+      <RiesgoCardiometabolico
+        datos={datosRiesgo}
+        fumador={fumador}
+        onFumador={setFumador}
+        findrisc={findrisc}
+        onFindrisc={setFindrisc}
+      />
 
       {/* Observaciones y Recomendaciones */}
       <Card className="shadow-sm border-border/50">

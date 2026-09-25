@@ -1,6 +1,13 @@
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { api } from '@/lib/api';
+import type { RespuestasFindrisc } from '@/lib/riesgo/findrisc';
 import type { AnalisisBio } from '@/types';
+
+
+/** Lo que se envía al guardar: el FINDRISC va como objeto (se lee como JSON) */
+export type DatosAnalisisBio = Omit<AnalisisBio, 'id' | 'createdAt' | 'updatedAt' | 'paciente' | 'imc' | 'icc' | 'findrisc'> & {
+  findrisc?: RespuestasFindrisc | null;
+};
 
 /**
  * Hook para obtener todos los análisis bioquímicos de un paciente
@@ -39,7 +46,7 @@ export function useCrearAnalisisBio() {
   const queryClient = useQueryClient();
 
   return useMutation({
-    mutationFn: async (nuevoAnalisis: Omit<AnalisisBio, 'id' | 'createdAt' | 'updatedAt' | 'paciente' | 'imc' | 'icc'>) => {
+    mutationFn: async (nuevoAnalisis: DatosAnalisisBio) => {
       return api.post<AnalisisBio>('/servicios/bio', nuevoAnalisis);
     },
     onSuccess: (_, variables) => {
@@ -60,7 +67,7 @@ export function useActualizarAnalisisBio() {
   const queryClient = useQueryClient();
 
   return useMutation({
-    mutationFn: async ({ id, ...datos }: Partial<AnalisisBio> & { id: string }) => {
+    mutationFn: async ({ id, ...datos }: Partial<DatosAnalisisBio> & { id: string }) => {
       return api.put<AnalisisBio>(`/servicios/bio/${id}`, datos);
     },
     onSuccess: (_, variables) => {

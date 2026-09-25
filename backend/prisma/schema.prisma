@@ -180,6 +180,10 @@ model AnalisisBio {
   vitaminaD             Float?
   ferritina             Float?
   // Las medidas corporales y la tensión se guardan en Medicion
+  // Riesgo cardiovascular (SCORE2): el resto de datos ya están en el análisis
+  fumador               Boolean?
+  // Test FINDRISC: JSON { edad: { valor, puntos }, imc: {…}, … } (null = no se hizo)
+  findrisc              String?
   // Observaciones y recomendaciones
   observaciones         String?
   recomendaciones       String?

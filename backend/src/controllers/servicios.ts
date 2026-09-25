@@ -70,6 +70,13 @@ const crearAnalisisBioSchema = z
     proteinaCReactiva: z.number().positive().optional(),
     vitaminaD: z.number().positive().optional(),
     ferritina: z.number().positive().optional(),
+    // Riesgo cardiovascular y de diabetes
+    fumador: z.boolean().nullable().optional(),
+    findrisc: z
+      .record(z.string(), z.object({ valor: z.string(), puntos: z.number().int().min(0).max(5) }))
+      .nullable()
+      .optional()
+      .transform((respuestas) => (respuestas === undefined ? undefined : respuestas && JSON.stringify(respuestas))),
     // Observaciones y recomendaciones
     observaciones: z.string().optional(),
     recomendaciones: z.string().optional(),
