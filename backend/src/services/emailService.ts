@@ -268,6 +268,7 @@ function reemplazarVariables(contenido: string, datos: DatosEmail, esHtml = true
     colorAcento: datos.colorAcento,
     motivoRechazo: datos.motivoRechazo,
     urlCancelar: datos.urlCancelar,
+    tituloInforme: datos.tituloInforme,
     anioActual: new Date().getFullYear().toString(),
   };
   const variables: Record<string, string> = Object.fromEntries(
@@ -516,11 +517,18 @@ async function obtenerDatosEmailCompletos(datosCita: DatosCitaBase): Promise<Dat
 /**
  * Envía un email usando el proveedor configurado de la farmacia
  */
+/** Fichero adjunto (p. ej. el informe en PDF) */
+export interface Adjunto {
+  nombre: string;
+  contenido: Buffer;
+}
+
 async function enviarEmail(
   destinatario: string,
   asunto: string,
   html: string,
-  texto?: string
+  texto?: string,
+  adjuntos: Adjunto[] = []
 ): Promise<boolean> {
   const config = await obtenerConfigEmail();
 
@@ -530,7 +538,7 @@ async function enviarEmail(
       const resend = inicializarResend(config);
       if (!resend) {
         console.warn('⚠️  Resend no disponible, intentando SMTP...');
-        return enviarConSMTP(config, destinatario, asunto, html, texto);
+        return enviarConSMTP(config, destinatario, asunto, html, texto, adjuntos);
       }
 
       const { error } = await resend.emails.send({
@@ -539,19 +547,20 @@ async function enviarEmail(
         subject: asunto,
         html: html,
         text: texto || htmlATexto(html),
+        attachments: adjuntos.map((a) => ({ filename: a.nombre, content: a.contenido })),
       });
 
       if (error) {
         console.error('❌ Error Resend:', error);
         // Fallback a SMTP
-        return enviarConSMTP(config, destinatario, asunto, html, texto);
+        return enviarConSMTP(config, destinatario, asunto, html, texto, adjuntos);
       }
 
       console.log(`✅ Email enviado vía Resend a ${destinatario}`);
       return true;
     } else {
       // Usar SMTP
-      return enviarConSMTP(config, destinatario, asunto, html, texto);
+      return enviarConSMTP(config, destinatario, asunto, html, texto, adjuntos);
     }
   } catch (error) {
     console.error('❌ Error al enviar email:', error);
@@ -567,7 +576,8 @@ async function enviarConSMTP(
   destinatario: string,
   asunto: string,
   html: string,
-  texto?: string
+  texto?: string,
+  adjuntos: Adjunto[] = []
 ): Promise<boolean> {
   try {
     const transporter = await inicializarSMTP(config);
@@ -584,6 +594,7 @@ async function enviarConSMTP(
       subject: asunto,
       text: texto || htmlATexto(html),
       html: html,
+      attachments: adjuntos.map((a) => ({ filename: a.nombre, content: a.contenido })),
     });
 
     console.log(`✅ Email enviado vía SMTP a ${destinatario}`);
@@ -1112,6 +1123,35 @@ export async function enviarCancelacionCita(
 }
 
 /**
+ * Envía al paciente un informe (PDF) de un servicio. Plantilla editable "informe".
+ */
+export async function enviarInformePaciente(
+  emailDestinatario: string,
+  datosInforme: { nombreCliente: string; tituloInforme: string; adjunto: Adjunto }
+): Promise<boolean> {
+  try {
+    const datos: DatosEmail = {
+      ...(await obtenerDatosEmailCompletos({ nombreCliente: datosInforme.nombreCliente, fecha: '', hora: '', tipo: '' })),
+      fechaCita: '',
+      horaCita: '',
+      tipoServicio: '',
+      tituloInforme: datosInforme.tituloInforme,
+    };
+    const plantilla = await obtenerPlantilla('informe');
+    const html = plantilla
+      ? reemplazarVariables(plantilla.contenidoHtml, datos)
+      : generarPlantillaInformeDefault(escaparDatos(datos));
+    const asunto = plantilla
+      ? reemplazarVariables(plantilla.asunto, datos, false)
+      : `${datosInforme.tituloInforme} - ${datos.nombreFarmacia}`;
+    return await enviarEmail(emailDestinatario, asunto, html, undefined, [datosInforme.adjunto]);
+  } catch (error) {
+    console.error('❌ Error al enviar el informe:', error);
+    return false;
+  }
+}
+
+/**
  * Email a quien pidió cita por la reserva online y no se le ha podido dar
  */
 export async function enviarRechazoSolicitud(
@@ -1345,6 +1385,32 @@ function generarPlantillaRecordatorioDefault(datos: DatosEmail): string {
 /**
  * Genera plantilla HTML de cancelación por defecto
  */
+function generarPlantillaInformeDefault(datos: DatosEmail): string {
+  const { logo, whatsapp, telefono, color } = bloquesDesdeDatos(datos);
+  return `
+<!DOCTYPE html>
+<html lang="es">
+<head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1.0"><title>${datos.tituloInforme}</title></head>
+<body style="font-family: 'Segoe UI', Arial, sans-serif; line-height: 1.6; color: #333; max-width: 600px; margin: 0 auto; padding: 20px; background-color: #f5f5f5;">
+  ${logo}
+  <div style="background-color: ${color}; color: white; padding: 30px 20px; text-align: center; border-radius: 10px 10px 0 0;">
+    <h1 style="margin: 0; font-size: 24px;">${datos.tituloInforme}</h1>
+  </div>
+  <div style="background-color: white; padding: 30px; border-radius: 0 0 10px 10px; box-shadow: 0 2px 10px rgba(0,0,0,0.1);">
+    <p style="font-size: 16px;">Hola <strong>${datos.nombrePaciente}</strong>,</p>
+    <p>Te enviamos adjunto el informe de tu visita. Si tienes cualquier duda, estaremos encantados de ayudarte.</p>
+    <hr style="border: none; border-top: 1px solid #eee; margin: 30px 0;">
+    <div style="color: #666; font-size: 14px;">
+      <p><strong>${datos.nombreFarmacia}</strong></p>
+      <p style="margin: 3px 0;">${datos.direccionFarmacia}</p>
+      <p style="margin: 3px 0;">📞 ${datos.telefonoFarmacia || ''}${whatsapp}${telefono}</p>
+      <p style="margin: 3px 0;">✉️ ${datos.emailFarmacia || ''}</p>
+    </div>
+  </div>
+</body>
+</html>`;
+}
+
 function generarPlantillaRechazoDefault(datos: DatosEmail): string {
   const { logo, whatsapp, telefono, color } = bloquesDesdeDatos(datos);
   const boton = datos.urlSolicitarCita

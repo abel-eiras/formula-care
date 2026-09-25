@@ -15,7 +15,8 @@ import {
   Clock,
   TrendingUp,
   FileText,
-  Salad
+  Salad,
+  CalendarDays,
 } from "lucide-react";
 import { Link, useParams, useNavigate } from "react-router-dom";
 import { usePaciente } from "@/hooks/usePacientes";
@@ -28,6 +29,8 @@ import { LoadingSpinner } from "@/components/ui/LoadingSpinner";
 import { EvolutionChartBio } from "@/components/patient/EvolutionChartBio";
 import { EvolucionMediciones } from "@/components/patient/EvolucionMediciones";
 import { textoEdad } from "@/lib/edad";
+import { ESTADOS_CITA } from "@/lib/estadosCita";
+import { hoyISO } from "@/lib/fechas";
 
 const getInitials = (name: string) => {
   return name.split(" ").map(n => n[0]).slice(0, 2).join("").toUpperCase();
@@ -78,7 +81,18 @@ export default function PacienteDetalle() {
         programaId: programa.id,
       }))
     ),
-  ].sort((a, b) => new Date(b.fecha).getTime() - new Date(a.fecha).getTime());
+    // Citas (las futuras quedan arriba, como "próxima cita")
+    ...(paciente.citas ?? []).map((c) => ({
+      id: c.id,
+      fecha: c.fecha,
+      tipo: "cita" as const,
+      titulo:
+        c.fecha.slice(0, 10) >= hoyISO() && c.estado !== "cancelada"
+          ? "Próxima cita"
+          : `Cita${c.estado && c.estado !== "pendiente" ? ` · ${ESTADOS_CITA[c.estado].label.toLowerCase()}` : ""}`,
+      resumen: `${c.hora} · ${c.titulo}`,
+    })),
+  ].sort((a, b) => b.fecha.slice(0, 10).localeCompare(a.fecha.slice(0, 10)));
 
   return (
     <div className="space-y-6 animate-fade-in">
@@ -226,12 +240,14 @@ export default function PacienteDetalle() {
                       {/* Icon */}
                       <div className={`
                         relative z-10 flex h-10 w-10 items-center justify-center rounded-full
-                        ${visit.tipo === "dermo" ? "bg-primary text-primary-foreground" : visit.tipo === "bio" ? "bg-secondary text-secondary-foreground" : "bg-success text-white"}
+                        ${visit.tipo === "dermo" ? "bg-primary text-primary-foreground" : visit.tipo === "bio" ? "bg-secondary text-secondary-foreground" : visit.tipo === "cita" ? "bg-muted text-muted-foreground" : "bg-success text-white"}
                       `}>
                         {visit.tipo === "dermo" ? (
                           <Sparkles className="h-5 w-5" />
                         ) : visit.tipo === "bio" ? (
                           <FlaskConical className="h-5 w-5" />
+                        ) : visit.tipo === "cita" ? (
+                          <CalendarDays className="h-5 w-5" />
                         ) : (
                           <Salad className="h-5 w-5" />
                         )}
@@ -245,7 +261,7 @@ export default function PacienteDetalle() {
                           </Badge>
                           <span className="flex items-center gap-1 text-sm text-muted-foreground">
                             <Clock className="h-3 w-3" />
-                            {new Date(visit.fecha).toLocaleDateString("es-ES", {
+                            {parsearFecha(visit.fecha.slice(0, 10)).toLocaleDateString("es-ES", {
                               day: "numeric",
                               month: "long",
                               year: "numeric"
@@ -258,7 +274,9 @@ export default function PacienteDetalle() {
                           size="sm" 
                           className="text-primary -ml-2"
                           onClick={() => {
-                            if (visit.tipo === "dermo") {
+                            if (visit.tipo === "cita") {
+                              navigate("/calendario");
+                            } else if (visit.tipo === "dermo") {
                               navigate(`/servicios/dermo?id=${visit.id}`);
                             } else if (visit.tipo === "nutricion") {
                               navigate(`/servicios/nutricion/visita?programaId=${visit.programaId}&id=${visit.id}`);
@@ -267,7 +285,7 @@ export default function PacienteDetalle() {
                             }
                           }}
                         >
-                          Ver detalles completos
+                          {visit.tipo === "cita" ? "Ver en el calendario" : "Ver detalles completos"}
                         </Button>
                       </div>
                     </div>
