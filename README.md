@@ -110,17 +110,58 @@ O descarga el `.AppImage`, dale permiso de ejecución (clic derecho → Propieda
 
 Si lo prefieres, también puedes descargar el instalador de la versión nueva desde [descargas (Releases)](https://github.com/abel-eiras/formula-care/releases) e instalarlo encima.
 
-## 💻 Cambiar de ordenador
+## ❓ Preguntas frecuentes
 
-1. En el ordenador antiguo: Configuración → Copias de Seguridad → **Realizar copia ahora** y luego **Guardar en…** (por ejemplo, en un USB).
-2. En el nuevo: instala la app, crea la cuenta que te pide al abrirla y ve a Configuración → Copias de Seguridad → **Restaurar una copia**.
-3. Se recupera todo: pacientes, citas, análisis, usuarios, correo, textos y apariencia. Después, entra con tu usuario de siempre.
+### ¿Cómo paso mis datos a otro ordenador?
 
-## 🆘 Si algo no va bien
+1. **En el ordenador antiguo:** Configuración → Copias de Seguridad → **Realizar copia ahora**. Después, en la lista «Copias guardadas», pulsa el botón **Guardar en…** de esa copia y guárdala en un USB, un disco externo o una carpeta de OneDrive, Google Drive o Dropbox.
+2. **En el ordenador nuevo:** instala Formula Care y ábrela. Te pedirá crear una cuenta: crea una cualquiera, solo sirve para entrar esta primera vez.
+3. Ve a Configuración → Copias de Seguridad → **Restaurar una copia** y elige el archivo de la copia (termina en `.fcbackup`). Si la copia está protegida con contraseña, escríbela.
+4. La app se cierra la sesión sola. **Entra con tu usuario y contraseña de siempre** (los de la copia): la cuenta que creaste en el paso 2 desaparece.
 
-- **No llegan los correos:** Configuración → Correo → **Enviar correo de prueba**. Te dice en qué paso falla y qué revisar.
-- **Cualquier otro problema:** Configuración → Copias de Seguridad → **Exportar diagnóstico** genera un informe (sin datos de pacientes) con la versión y los últimos mensajes de la app. Puedes adjuntarlo al contarnos el problema en [Issues](https://github.com/abel-eiras/formula-care/issues).
-- La **reserva de citas online** desde la web de la farmacia todavía no está disponible.
+Se recupera todo: pacientes, citas, análisis, usuarios, configuración del correo, textos y apariencia.
+
+### Se me ha estropeado el ordenador. ¿Puedo recuperar los datos?
+
+Sí, si tienes una copia de seguridad fuera de él. Por eso conviene elegir en Configuración → Copias de Seguridad una **carpeta adicional** (un disco externo o una carpeta sincronizada con OneDrive, Google Drive o Dropbox): cada copia automática se guarda también allí. Con cualquiera de esas copias, sigue los pasos 2 a 4 de la pregunta anterior en el ordenador nuevo.
+
+Sin ninguna copia fuera del ordenador estropeado no hay forma de recuperar los datos desde la app.
+
+### ¿Y si quiero volver a una copia anterior en el mismo ordenador?
+
+Configuración → Copias de Seguridad → **Restaurar una copia** y elige la copia (las automáticas están en la lista «Copias guardadas»; usa **Guardar en…** para sacar la que quieras y luego restáurala). Antes de restaurar, la app guarda por su cuenta una copia del estado actual, por si te arrepientes.
+
+### Olvidé la contraseña de las copias cifradas. ¿Hay forma de abrirlas?
+
+No. Esa contraseña no se guarda en ningún sitio y sin ella nadie puede abrir la copia (esa es precisamente su función). Si la olvidas, cambia la contraseña en Configuración → Copias de Seguridad y haz una copia nueva ahora mismo: las siguientes usarán la nueva.
+
+### ¿Cómo desinstalo Formula Care?
+
+- **Windows:** Configuración → Aplicaciones → Aplicaciones instaladas → **Formula Care** → **Desinstalar** (o desde el Panel de control → Programas).
+- **Mac:** arrastra **Formula Care** desde la carpeta Aplicaciones a la Papelera.
+- **Linux:** si la instalaste con el comando de arriba, borra la carpeta `~/.local/share/formula-care`, el archivo `~/.local/share/applications/formula-care.desktop` y el enlace `~/.local/bin/formula-care`. Si usabas el `.AppImage` suelto, basta con borrarlo.
+
+### ¿Se borran mis datos al desinstalar?
+
+No. Pacientes, citas, configuración y copias de seguridad están en otra carpeta y se quedan ahí, para que reinstalar o actualizar no pierda nada. Si quieres borrarlos también (por ejemplo, porque vas a deshacerte del ordenador), **haz antes una copia y guárdala fuera** y después borra esta carpeta:
+
+| Sistema | Carpeta de datos |
+|---------|------------------|
+| Windows | `%APPDATA%\com.abeleiras.formulacare` (pégalo en la barra de direcciones del Explorador) |
+| Mac | `~/Library/Application Support/com.abeleiras.formulacare` (en Finder: Ir → Ir a la carpeta…) |
+| Linux | `~/.local/share/com.abeleiras.formulacare` |
+
+### No llegan los correos a los pacientes
+
+Configuración → Correo → **Enviar correo de prueba**. Te dice en qué paso falla y qué revisar. Mira también la carpeta de spam del destinatario.
+
+### Algo no funciona bien
+
+Configuración → Copias de Seguridad → **Exportar diagnóstico** genera un informe (sin datos de pacientes) con la versión y los últimos mensajes de la app. Puedes adjuntarlo al contarnos el problema en [Issues](https://github.com/abel-eiras/formula-care/issues).
+
+### ¿Puedo ofrecer reserva de citas online desde la web de la farmacia?
+
+Todavía no está disponible.
 
 ---
 
