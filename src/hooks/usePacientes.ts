@@ -55,7 +55,7 @@ export function useCrearPaciente() {
   const queryClient = useQueryClient();
 
   return useMutation({
-    mutationFn: async (nuevoPaciente: Omit<Paciente, 'id' | 'createdAt' | 'updatedAt'>) => {
+    mutationFn: async (nuevoPaciente: Omit<Paciente, 'id' | 'createdAt' | 'updatedAt'> & { consentimiento?: boolean }) => {
       return api.post<Paciente>('/pacientes', nuevoPaciente);
     },
     onSuccess: () => {

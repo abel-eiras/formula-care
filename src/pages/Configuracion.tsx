@@ -25,6 +25,7 @@ import { BackupTab } from "@/components/configuracion/BackupTab";
 import { UsuariosTab } from "@/components/configuracion/UsuariosTab";
 import { MiCuentaTab } from "@/components/configuracion/MiCuentaTab";
 import { ReservaOnlineTab } from "@/components/configuracion/ReservaOnlineTab";
+import { RetencionPacientes } from "@/components/configuracion/RetencionPacientes";
 import { PLANTILLAS_RESERVA_ONLINE, RESERVA_ONLINE_DISPONIBLE, VARIABLES_RESERVA_ONLINE } from "@/lib/funciones";
 import { useAuthContext } from "@/contexts/AuthContext";
 import type { Evento, ParametroBioConfig, ConfiguracionRgpd, PlantillaEmail } from "@/types";
@@ -1954,6 +1955,8 @@ function RgpdTab() {
           {actualizarRgpd.isPending ? 'Guardando...' : 'Guardar Configuración RGPD'}
         </Button>
       </div>
+
+      <RetencionPacientes />
     </div>
   );
 }

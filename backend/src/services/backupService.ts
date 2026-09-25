@@ -12,6 +12,7 @@
  * antes de intentar descomprimir nada.
  */
 import crypto from 'crypto';
+import { spawnSync } from 'child_process';
 import fs from 'fs';
 import path from 'path';
 import zlib from 'zlib';
@@ -87,12 +88,48 @@ async function snapshotDb(destPath: string): Promise<void> {
   await prisma.$executeRawUnsafe(`VACUUM INTO '${destPath.replace(/'/g, "''")}'`);
 }
 
+/** Migraciones que conoce esta versión de la app (carpeta prisma/migrations) */
+function migracionesLocales(): string[] {
+  const dir = path.join(PRISMA_DIR, 'migrations');
+  return fs.existsSync(dir)
+    ? fs.readdirSync(dir).filter((d) => fs.statSync(path.join(dir, d)).isDirectory())
+    : [];
+}
+
+/** Migraciones aplicadas a la base de datos actual (se guardan en el manifest de la copia) */
+async function migracionesAplicadas(): Promise<string[]> {
+  const filas = await prisma.$queryRawUnsafe<{ migration_name: string }[]>(
+    'SELECT migration_name FROM _prisma_migrations WHERE finished_at IS NOT NULL ORDER BY migration_name'
+  );
+  return filas.map((f) => f.migration_name);
+}
+
+/**
+ * Pone al día el esquema de la base de datos (p. ej. tras restaurar una copia
+ * hecha con una versión anterior). Usa el CLI de Prisma incluido con la app y
+ * el mismo Node.js que ejecuta este backend.
+ */
+function aplicarMigraciones(): void {
+  const cli = path.resolve(PRISMA_DIR, '../node_modules/prisma/build/index.js');
+  const resultado = spawnSync(
+    process.execPath,
+    [cli, 'migrate', 'deploy', `--schema=${path.join(PRISMA_DIR, 'schema.prisma')}`],
+    { env: { ...process.env, DATABASE_URL: `file:${getDbPath()}` }, encoding: 'utf8', timeout: 120_000 }
+  );
+  if (resultado.status !== 0) {
+    throw new BackupError(
+      `No se ha podido actualizar la copia restaurada a esta versión: ${(resultado.stderr || resultado.error?.message || '').slice(0, 500)}`
+    );
+  }
+}
+
 interface ConfigBackup {
   backupPeriodicidad: string;
   backupCifrado: boolean;
   backupCifradoClave: string | null;
   backupCifradoSalt: string | null;
   backupUltimaEjecucion: Date | null;
+  backupCarpetaExtra: string | null;
 }
 
 async function getConfig(): Promise<ConfigBackup> {
@@ -103,6 +140,7 @@ async function getConfig(): Promise<ConfigBackup> {
     backupCifradoClave: config?.backupCifradoClave ?? null,
     backupCifradoSalt: config?.backupCifradoSalt ?? null,
     backupUltimaEjecucion: config?.backupUltimaEjecucion ?? null,
+    backupCarpetaExtra: config?.backupCarpetaExtra ?? null,
   };
 }
 
@@ -149,6 +187,9 @@ export async function crearBackup(): Promise<BackupInfo> {
     const manifest = {
       formatVersion: 1,
       createdAt: new Date().toISOString(),
+      appVersion: process.env.APP_VERSION ?? null,
+      // Permite rechazar al restaurar una copia hecha con una versión más nueva
+      migraciones: await migracionesAplicadas(),
     };
 
     const packed = pack(manifest, dbBytes);
@@ -178,16 +219,56 @@ export async function crearBackup(): Promise<BackupInfo> {
     // ninguna fila de Configuracion (se crea de forma perezosa al abrir la
     // pantalla de Configuración) y esta comprobación se ejecuta ya en el
     // primer arranque, antes de que el usuario haya entrado ahí.
+    // Una copia solo en este equipo no sirve si el equipo se estropea: si hay
+    // carpeta extra configurada, se guarda también allí
+    const errorCarpetaExtra = copiarACarpetaExtra(destPath, nombre, config.backupCarpetaExtra);
+
     await prisma.configuracion.upsert({
       where: { id: CONFIG_ID },
-      create: { id: CONFIG_ID, backupUltimaEjecucion: new Date() },
-      update: { backupUltimaEjecucion: new Date() },
+      create: { id: CONFIG_ID, backupUltimaEjecucion: new Date(), backupUltimoError: errorCarpetaExtra },
+      update: { backupUltimaEjecucion: new Date(), backupUltimoError: errorCarpetaExtra },
     });
 
     const stat = fs.statSync(destPath);
     return { nombre, fecha: stat.mtime.toISOString(), tamanoBytes: stat.size };
   } finally {
     fs.rmSync(tmpDbPath, { force: true });
+  }
+}
+
+/** Copia el fichero a la carpeta extra; devuelve el error (o null si fue bien o no hay carpeta) */
+function copiarACarpetaExtra(origen: string, nombre: string, carpeta: string | null): string | null {
+  if (!carpeta) return null;
+  try {
+    if (!fs.existsSync(carpeta)) {
+      return `La carpeta ${carpeta} no está disponible (¿disco o USB desconectado?)`;
+    }
+    fs.copyFileSync(origen, path.join(carpeta, nombre));
+    return null;
+  } catch (error) {
+    return `No se pudo guardar la copia en ${carpeta}: ${(error as Error).message}`;
+  }
+}
+
+/** Ruta de una copia de la carpeta de la app, validando el nombre (sin rutas) */
+function rutaBackup(nombre: string): string {
+  if (!/^[\w.-]+\.fcbackup$/.test(nombre) || nombre.includes('..')) {
+    throw new BackupError('Nombre de fichero inválido');
+  }
+  const ruta = path.join(getBackupsDir(), nombre);
+  if (!fs.existsSync(ruta)) throw new BackupError('La copia de seguridad no existe');
+  return ruta;
+}
+
+/** Guarda una copia existente donde elija el usuario (USB, otra carpeta...) */
+export function exportarBackup(nombre: string, destino: string): void {
+  if (!path.isAbsolute(destino)) throw new BackupError('Ruta de destino no válida');
+  const final = destino.endsWith('.fcbackup') ? destino : `${destino}.fcbackup`;
+  try {
+    fs.copyFileSync(rutaBackup(nombre), final);
+  } catch (error) {
+    if (error instanceof BackupError) throw error;
+    throw new BackupError(`No se pudo guardar la copia: ${(error as Error).message}`);
   }
 }
 
@@ -224,9 +305,10 @@ export async function verificarYEjecutarBackupProgramado(): Promise<void> {
 
 /**
  * Importa una copia de seguridad: valida y descifra si hace falta, hace una
- * copia de seguridad de la BD actual por si algo sale mal, y sustituye la
- * BD y la clave de cifrado de esta instalación por las de la copia.
- * El proceso debe reiniciarse después (Prisma no se reconecta en caliente).
+ * copia de la BD actual por si algo sale mal, sustituye la BD (datos y
+ * configuración completos, también en otro equipo) y la pone al día con el
+ * esquema de esta versión. No hace falta reiniciar la app: basta con volver
+ * a iniciar sesión, porque los usuarios son los de la copia.
  */
 export async function importarBackup(filePath: string, password?: string): Promise<void> {
   if (!fs.existsSync(filePath)) {
@@ -258,7 +340,18 @@ export async function importarBackup(filePath: string, password?: string): Promi
     throw new BackupError('El fichero no es una copia de seguridad de Formula Care válida');
   }
 
-  const { dbBytes } = unpack(packed);
+  const { manifest, dbBytes } = unpack(packed);
+
+  // Una copia de una versión más nueva tiene tablas que esta versión no conoce
+  const conocidas = new Set(migracionesLocales());
+  const desconocidas = Array.isArray(manifest.migraciones)
+    ? (manifest.migraciones as string[]).filter((m) => !conocidas.has(m))
+    : [];
+  if (desconocidas.length > 0) {
+    throw new BackupError(
+      `Esta copia se hizo con una versión más nueva de Formula Care${manifest.appVersion ? ` (${String(manifest.appVersion)})` : ''}. Actualiza la app en este equipo y vuelve a intentarlo.`
+    );
+  }
 
   // Copia de seguridad de la BD actual antes de tocar nada, por si hay que deshacer.
   const safetyPath = path.join(
@@ -276,6 +369,18 @@ export async function importarBackup(filePath: string, password?: string): Promi
   // El modo WAL puede dejar ficheros -wal/-shm del estado anterior; el snapshot restaurado no los necesita.
   fs.rmSync(`${dbPath}-wal`, { force: true });
   fs.rmSync(`${dbPath}-shm`, { force: true });
+
+  // Una copia de una versión anterior se pone al día aquí mismo; si no se
+  // puede, se vuelve a dejar la base de datos como estaba
+  try {
+    aplicarMigraciones();
+  } catch (error) {
+    fs.copyFileSync(safetyPath, dbPath);
+    fs.rmSync(`${dbPath}-wal`, { force: true });
+    fs.rmSync(`${dbPath}-shm`, { force: true });
+    throw error;
+  }
+  // Prisma vuelve a conectarse solo, ya contra la base de datos restaurada
 }
 
 /**

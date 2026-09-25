@@ -39,6 +39,7 @@ export default function VisitaNutricion() {
       visita={visita}
       sexoPaciente={paciente?.sex}
       nombrePaciente={paciente?.name}
+      emailPaciente={paciente?.email}
     />
   );
 }

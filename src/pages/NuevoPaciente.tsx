@@ -67,7 +67,7 @@ export default function NuevoPaciente() {
     }
 
     try {
-      const nuevoPaciente: Omit<Paciente, 'id' | 'createdAt' | 'updatedAt'> = {
+      const nuevoPaciente: Omit<Paciente, 'id' | 'createdAt' | 'updatedAt'> & { consentimiento?: boolean } = {
         name: formData.name,
         sex: formData.sex as "M" | "F" | "O",
         phone: formData.phone,
@@ -75,6 +75,8 @@ export default function NuevoPaciente() {
         birthDate: formData.birthDate,
         address: formData.address || undefined,
         notes: formData.notes || undefined,
+        // El servidor guarda la fecha y la versión del texto aceptado
+        consentimiento: consentimientoAceptado,
       };
 
       await crearPaciente.mutateAsync(nuevoPaciente);

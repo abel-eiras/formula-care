@@ -35,15 +35,11 @@ function showLoadingToast(message: string = 'Generando PDF...'): () => void {
 }
 
 /**
- * Genera un PDF a partir de un elemento HTML
- * Captura el HTML renderizado y lo convierte a PDF con paginación correcta
+ * Crea el PDF de un elemento HTML (sin descargarlo): captura el HTML
+ * renderizado y lo pagina en A4. Sirve para descargarlo o enviarlo por email.
  */
-export async function generatePDFFromElement(
-  element: HTMLElement,
-  options: PDFOptions = {}
-): Promise<void> {
+export async function crearPdf(element: HTMLElement, options: PDFOptions = {}): Promise<jsPDF> {
   const {
-    filename = 'documento.pdf',
     format = 'a4',
     orientation = 'portrait',
     quality = 2,
@@ -84,8 +80,8 @@ export async function generatePDFFromElement(
       allowTaint: true,
     });
 
-    // Calcular proporciones
-    const imgData = canvas.toDataURL('image/png', 1.0);
+    // JPEG en lugar de PNG: el PDF pesa mucho menos (importante para enviarlo por email)
+    const imgData = canvas.toDataURL('image/jpeg', 0.9);
     const imgWidth = contentWidth;
     const imgHeight = (canvas.height * imgWidth) / canvas.width;
     
@@ -108,7 +104,7 @@ export async function generatePDFFromElement(
       // Agregar la imagen completa, pero desplazada para mostrar la sección correcta
       pdf.addImage(
         imgData,
-        'PNG',
+        'JPEG',
         marginMm,
         yPosition,
         imgWidth,
@@ -118,98 +114,11 @@ export async function generatePDFFromElement(
       );
     }
 
-    // Descargar PDF
-    pdf.save(filename);
     removeToast();
+    return pdf;
   } catch (error) {
     removeToast();
     console.error('Error al generar PDF:', error);
     throw new Error('Error al generar el PDF. Prueba con el botón Imprimir y elige «Guardar como PDF».');
   }
-}
-
-/**
- * Genera un PDF a partir de múltiples elementos HTML
- */
-export async function generatePDFFromElements(
-  elements: HTMLElement[],
-  options: PDFOptions = {}
-): Promise<void> {
-  const {
-    filename = 'documento.pdf',
-    format = 'a4',
-    orientation = 'portrait',
-    quality = 1,
-    margin = 10,
-  } = options;
-
-  try {
-    const loadingToast = document.createElement('div');
-    loadingToast.className = 'fixed top-4 right-4 bg-blue-500 text-white px-4 py-2 rounded shadow-lg z-50';
-    loadingToast.textContent = 'Generando PDF...';
-    document.body.appendChild(loadingToast);
-
-    const pdf = new jsPDF({
-      orientation: orientation === 'portrait' ? 'p' : 'l',
-      unit: 'mm',
-      format: format,
-    });
-
-    const imgWidth = format === 'a4' ? 210 : 216;
-    const marginMm = margin;
-    const contentWidth = imgWidth - marginMm * 2;
-
-    for (let i = 0; i < elements.length; i++) {
-      const element = elements[i];
-      const canvas = await html2canvas(element, {
-        scale: quality,
-        useCORS: true,
-        logging: false,
-        backgroundColor: '#ffffff',
-        width: element.scrollWidth,
-        height: element.scrollHeight,
-      });
-
-      const imgHeight = (canvas.height * imgWidth) / canvas.width;
-      const contentHeight = (imgHeight * contentWidth) / imgWidth;
-
-      if (i > 0) {
-        pdf.addPage();
-      }
-
-      pdf.addImage(
-        canvas.toDataURL('image/png', 1.0),
-        'PNG',
-        marginMm,
-        marginMm,
-        contentWidth,
-        contentHeight
-      );
-    }
-
-    pdf.save(filename);
-    document.body.removeChild(loadingToast);
-  } catch (error) {
-    console.error('Error al generar PDF:', error);
-    throw new Error('Error al generar el PDF.');
-  }
-}
-
-/**
- * Genera un nombre de archivo para el PDF basado en el tipo de servicio y fecha
- */
-export function generatePDFFilename(
-  tipo: 'dermo' | 'bio',
-  pacienteNombre?: string,
-  fecha?: string
-): string {
-  const tipoLabel = tipo === 'dermo' ? 'dermo' : 'bio';
-  const paciente = pacienteNombre
-    ? pacienteNombre.replace(/\s+/g, '_').toLowerCase()
-    : 'paciente';
-  const fechaStr = fecha
-    ? new Date(fecha).toISOString().split('T')[0]
-    : new Date().toISOString().split('T')[0];
-
-  return `informe_${tipoLabel}_${paciente}_${fechaStr}.pdf`;
 }

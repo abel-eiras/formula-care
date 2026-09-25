@@ -52,6 +52,9 @@ model Paciente {
   address     String?
   notes       String?
   origen      String   @default("manual") // "manual" = registrado por farmacia, "autoregistro" = llegó por la reserva online
+  // Constancia del consentimiento (RGPD): cuándo y qué versión del texto aceptó
+  consentimientoFecha   DateTime?
+  consentimientoVersion String?
   createdAt   DateTime @default(now())
   updatedAt   DateTime @updatedAt
 
@@ -463,6 +466,8 @@ model Configuracion {
   backupCifradoClave    String?   // Clave derivada (scrypt) de la contraseña del usuario — nunca la contraseña en claro
   backupCifradoSalt     String?   // Salt usado para derivar backupCifradoClave
   backupUltimaEjecucion DateTime? // Última vez que se generó una copia (manual o automática)
+  backupCarpetaExtra    String?   // Carpeta donde además se guarda cada copia (USB, NAS, carpeta sincronizada...)
+  backupUltimoError     String?   // Si la última copia no se pudo guardar en la carpeta extra, por qué
 
   createdAt             DateTime @default(now())
   updatedAt             DateTime @updatedAt

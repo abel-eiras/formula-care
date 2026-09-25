@@ -1,6 +1,6 @@
 [package]
 name = "formula-care"
-version = "0.2.0"
+version = "0.3.0"
 description = "Formula Care - gestión de servicios de farmacia (app de escritorio, software libre)"
 authors = ["Abel Eiras"]
 license = "MIT"
@@ -26,4 +26,8 @@ tauri-plugin-log = "2"
 tauri-plugin-shell = "2"
 tauri-plugin-dialog = "2"
 tauri-plugin-process = "2"
+
+# Solo en escritorio: una segunda apertura enfoca la ventana ya abierta
+[target.'cfg(not(any(target_os = "android", target_os = "ios")))'.dependencies]
+tauri-plugin-single-instance = "2"
 rand = "0.8"

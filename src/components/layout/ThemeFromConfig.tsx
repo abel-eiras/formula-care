@@ -10,15 +10,19 @@ import { applyThemeToDocument } from "@/lib/theme";
  */
 export function ThemeFromConfig() {
   const { data: config } = useConfiguracion();
+  const temaActivo = config?.temaActivo;
+  // Como texto: el objeto de colores es nuevo en cada recarga aunque no cambie
+  const coloresMarca = config?.coloresMarca ? JSON.stringify(config.coloresMarca) : undefined;
+  const hayConfig = !!config;
 
   useEffect(() => {
-    if (config) {
+    if (hayConfig) {
       applyThemeToDocument({
-        temaActivo: config.temaActivo,
-        coloresMarca: config.coloresMarca,
+        temaActivo,
+        coloresMarca: coloresMarca ? JSON.parse(coloresMarca) : undefined,
       });
     }
-  }, [config?.temaActivo, config?.coloresMarca]);
+  }, [hayConfig, temaActivo, coloresMarca]);
 
   return null;
 }

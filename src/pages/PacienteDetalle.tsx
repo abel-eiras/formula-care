@@ -15,10 +15,13 @@ import {
   Clock,
   TrendingUp,
   FileText,
-  Salad
+  Salad,
+  CalendarDays,
 } from "lucide-react";
 import { Link, useParams, useNavigate } from "react-router-dom";
-import { usePacientes } from "@/hooks/usePacientes";
+import { usePaciente } from "@/hooks/usePacientes";
+import { ProteccionDatosPaciente } from "@/components/patient/ProteccionDatosPaciente";
+import { parsearFecha } from "@/lib/fechas";
 import { useAnalisisDermoPorPaciente } from "@/hooks/useAnalisisDermo";
 import { useAnalisisBioPorPaciente } from "@/hooks/useAnalisisBio";
 import { useProgramasNutricion } from "@/hooks/useNutricion";
@@ -26,6 +29,8 @@ import { LoadingSpinner } from "@/components/ui/LoadingSpinner";
 import { EvolutionChartBio } from "@/components/patient/EvolutionChartBio";
 import { EvolucionMediciones } from "@/components/patient/EvolucionMediciones";
 import { textoEdad } from "@/lib/edad";
+import { ESTADOS_CITA } from "@/lib/estadosCita";
+import { hoyISO } from "@/lib/fechas";
 
 const getInitials = (name: string) => {
   return name.split(" ").map(n => n[0]).slice(0, 2).join("").toUpperCase();
@@ -34,12 +39,11 @@ const getInitials = (name: string) => {
 export default function PacienteDetalle() {
   const { id } = useParams();
   const navigate = useNavigate();
-  const { data: pacientes = [] } = usePacientes();
+  // Solo este paciente (antes se descargaba la lista completa para buscarlo)
+  const { data: paciente } = usePaciente(id ?? "");
   const { data: analisisDermo = [], isLoading: loadingDermo } = useAnalisisDermoPorPaciente(id);
   const { data: analisisBio = [], isLoading: loadingBio } = useAnalisisBioPorPaciente(id);
   const { data: programasNutricion = [], isLoading: loadingNutricion } = useProgramasNutricion(id);
-
-  const paciente = pacientes.find((p) => p.id === id);
 
   if (!paciente) {
     return (
@@ -77,7 +81,18 @@ export default function PacienteDetalle() {
         programaId: programa.id,
       }))
     ),
-  ].sort((a, b) => new Date(b.fecha).getTime() - new Date(a.fecha).getTime());
+    // Citas (las futuras quedan arriba, como "próxima cita")
+    ...(paciente.citas ?? []).map((c) => ({
+      id: c.id,
+      fecha: c.fecha,
+      tipo: "cita" as const,
+      titulo:
+        c.fecha.slice(0, 10) >= hoyISO() && c.estado !== "cancelada"
+          ? "Próxima cita"
+          : `Cita${c.estado && c.estado !== "pendiente" ? ` · ${ESTADOS_CITA[c.estado].label.toLowerCase()}` : ""}`,
+      resumen: `${c.hora} · ${c.titulo}`,
+    })),
+  ].sort((a, b) => b.fecha.slice(0, 10).localeCompare(a.fecha.slice(0, 10)));
 
   return (
     <div className="space-y-6 animate-fade-in">
@@ -125,7 +140,7 @@ export default function PacienteDetalle() {
                   {paciente.birthDate && (
                     <div className="flex items-center gap-2 text-muted-foreground">
                       <Calendar className="h-4 w-4" />
-                      <span>Nacimiento: {new Date(paciente.birthDate).toLocaleDateString("es-ES")}</span>
+                      <span>Nacimiento: {parsearFecha(paciente.birthDate).toLocaleDateString("es-ES")}</span>
                     </div>
                   )}
                   {paciente.address && (
@@ -147,40 +162,43 @@ export default function PacienteDetalle() {
         </Card>
 
         {/* Quick Actions */}
-        <Card className="lg:w-80 shadow-sm border-border/50">
-          <CardHeader className="pb-4">
-            <CardTitle className="text-lg font-semibold">Nuevo Análisis</CardTitle>
-          </CardHeader>
-          <CardContent className="space-y-3">
-            <Button className="w-full h-14 text-left justify-start gap-3" asChild>
-              <Link to={`/servicios/dermo?pacienteId=${id}`}>
-                <Sparkles className="h-5 w-5" />
-                <div>
-                  <p className="font-medium">Análisis Dermo</p>
-                  <p className="text-xs opacity-80">Evaluación de piel</p>
-                </div>
-              </Link>
-            </Button>
-            <Button variant="secondary" className="w-full h-14 text-left justify-start gap-3" asChild>
-              <Link to={`/servicios/bio?pacienteId=${id}`}>
-                <FlaskConical className="h-5 w-5" />
-                <div>
-                  <p className="font-medium">Análisis Bio</p>
-                  <p className="text-xs opacity-80">Parámetros de salud</p>
-                </div>
-              </Link>
-            </Button>
-            <Button variant="outline" className="w-full h-14 text-left justify-start gap-3" asChild>
-              <Link to={`/servicios/nutricion?pacienteId=${id}`}>
-                <Salad className="h-5 w-5" />
-                <div>
-                  <p className="font-medium">Nutrición</p>
-                  <p className="text-xs opacity-80">Seguimiento nutricional y GLP-1</p>
-                </div>
-              </Link>
-            </Button>
-          </CardContent>
-        </Card>
+        <div className="lg:w-80 space-y-6">
+          <Card className="shadow-sm border-border/50">
+            <CardHeader className="pb-4">
+              <CardTitle className="text-lg font-semibold">Nuevo Análisis</CardTitle>
+            </CardHeader>
+            <CardContent className="space-y-3">
+              <Button className="w-full h-14 text-left justify-start gap-3" asChild>
+                <Link to={`/servicios/dermo?pacienteId=${id}`}>
+                  <Sparkles className="h-5 w-5" />
+                  <div>
+                    <p className="font-medium">Análisis Dermo</p>
+                    <p className="text-xs opacity-80">Evaluación de piel</p>
+                  </div>
+                </Link>
+              </Button>
+              <Button variant="secondary" className="w-full h-14 text-left justify-start gap-3" asChild>
+                <Link to={`/servicios/bio?pacienteId=${id}`}>
+                  <FlaskConical className="h-5 w-5" />
+                  <div>
+                    <p className="font-medium">Análisis Bio</p>
+                    <p className="text-xs opacity-80">Parámetros de salud</p>
+                  </div>
+                </Link>
+              </Button>
+              <Button variant="outline" className="w-full h-14 text-left justify-start gap-3" asChild>
+                <Link to={`/servicios/nutricion?pacienteId=${id}`}>
+                  <Salad className="h-5 w-5" />
+                  <div>
+                    <p className="font-medium">Nutrición</p>
+                    <p className="text-xs opacity-80">Seguimiento nutricional y GLP-1</p>
+                  </div>
+                </Link>
+              </Button>
+            </CardContent>
+          </Card>
+          <ProteccionDatosPaciente paciente={paciente} />
+        </div>
       </div>
 
       {/* Tabs: Historial y Evolución */}
@@ -222,12 +240,14 @@ export default function PacienteDetalle() {
                       {/* Icon */}
                       <div className={`
                         relative z-10 flex h-10 w-10 items-center justify-center rounded-full
-                        ${visit.tipo === "dermo" ? "bg-primary text-primary-foreground" : visit.tipo === "bio" ? "bg-secondary text-secondary-foreground" : "bg-success text-white"}
+                        ${visit.tipo === "dermo" ? "bg-primary text-primary-foreground" : visit.tipo === "bio" ? "bg-secondary text-secondary-foreground" : visit.tipo === "cita" ? "bg-muted text-muted-foreground" : "bg-success text-white"}
                       `}>
                         {visit.tipo === "dermo" ? (
                           <Sparkles className="h-5 w-5" />
                         ) : visit.tipo === "bio" ? (
                           <FlaskConical className="h-5 w-5" />
+                        ) : visit.tipo === "cita" ? (
+                          <CalendarDays className="h-5 w-5" />
                         ) : (
                           <Salad className="h-5 w-5" />
                         )}
@@ -241,7 +261,7 @@ export default function PacienteDetalle() {
                           </Badge>
                           <span className="flex items-center gap-1 text-sm text-muted-foreground">
                             <Clock className="h-3 w-3" />
-                            {new Date(visit.fecha).toLocaleDateString("es-ES", {
+                            {parsearFecha(visit.fecha.slice(0, 10)).toLocaleDateString("es-ES", {
                               day: "numeric",
                               month: "long",
                               year: "numeric"
@@ -254,7 +274,9 @@ export default function PacienteDetalle() {
                           size="sm" 
                           className="text-primary -ml-2"
                           onClick={() => {
-                            if (visit.tipo === "dermo") {
+                            if (visit.tipo === "cita") {
+                              navigate("/calendario");
+                            } else if (visit.tipo === "dermo") {
                               navigate(`/servicios/dermo?id=${visit.id}`);
                             } else if (visit.tipo === "nutricion") {
                               navigate(`/servicios/nutricion/visita?programaId=${visit.programaId}&id=${visit.id}`);
@@ -263,7 +285,7 @@ export default function PacienteDetalle() {
                             }
                           }}
                         >
-                          Ver detalles completos
+                          {visit.tipo === "cita" ? "Ver en el calendario" : "Ver detalles completos"}
                         </Button>
                       </div>
                     </div>

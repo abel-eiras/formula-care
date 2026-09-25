@@ -5,6 +5,10 @@ export interface ConfigBackup {
   backupPeriodicidad: 'diaria' | 'semanal' | 'mensual' | 'desactivada';
   backupCifrado: boolean;
   backupUltimaEjecucion: string | null;
+  /** Carpeta adicional (USB, NAS, carpeta sincronizada) donde se guarda también cada copia */
+  backupCarpetaExtra: string | null;
+  /** Por qué no se pudo guardar la última copia en la carpeta adicional */
+  backupUltimoError: string | null;
 }
 
 export interface BackupInfo {
@@ -37,6 +41,7 @@ export function useActualizarConfigBackup() {
       backupPeriodicidad?: ConfigBackup['backupPeriodicidad'];
       backupCifrado?: boolean;
       password?: string;
+      backupCarpetaExtra?: string;
     }) => {
       return api.put<ConfigBackup>('/configuracion/backup', datos);
     },
@@ -101,5 +106,13 @@ export function useImportarBackup() {
     mutationFn: async ({ path, password }: { path: string; password?: string }) => {
       return api.post<{ mensaje: string }>('/backups/import', { path, password });
     },
+  });
+}
+
+/** Guardar una copia existente donde elija el usuario */
+export function useExportarBackup() {
+  return useMutation({
+    mutationFn: ({ nombre, destino }: { nombre: string; destino: string }) =>
+      api.post(`/backups/${encodeURIComponent(nombre)}/exportar`, { destino }),
   });
 }

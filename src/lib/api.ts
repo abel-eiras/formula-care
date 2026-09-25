@@ -124,6 +124,19 @@ class ApiClient {
     return response.json();
   }
 
+  /** GET de una respuesta de texto (informes) */
+  async getTexto(endpoint: string): Promise<string> {
+    const response = await fetch(`${this.baseURL}${endpoint}`, {
+      method: 'GET',
+      headers: this.getHeaders(),
+      credentials: 'include',
+    });
+    if (!response.ok) {
+      await this.handleResponseError(response);
+    }
+    return response.text();
+  }
+
   /**
    * POST
    * @param options.signal - Opcional: AbortSignal para cancelar la petición (p. ej. timeout)
