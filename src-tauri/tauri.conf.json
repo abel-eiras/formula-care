@@ -27,7 +27,13 @@
   },
   "bundle": {
     "active": true,
-    "targets": ["appimage", "msi", "nsis", "dmg", "app"],
+    "targets": [
+      "appimage",
+      "msi",
+      "nsis",
+      "dmg",
+      "app"
+    ],
     "icon": [
       "icons/32x32.png",
       "icons/128x128.png",
@@ -35,7 +41,9 @@
       "icons/icon.icns",
       "icons/icon.ico"
     ],
-    "externalBin": ["binaries/node"],
+    "externalBin": [
+      "binaries/node"
+    ],
     "resources": {
       "../backend/dist": "backend/dist",
       "../backend/node_modules": "backend/node_modules",
@@ -48,12 +56,25 @@
         "language": "es-ES"
       },
       "nsis": {
-        "languages": ["Spanish"],
+        "languages": [
+          "Spanish"
+        ],
         "displayLanguageSelector": false
       }
     },
     "android": {
       "debugApplicationIdSuffix": ".debug"
+    }
+  },
+  "plugins": {
+    "updater": {
+      "pubkey": "PENDIENTE_CLAVE_PUBLICA",
+      "endpoints": [
+        "https://github.com/abel-eiras/formula-care/releases/latest/download/latest.json"
+      ],
+      "windows": {
+        "installMode": "passive"
+      }
     }
   }
 }

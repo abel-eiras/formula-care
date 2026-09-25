@@ -104,7 +104,11 @@ O descarga el `.AppImage`, dale permiso de ejecución (clic derecho → Propieda
 
 ## 🔄 Actualizar a una versión nueva
 
-Descarga el instalador de la versión nueva e instálalo encima de la que tienes: **tus datos se conservan**. Antes de actualizar, la app guarda por su cuenta una copia de los datos anteriores por si algo saliera mal.
+**La app te avisa sola.** Al abrirla, si hay una versión nueva, verás un mensaje con las novedades: pulsa **Actualizar ahora** y la app se descarga, se instala y se vuelve a abrir. Si prefieres hacerlo en otro momento, pulsa **Más tarde** y te lo volverá a ofrecer la próxima vez. También puedes comprobarlo cuando quieras en Configuración → Mi cuenta → **Buscar actualizaciones**.
+
+**Tus datos se conservan**, y antes de actualizar la app guarda por su cuenta una copia de los datos anteriores por si algo saliera mal.
+
+Si lo prefieres, también puedes descargar el instalador de la versión nueva desde [descargas (Releases)](https://github.com/abel-eiras/formula-care/releases) e instalarlo encima.
 
 ## 💻 Cambiar de ordenador
 
@@ -130,6 +134,7 @@ Todo lo que viene a partir de aquí es técnico: cómo está hecho Formula Care 
 - **Base de datos SQLite** local con Prisma: una instalación = una farmacia (sin multi-tenant). En el primer arranque se genera un `JWT_SECRET` aleatorio y en cada arranque se aplican las migraciones pendientes, con copia previa de la base de datos (`copias-actualizacion/`).
 - **Frontend React + TypeScript** (Vite, shadcn/ui, Tailwind, React Query).
 - **Correo** por SMTP (Nodemailer) o Resend, configurable desde la app; ver [backend/EMAIL_CONFIG.md](backend/EMAIL_CONFIG.md).
+- **Actualizaciones automáticas** con `tauri-plugin-updater`: la app consulta el `latest.json` del último release publicado y verifica la firma de cada paquete con la clave pública de `src-tauri/tauri.conf.json`. El workflow firma los paquetes si el repositorio tiene los secretos `TAURI_SIGNING_PRIVATE_KEY` y `TAURI_SIGNING_PRIVATE_KEY_PASSWORD` (esta firma no es la firma de código de Windows/macOS).
 - **Reserva pública de citas (opcional, servicio aparte):** [booking-web/](booking-web/) es un servicio web autohospedable al que la app publica sus huecos libres y del que recoge las solicitudes, cifradas con la clave de la farmacia. Está **desactivado** hasta que haya dónde alojarlo: el interruptor es `RESERVA_ONLINE_DISPONIBLE` en `src/lib/funciones.ts` y `backend/src/config/funciones.ts`.
 
 ## Inicio rápido (desarrollo)
