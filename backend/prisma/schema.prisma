@@ -135,6 +135,8 @@ model AnalisisDermo {
   cuidadosSemanales String?  // JSON: { exfoliante, mascarilla }
   // Suplementación
   suplementacionOral String?
+  // Recomendaciones finales (texto libre)
+  recomendaciones   String?
   // Firma y seguimiento
   proximaRevision   String?  // Fecha en formato ISO
   farmaceutico      String?
