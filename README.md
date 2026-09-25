@@ -76,9 +76,10 @@ chmod +x "Formula Care_*.AppImage"
   - Sistema de eventos personalizados
 
 - **Sistema de Autenticación**
-  - Login con JWT (cookie HttpOnly)
-  - Roles: admin, farmaceutico, usuario
+  - Login con JWT (token en cabecera en la app de escritorio)
+  - Roles: admin, farmaceutico, usuario, y gestión de usuarios desde Configuración
   - Protección de rutas por rol
+  - La API solo escucha en el propio equipo (no es accesible desde la red)
 
 - **Sistema de Correos**
   - Plantillas editables (HTML)
@@ -86,14 +87,20 @@ chmod +x "Formula Care_*.AppImage"
 
 - **RGPD y Legal**
   - Configuración de textos legales
-  - Política de privacidad, cookies, términos
+  - Constancia del consentimiento de cada paciente (fecha y versión del texto)
+  - Exportación de todos los datos de un paciente y lista de pacientes fuera del periodo de retención
+
+- **Copias de seguridad**
+  - Automáticas (diarias, semanales o mensuales), opcionalmente cifradas con contraseña
+  - Carpeta adicional (USB, NAS, carpeta sincronizada) y "Guardar en…" para sacarlas del equipo
+  - Restaurables en cualquier otro ordenador con datos y configuración completos; una copia de una versión anterior se pone al día sola
+  - Copia automática de la base de datos antes de actualizar a una versión nueva
 
 - **Reserva pública de citas (opcional, servicio aparte)**
   - Ver [booking-web/](booking-web/): un servicio web independiente y autohospedable para quien quiera ofrecer reserva de citas online. La app le publica sus huecos libres y recoge las solicitudes, cifradas con la clave de la farmacia (**desactivado por ahora**: para activarlo, `RESERVA_ONLINE_DISPONIBLE` en `src/lib/funciones.ts` y `backend/src/config/funciones.ts`; después se configura en Configuración → Reserva online).
 
 ### 🚧 En Desarrollo
-- Mejoras de rendimiento
-- Tests automatizados
+- Probar las versiones de Windows y macOS en equipos reales
 
 ### 📝 Planificado
 Ver la carpeta [context/](context/) para documentación (guías activas e histórica).
@@ -277,14 +284,19 @@ Para más detalles, ver [context/guias/ESTRUCTURA_PROYECTO.md](context/guias/EST
 ### Calendario
 - Vista mensual de citas
 - Cumpleaños de pacientes (calculados desde su fecha de nacimiento), con aviso el mismo día y felicitación por WhatsApp (mensaje ya escrito), email (plantilla editable) o registro de felicitación por llamada o en persona
-- Creación y gestión de citas
-- Diferentes tipos de citas (dermo, bio, consulta, seguimiento)
+- Creación, edición y estado de las citas (confirmada, realizada, no se presentó, cancelada), con aviso por email al paciente si cambia o se cancela
+- Recordatorio automático por email el día antes y recordatorio por WhatsApp con el mensaje ya escrito
+- Diferentes tipos de citas (dermo, bio, nutrición, consulta, seguimiento y talleres)
 
 ### Dashboard
 - Estadísticas generales
 - Gráficos de evolución
 - Accesos rápidos
 - Pacientes recientes
+- Exportación a Excel (CSV) de la lista de pacientes y de la actividad de los últimos 12 meses
+
+### Informes
+- Informe de cada servicio para imprimir, guardar en PDF o enviar por email al paciente (con el PDF adjunto)
 
 ---
 
@@ -353,7 +365,7 @@ Formula Care es software libre. Contribuye si te apetece — programa mucho o pr
 
 - Los tres instaladores se generan y compilan vía CI ([`.github/workflows/desktop-release.yml`](.github/workflows/desktop-release.yml)) en su propio sistema operativo (Linux, Windows, macOS). El de Linux además se ha ejecutado e instalado de verdad en este entorno de desarrollo; Windows y macOS de momento solo están verificados por la propia compilación en CI, no por un arranque manual en esos sistemas — sin letra pequeña, es lo que hay. Ninguno de los tres está firmado digitalmente, así que Windows/macOS mostrarán un aviso de "editor no verificado" al abrirlos (ver [Descargar e instalar](#-descargar-e-instalar)).
 - `booking-web/` (reserva pública opcional) necesita un servidor accesible desde internet; la app de escritorio sincroniza con él cada 2 minutos mientras está abierta — ver su propio README.
-- Falta sistema de copia de seguridad automática de la base de datos local.
+- Si algo falla, Configuración → Copias de seguridad → Exportar diagnóstico genera un informe (sin datos de pacientes) con la versión, el estado y los últimos mensajes de la app.
 
 ---
 
