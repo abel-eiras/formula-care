@@ -26,7 +26,7 @@ export default tseslint.config(
   {
     // Componentes de shadcn/ui y contextos exportan a propósito variantes y
     // hooks junto a los componentes: el aviso de fast refresh no aplica
-    files: ["src/components/ui/**/*.tsx", "src/contexts/**/*.tsx"],
+    files: ["src/components/ui/**/*.tsx", "src/contexts/**/*.tsx", "booking-web/frontend/src/components/ui/**/*.tsx"],
     rules: { "react-refresh/only-export-components": "off" },
   },
 );

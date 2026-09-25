@@ -2,7 +2,7 @@
 
 **Adiós Excel. Hola cordura.**
 
-Formula Care gestiona los servicios asistenciales de tu farmacia — análisis dermocosmético y bioquímico, fichas de paciente, citas — todo en un sitio, todo local. Nada de módulos que nunca vas a usar.
+Formula Care gestiona los servicios asistenciales de tu farmacia — análisis dermocosmético y bioquímico, nutrición (con seguimiento GLP-1), fichas de paciente, citas e informes — todo en un sitio, todo local. Nada de módulos que nunca vas a usar.
 
 Corre **en tu ordenador, no en la nube de nadie**: los datos de tus pacientes viven en una base de datos SQLite en tu propio equipo. Ni servidor que mantener, ni conexión a internet para el día a día (solo hace falta para instalar).
 
@@ -47,6 +47,16 @@ chmod +x "Formula Care_*.AppImage"
 ```
 
 (El AppImage funciona en cualquier distribución x86_64 sin instalación a nivel de sistema. Si tu distro no trae FUSE, instala `libfuse2` — por ejemplo `sudo apt install libfuse2` en Debian/Ubuntu.)
+
+### 🔄 Actualizar a una versión nueva
+
+Descarga el instalador de la nueva versión e instálalo encima: tus datos se conservan. Antes de actualizar la base de datos, la app guarda una copia de la anterior en su carpeta de datos (`copias-actualizacion/`), por si algo saliera mal.
+
+### 💻 Pasar a otro ordenador
+
+En el equipo antiguo: Configuración → Copias de seguridad → **Realizar copia ahora** y **Guardar en…** (a un USB, por ejemplo). En el nuevo: instala la app, crea la cuenta que te pida el primer arranque y ve a Configuración → Copias de seguridad → **Restaurar una copia**. Se recuperan todos los datos y toda la configuración (usuarios, correo, plantillas, apariencia); después, entra con un usuario de la copia.
+
+Para no depender de acordarte, elige en esa misma pantalla una **carpeta adicional** (disco externo, NAS o carpeta sincronizada con OneDrive, Google Drive, Dropbox…): cada copia automática se guardará también allí.
 
 ---
 
@@ -101,6 +111,7 @@ chmod +x "Formula Care_*.AppImage"
 
 ### 🚧 En Desarrollo
 - Probar las versiones de Windows y macOS en equipos reales
+- Actualizaciones automáticas (necesitan una clave de firma para las actualizaciones)
 
 ### 📝 Planificado
 Ver la carpeta [context/](context/) para documentación (guías activas e histórica).
@@ -204,6 +215,10 @@ En el primer arranque de un paquete instalado, la app genera automáticamente un
 - **Zod** - Validación de esquemas
 - **TypeScript estricto** - Sin errores de compilación
 
+### Calidad
+- **Vitest** - Tests del frontend y del backend (este sobre una base de datos temporal migrada desde cero)
+- **GitHub Actions** - En cada PR, tipos, lint, tests y builds de todos los proyectos ([`comprobaciones.yml`](.github/workflows/comprobaciones.yml)); los instaladores, con [`desktop-release.yml`](.github/workflows/desktop-release.yml)
+
 ---
 
 ## 📁 Estructura del Proyecto
@@ -227,11 +242,13 @@ formula-care/
 │       ├── controllers/        # Controladores de API
 │       ├── middleware/         # Middlewares (auth, etc.)
 │       ├── routes/             # Rutas de API
-│       ├── services/           # Servicios (email, notificaciones)
+│       ├── services/           # Servicios (email, copias, notificaciones, RGPD...)
 │       └── scripts/            # Scripts de mantenimiento
+│   └── tests/                  # Tests del backend (Vitest)
 ├── src-tauri/                  # Empaquetado de escritorio (Tauri, Rust)
 ├── booking-web/                # Servicio OPCIONAL y aparte: reserva pública de citas
 ├── context/                    # Documentación (guías, integraciones, histórico)
+├── .github/workflows/          # Comprobaciones en cada PR e instaladores
 └── public/                     # Archivos estáticos
 ```
 
@@ -315,8 +332,9 @@ npm run build        # Construye el frontend para producción
 npm run build:dev    # Construye en modo desarrollo
 
 # Testing
-npm run test         # Ejecuta tests
+npm run test         # Tests del frontend
 npm run test:watch   # Tests en modo watch
+cd backend && npm test   # Tests del backend (base de datos temporal)
 
 # Linting
 npm run lint         # Verifica código con ESLint
@@ -346,7 +364,7 @@ Formula Care es software libre. Contribuye si te apetece — programa mucho o pr
 
 1. Haz un fork del repositorio y crea una rama para tu cambio: `git checkout -b feature/nueva-funcionalidad`
 2. Sigue la [Guía de Código Limpio](context/guias/GUIA_CODIGO_LIMPIO.md) y la estructura existente del proyecto
-3. Asegúrate de que el código compila sin errores (`npm run lint`, `npx tsc -b`, y lo mismo en `backend/`)
+3. Asegúrate de que todo pasa: `npm run lint`, `npx tsc --noEmit -p tsconfig.app.json` y `npm test` en la raíz, y `npx tsc --noEmit` y `npm test` en `backend/` (la PR lo vuelve a comprobar automáticamente)
 4. Haz commit con mensajes claros
 5. Abre un Pull Request describiendo el cambio
 
@@ -364,7 +382,7 @@ Formula Care es software libre. Contribuye si te apetece — programa mucho o pr
 ## 🐛 Problemas Conocidos
 
 - Los tres instaladores se generan y compilan vía CI ([`.github/workflows/desktop-release.yml`](.github/workflows/desktop-release.yml)) en su propio sistema operativo (Linux, Windows, macOS). El de Linux además se ha ejecutado e instalado de verdad en este entorno de desarrollo; Windows y macOS de momento solo están verificados por la propia compilación en CI, no por un arranque manual en esos sistemas — sin letra pequeña, es lo que hay. Ninguno de los tres está firmado digitalmente, así que Windows/macOS mostrarán un aviso de "editor no verificado" al abrirlos (ver [Descargar e instalar](#-descargar-e-instalar)).
-- `booking-web/` (reserva pública opcional) necesita un servidor accesible desde internet; la app de escritorio sincroniza con él cada 2 minutos mientras está abierta — ver su propio README.
+- La reserva online (`booking-web/`) está desactivada en la app hasta que haya un servidor accesible desde internet donde alojarla — ver su propio README.
 - Si algo falla, Configuración → Copias de seguridad → Exportar diagnóstico genera un informe (sin datos de pacientes) con la versión, el estado y los últimos mensajes de la app.
 
 ---
