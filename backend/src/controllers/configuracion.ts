@@ -6,11 +6,23 @@ import {
   PARAMETROS_REFERENCIA_DEFAULT,
 } from '../config/parametrosBioDefault.js';
 import { derivarClaveCifrado } from '../services/backupService.js';
+import { enviarCorreoPruebaPlataformaConDiagnostico } from '../services/emailService.js';
 import { avisarCambioAgenda } from '../services/reservaOnline/sincronizacion.js';
 import path from 'path';
 
 // ID fijo de la fila única de configuración (instalación local de una sola farmacia)
 const CONFIG_ID = 'singleton';
+
+// Campos de la configuración que nunca salen del backend: credenciales de
+// correo y la clave derivada de las copias cifradas.
+const CAMPOS_SECRETOS = ['smtpPass', 'resendApiKey', 'backupCifradoClave', 'backupCifradoSalt'] as const;
+
+/** Copia de la fila de configuración sin credenciales, para devolverla al cliente */
+function sinSecretos<T extends object>(config: T): Omit<T, (typeof CAMPOS_SECRETOS)[number]> {
+  const copia = { ...config } as Record<string, unknown>;
+  for (const campo of CAMPOS_SECRETOS) delete copia[campo];
+  return copia as Omit<T, (typeof CAMPOS_SECRETOS)[number]>;
+}
 
 // Esquema de validación para datos de farmacia
 const farmaciaSchema = z.object({
@@ -152,7 +164,7 @@ export async function obtenerConfiguracion(req: Request, res: Response) {
     }
 
     res.json({
-      ...config,
+      ...sinSecretos(config),
       parametrosReferencia,
       parametrosBioConfig,
       coloresMarca,
@@ -182,7 +194,7 @@ export async function actualizarFarmacia(req: Request, res: Response) {
       update: dataParaPrisma,
     });
 
-    res.json(config);
+    res.json(sinSecretos(config));
   } catch (error) {
     if (error instanceof z.ZodError) {
       return res.status(400).json({
@@ -220,7 +232,7 @@ export async function actualizarParametrosReferencia(req: Request, res: Response
       : config.parametrosReferencia;
 
     res.json({
-      ...config,
+      ...sinSecretos(config),
       parametrosReferencia,
     });
   } catch (error) {
@@ -249,7 +261,7 @@ export async function actualizarValoracionBio(req: Request, res: Response) {
       update: { valoracionBioActiva },
     });
 
-    res.json(config);
+    res.json(sinSecretos(config));
   } catch (error) {
     console.error('Error al actualizar valoración bio:', error);
     res.status(500).json({ error: 'Error al actualizar valoración bioquímica' });
@@ -276,7 +288,7 @@ export async function actualizarParametrosBioConfig(req: Request, res: Response)
     });
 
     res.json({
-      ...config,
+      ...sinSecretos(config),
       parametrosBioConfig,
     });
   } catch (error) {
@@ -647,7 +659,7 @@ export async function obtenerRgpd(req: Request, res: Response) {
       };
     }
 
-    res.json(config);
+    res.json(sinSecretos(config));
   } catch (error) {
     console.error('Error al obtener configuración RGPD:', error);
     res.status(500).json({ error: 'Error al obtener configuración RGPD' });
@@ -787,5 +799,122 @@ export async function actualizarConfigBackup(req: Request, res: Response) {
 
     console.error('Error al actualizar configuración de copias de seguridad:', error);
     res.status(500).json({ error: 'Error al actualizar configuración de copias de seguridad' });
+  }
+}
+
+// ==========================================
+// CORREO (SMTP o Resend)
+// ==========================================
+
+// Las credenciales vacías u omitidas conservan las guardadas: el cliente nunca
+// las recibe, así que no puede reenviarlas al guardar el resto de campos.
+const configCorreoSchema = z.object({
+  emailProvider: z.enum(['smtp', 'resend']),
+  emailRemitente: z.string().email().optional().or(z.literal('')).nullable(),
+  emailNombreRemitente: z.string().optional().nullable(),
+  smtpHost: z.string().optional().nullable(),
+  smtpPort: z.coerce.number().int().min(1).max(65535).optional().nullable(),
+  smtpSecure: z.boolean().optional(),
+  smtpAcceptSelfSigned: z.boolean().optional(),
+  smtpUser: z.string().optional().nullable(),
+  smtpPass: z.string().optional(),
+  resendApiKey: z.string().optional(),
+});
+
+const pruebaCorreoSchema = z.object({
+  destinatario: z.string().email(),
+});
+
+/** Configuración de correo tal como la ve el cliente (sin credenciales) */
+function configCorreoPublica(config: {
+  emailProvider: string | null;
+  emailRemitente: string | null;
+  emailNombreRemitente: string | null;
+  smtpHost: string | null;
+  smtpPort: number | null;
+  smtpSecure: boolean;
+  smtpAcceptSelfSigned: boolean;
+  smtpUser: string | null;
+  smtpPass: string | null;
+  resendApiKey: string | null;
+} | null) {
+  return {
+    emailProvider: config?.emailProvider === 'resend' ? 'resend' : 'smtp',
+    emailRemitente: config?.emailRemitente ?? '',
+    emailNombreRemitente: config?.emailNombreRemitente ?? '',
+    smtpHost: config?.smtpHost ?? '',
+    smtpPort: config?.smtpPort ?? 587,
+    smtpSecure: config?.smtpSecure ?? false,
+    smtpAcceptSelfSigned: config?.smtpAcceptSelfSigned ?? false,
+    smtpUser: config?.smtpUser ?? '',
+    smtpPassGuardada: !!config?.smtpPass,
+    resendApiKeyGuardada: !!config?.resendApiKey,
+  };
+}
+
+/**
+ * Obtener la configuración de correo
+ * GET /api/configuracion/correo
+ */
+export async function obtenerConfigCorreo(req: Request, res: Response) {
+  try {
+    const config = await prisma.configuracion.findUnique({ where: { id: CONFIG_ID } });
+    res.json(configCorreoPublica(config));
+  } catch (error) {
+    console.error('Error al obtener configuración de correo:', error);
+    res.status(500).json({ error: 'Error al obtener configuración de correo' });
+  }
+}
+
+/**
+ * Guardar la configuración de correo
+ * PUT /api/configuracion/correo
+ */
+export async function actualizarConfigCorreo(req: Request, res: Response) {
+  try {
+    const { smtpPass, resendApiKey, ...resto } = configCorreoSchema.parse(req.body);
+
+    const datos: Record<string, unknown> = {
+      ...resto,
+      emailRemitente: resto.emailRemitente?.trim() || null,
+      emailNombreRemitente: resto.emailNombreRemitente?.trim() || null,
+      smtpHost: resto.smtpHost?.trim() || null,
+      smtpUser: resto.smtpUser?.trim() || null,
+    };
+    if (smtpPass) datos.smtpPass = smtpPass;
+    if (resendApiKey?.trim()) datos.resendApiKey = resendApiKey.trim();
+
+    const config = await prisma.configuracion.upsert({
+      where: { id: CONFIG_ID },
+      create: { id: CONFIG_ID, ...datos },
+      update: datos,
+    });
+
+    res.json(configCorreoPublica(config));
+  } catch (error) {
+    if (error instanceof z.ZodError) {
+      return res.status(400).json({ error: 'Datos inválidos', detalles: error.errors });
+    }
+    console.error('Error al guardar configuración de correo:', error);
+    res.status(500).json({ error: 'Error al guardar configuración de correo' });
+  }
+}
+
+/**
+ * Enviar un correo de prueba con la configuración guardada y devolver el
+ * diagnóstico paso a paso (conexión, autenticación, envío)
+ * POST /api/configuracion/correo/prueba
+ */
+export async function probarCorreo(req: Request, res: Response) {
+  try {
+    const { destinatario } = pruebaCorreoSchema.parse(req.body);
+    const resultado = await enviarCorreoPruebaPlataformaConDiagnostico(destinatario);
+    res.json(resultado);
+  } catch (error) {
+    if (error instanceof z.ZodError) {
+      return res.status(400).json({ error: 'Datos inválidos', mensaje: 'Escribe un email de destino válido' });
+    }
+    console.error('Error al enviar correo de prueba:', error);
+    res.status(500).json({ error: 'Error al enviar correo de prueba' });
   }
 }

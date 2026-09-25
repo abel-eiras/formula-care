@@ -676,53 +676,53 @@ function mapearErrorSMTP(error: unknown): { mensaje: string; sugerencia: string 
     case 'ECONNREFUSED':
       return {
         mensaje: 'No se puede conectar con el servidor de correo.',
-        sugerencia: 'Comprueba el host y el puerto (p. ej. smtp.gmail.com y 587). Asegúrate de que el servidor esté accesible y no bloqueado por un firewall.',
+        sugerencia: 'Comprueba el servidor de correo saliente y el puerto (p. ej. smtp.gmail.com y 465). Si son correctos, puede que el antivirus o el cortafuegos del ordenador esté bloqueando la conexión.',
       };
     case 'ETIMEDOUT':
       return {
         mensaje: 'El servidor de correo no responde a tiempo.',
         sugerencia:
-          'Si la app está en un hosting (p. ej. Render), el servidor SMTP puede no aceptar conexiones desde sus IPs o el puerto 465 puede estar bloqueado. Prueba usar Resend en producción o configura el firewall del servidor de correo para permitir conexiones desde el hosting.',
+          'Comprueba la conexión a internet del ordenador y que el host y el puerto sean correctos. Algunas redes (o el antivirus) bloquean los puertos de correo 465 y 587: prueba el otro puerto o consulta a quien te lleve la informática.',
       };
     case 'EAUTH':
     case 'EENVELOPE':
       return {
         mensaje: 'Usuario o contraseña incorrectos.',
-        sugerencia: 'Comprueba el usuario y la contraseña SMTP. En Gmail/Outlook suele ser necesario usar una contraseña de aplicación, no la contraseña de tu cuenta.',
+        sugerencia: 'Comprueba el usuario y la contraseña. En Gmail hace falta una contraseña de aplicación, no la contraseña normal de la cuenta.',
       };
     case 'ESOCKET':
       if (msg.includes('self-signed') || msg.includes('certificate')) {
         return {
           mensaje: 'El servidor usa un certificado SSL autofirmado o no verificado.',
-          sugerencia: 'Activa la opción "Aceptar certificado autofirmado" en la configuración SMTP para servidores como Raiola o correo propio.',
+          sugerencia: 'Activa «Aceptar certificado autofirmado» en Configuración → Correo (habitual en servidores de correo propios o de algunos alojamientos).',
         };
       }
       return {
         mensaje: 'Error de conexión con el servidor.',
-        sugerencia: 'Revisa el host, el puerto (587 para TLS, 465 para SSL) y que el servidor SMTP esté activo. Prueba con "Seguro (TLS)" activado o desactivado según tu proveedor.',
+        sugerencia: 'Revisa el servidor de correo saliente y el puerto. Con el puerto 465 activa «Conexión segura desde el inicio (SSL)»; con el 587, déjala apagada.',
       };
     default:
       if (msg.includes('self-signed') || msg.includes('certificate')) {
         return {
           mensaje: 'El servidor usa un certificado SSL autofirmado o no verificado.',
-          sugerencia: 'Activa la opción "Aceptar certificado autofirmado" en la configuración SMTP.',
+          sugerencia: 'Activa «Aceptar certificado autofirmado» en Configuración → Correo.',
         };
       }
       if (msg.includes('invalid login') || msg.includes('authentication') || (err?.responseCode === 535)) {
         return {
           mensaje: 'Usuario o contraseña incorrectos.',
-          sugerencia: 'Comprueba el usuario y la contraseña SMTP. Si usas Gmail, genera una contraseña de aplicación en la cuenta de Google.',
+          sugerencia: 'Comprueba el usuario y la contraseña. Si usas Gmail, genera una contraseña de aplicación en tu cuenta de Google.',
         };
       }
       if (msg.includes('timeout') || msg.includes('timed out')) {
         return {
           mensaje: 'El servidor tardó demasiado en responder.',
-          sugerencia: 'Comprueba la conexión a internet y que el host/puerto del servidor SMTP sean correctos.',
+          sugerencia: 'Comprueba la conexión a internet y que el servidor de correo saliente y el puerto sean correctos.',
         };
       }
       return {
         mensaje: 'Error al conectar o enviar el correo.',
-        sugerencia: 'Revisa la configuración SMTP (host, puerto, usuario, contraseña) y los logs del servidor si tienes acceso.',
+        sugerencia: 'Revisa todos los datos de Configuración → Correo (servidor, puerto, usuario y contraseña).',
       };
   }
 }
@@ -772,7 +772,7 @@ export async function enviarCorreoPruebaPlataformaConDiagnostico(destinatario: s
       paso: 'Obtener configuración de correo',
       ok: false,
       mensaje: 'No se pudo cargar la configuración.',
-      sugerencia: 'Guarda primero la configuración SMTP o Resend en esta página.',
+      sugerencia: 'Guarda primero la configuración de correo.',
     });
     return { enviado: false, pasos, mensajeError: 'No se pudo cargar la configuración.', sugerencia: 'Guarda primero la configuración en esta página.' };
   }
@@ -802,30 +802,30 @@ export async function enviarCorreoPruebaPlataformaConDiagnostico(destinatario: s
     const tieneSMTP = !!(config.smtpHost && config.smtpUser && config.smtpPass);
     if (!tieneSMTP) {
       pasos.push(
-        { paso: 'Comprobar datos de conexión', ok: false, mensaje: 'Faltan datos SMTP.', sugerencia: 'Completa al menos servidor (host), usuario y contraseña SMTP.' }
+        { paso: 'Comprobar datos de conexión', ok: false, mensaje: 'Faltan datos.', sugerencia: 'Completa el servidor de correo saliente, el usuario y la contraseña, y guarda.' }
       );
       return {
         enviado: false,
         pasos,
-        mensajeError: 'Faltan datos SMTP (servidor, usuario o contraseña).',
-        sugerencia: 'Completa todos los campos SMTP y guarda la configuración.',
+        mensajeError: 'Faltan datos (servidor, usuario o contraseña).',
+        sugerencia: 'Completa los datos de la cuenta de correo y guarda.',
       };
     }
     pasos.push({ paso: 'Comprobar datos de conexión (SMTP)', ok: true });
   }
 
-  const asunto = 'Correo de prueba - Configuración SMTP';
+  const asunto = 'Correo de prueba - Formula Care';
   const html = `
 <!DOCTYPE html>
 <html lang="es">
 <head><meta charset="utf-8"><title>Prueba</title></head>
 <body style="font-family: sans-serif; padding: 20px;">
-  <p>Este es un correo de prueba de la configuración SMTP de la plataforma.</p>
+  <p>Este es un correo de prueba enviado desde Formula Care.</p>
   <p>Si lo recibes, la configuración es correcta.</p>
   <p><em>Enviado el ${new Date().toLocaleString('es-ES')}</em></p>
 </body>
 </html>`;
-  const texto = 'Correo de prueba de la configuración SMTP. Si lo recibes, la configuración es correcta.';
+  const texto = 'Correo de prueba enviado desde Formula Care. Si lo recibes, la configuración es correcta.';
 
   // Paso 3: Enviar
   if (config.provider === 'resend' && config.resendApiKey && config.resendApiKey !== '********') {
@@ -971,18 +971,18 @@ async function enviarEmailConConfig(
  */
 export async function enviarCorreoPruebaPlataforma(destinatario: string): Promise<boolean> {
   const config = await obtenerConfigEmail();
-  const asunto = 'Correo de prueba - Configuración SMTP';
+  const asunto = 'Correo de prueba - Formula Care';
   const html = `
 <!DOCTYPE html>
 <html lang="es">
 <head><meta charset="utf-8"><title>Prueba</title></head>
 <body style="font-family: sans-serif; padding: 20px;">
-  <p>Este es un correo de prueba de la configuración SMTP de la plataforma.</p>
+  <p>Este es un correo de prueba enviado desde Formula Care.</p>
   <p>Si lo recibes, la configuración es correcta.</p>
   <p><em>Enviado el ${new Date().toLocaleString('es-ES')}</em></p>
 </body>
 </html>`;
-  const texto = 'Correo de prueba de la configuración SMTP. Si lo recibes, la configuración es correcta.';
+  const texto = 'Correo de prueba enviado desde Formula Care. Si lo recibes, la configuración es correcta.';
   return enviarEmailConConfig(config, destinatario, asunto, html, texto);
 }
 
