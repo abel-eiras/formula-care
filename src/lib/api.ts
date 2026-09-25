@@ -137,6 +137,19 @@ class ApiClient {
     return response.text();
   }
 
+  /** GET de un fichero binario (p. ej. la plantilla Excel) */
+  async getBlob(endpoint: string): Promise<Blob> {
+    const response = await fetch(`${this.baseURL}${endpoint}`, {
+      method: 'GET',
+      headers: this.getHeaders(),
+      credentials: 'include',
+    });
+    if (!response.ok) {
+      await this.handleResponseError(response);
+    }
+    return response.blob();
+  }
+
   /**
    * POST
    * @param options.signal - Opcional: AbortSignal para cancelar la petición (p. ej. timeout)

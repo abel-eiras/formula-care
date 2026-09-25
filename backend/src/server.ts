@@ -9,6 +9,8 @@ import { citasRouter } from './routes/citas.js';
 import { serviciosRouter } from './routes/servicios.js';
 import { nutricionRouter } from './routes/nutricion.js';
 import { cumpleanosRouter } from './routes/cumpleanos.js';
+import { registroAccesosRouter } from './routes/registroAccesos.js';
+import { registrarAccesos } from './services/registroAccesos.js';
 import { configuracionRouter } from './routes/configuracion.js';
 import { estadisticasRouter } from './routes/estadisticas.js';
 import { notificacionesRouter } from './routes/notificaciones.js';
@@ -70,6 +72,9 @@ const authRateLimit = rateLimit({
 app.use(['/api/auth/login', '/api/auth/setup-inicial', '/api/auth/password'], authRateLimit);
 app.use('/api/auth', authRouter);
 
+// Registro de accesos a datos de pacientes (anota al terminar cada petición)
+app.use('/api', registrarAccesos);
+
 // Rutas protegidas de la API (requieren autenticación)
 app.use('/api/pacientes', verificarToken, pacientesRouter);
 app.use('/api/citas', verificarToken, citasRouter);
@@ -82,6 +87,7 @@ app.use('/api/notificaciones', verificarToken, notificacionesRouter);
 app.use('/api/eventos', verificarToken, eventosRouter);
 app.use('/api/plantillas-email', verificarToken, plantillasEmailRouter);
 app.use('/api/backups', verificarToken, backupsRouter);
+app.use('/api/registro-accesos', verificarToken, verificarRol('admin'), registroAccesosRouter);
 app.post('/api/informes/enviar', verificarToken, enviarInforme);
 app.post('/api/informes/guardar', verificarToken, guardarPdf);
 app.get('/api/exportar/:tipo', verificarToken, exportarCsv);

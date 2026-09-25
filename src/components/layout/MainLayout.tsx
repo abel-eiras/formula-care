@@ -1,6 +1,7 @@
 import { AppSidebar } from "./AppSidebar";
 import { ThemeFromConfig } from "./ThemeFromConfig";
 import { AvisoActualizacion } from "@/components/actualizaciones/AvisoActualizacion";
+import { BloqueoInactividad } from "./BloqueoInactividad";
 import { cn } from "@/lib/utils";
 
 interface MainLayoutProps {
@@ -12,6 +13,7 @@ export function MainLayout({ children }: MainLayoutProps) {
     <div className="min-h-screen bg-background">
       <ThemeFromConfig />
       <AvisoActualizacion />
+      <BloqueoInactividad />
       <AppSidebar />
       <main className={cn(
         "min-h-screen transition-all duration-300",

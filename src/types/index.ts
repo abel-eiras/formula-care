@@ -23,6 +23,8 @@ export interface Configuracion {
   farmaciaWhatsapp?: string;
   farmaciaLogo?: string;
   temaActivo?: string;
+  /** Minutos sin actividad tras los que se cierra la sesión (0 = nunca) */
+  minutosInactividad?: number;
   coloresMarca?: ColoresMarca | null;
   valoracionBioActiva: boolean;
   parametrosReferencia: Record<string, ParametroReferencia>;
@@ -206,7 +208,7 @@ export interface Paciente {
   notes?: string;
   /** Último servicio (Dermo, Bio o Nutrición); lo calcula el servidor en listados */
   ultimaVisita?: UltimaVisita | null;
-  origen?: 'manual' | 'autoregistro'; // "manual" = registrado por farmacia, "autoregistro" = reserva online
+  origen?: 'manual' | 'autoregistro' | 'importacion'; // "manual" = registrado por farmacia, "autoregistro" = reserva online, "importacion" = desde Excel
   /** Constancia del consentimiento (RGPD) */
   consentimientoFecha?: string | null;
   consentimientoVersion?: string | null;

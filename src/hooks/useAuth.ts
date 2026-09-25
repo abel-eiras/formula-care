@@ -117,9 +117,9 @@ export function useAuth() {
   /**
    * Cerrar sesión: se invalida la sesión en el servidor y se olvida el token local
    */
-  const logout = useCallback(async () => {
+  const logout = useCallback(async (motivo?: 'inactividad') => {
     try {
-      await api.post('/auth/logout', {});
+      await api.post('/auth/logout', motivo ? { motivo } : {});
     } catch {
       // Continuar aunque falle la petición
     }

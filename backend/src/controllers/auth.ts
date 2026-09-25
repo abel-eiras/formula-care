@@ -7,7 +7,8 @@ import { Request, Response } from 'express';
 import bcrypt from 'bcryptjs';
 import { z } from 'zod';
 import { prisma } from '../lib/prisma.js';
-import { generarToken, getAuthCookieOptions } from '../middleware/auth.js';
+import { generarToken, getAuthCookieOptions, usuarioDelToken } from '../middleware/auth.js';
+import { anotarAcceso } from '../services/registroAccesos.js';
 import { getParamString } from '../lib/queryHelpers.js';
 
 // Esquema de validación para login
@@ -147,6 +148,7 @@ export async function login(req: Request, res: Response) {
     });
 
     if (!usuario) {
+      await anotarAcceso({ usuarioNombre: email.toLowerCase(), accion: 'login-fallido', recurso: 'sesion', detalle: 'usuario inexistente' });
       return res.status(401).json({
         error: 'Credenciales inválidas',
         mensaje: 'Email o contraseña incorrectos',
@@ -165,6 +167,7 @@ export async function login(req: Request, res: Response) {
     const passwordValida = await bcrypt.compare(password, usuario.password);
 
     if (!passwordValida) {
+      await anotarAcceso({ usuarioId: usuario.id, usuarioNombre: usuario.nombre, accion: 'login-fallido', recurso: 'sesion', detalle: 'contraseña incorrecta' });
       return res.status(401).json({
         error: 'Credenciales inválidas',
         mensaje: 'Email o contraseña incorrectos',
@@ -176,6 +179,7 @@ export async function login(req: Request, res: Response) {
       where: { id: usuario.id },
       data: { ultimoAcceso: new Date() },
     });
+    await anotarAcceso({ usuarioId: usuario.id, usuarioNombre: usuario.nombre, accion: 'login', recurso: 'sesion' });
 
     // Generar token JWT
     const token = generarToken({
@@ -361,7 +365,18 @@ export async function cambiarPassword(req: Request, res: Response) {
  * POST /api/auth/logout
  * Cerrar sesión: elimina la cookie de autenticación
  */
-export function logout(req: Request, res: Response) {
+export async function logout(req: Request, res: Response) {
+  const usuario = usuarioDelToken(req);
+  if (usuario) {
+    const porInactividad = (req.body as { motivo?: unknown } | undefined)?.motivo === 'inactividad';
+    await anotarAcceso({
+      usuarioId: usuario.id,
+      usuarioNombre: usuario.nombre,
+      accion: 'logout',
+      recurso: 'sesion',
+      detalle: porInactividad ? 'por inactividad' : null,
+    });
+  }
   // Sin maxAge: en Express 4 anularía la caducidad inmediata de clearCookie
   const { maxAge: _maxAge, ...opcionesCookie } = getAuthCookieOptions();
   res.clearCookie('auth_token', opcionesCookie);

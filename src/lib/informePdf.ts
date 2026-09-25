@@ -55,13 +55,13 @@ export async function pdfDeVista(ruta: string): Promise<string> {
  * diálogo "Guardar como" (el webview no descarga ficheros); en el navegador,
  * como descarga normal. Devuelve la ruta o null si se canceló.
  */
-export async function guardarInforme(ruta: string, nombreFichero: string): Promise<string | null> {
+export async function guardarInforme(ruta: string, nombreFichero: string, pacienteId?: string): Promise<string | null> {
   if (isTauri()) {
     const { save } = await import("@tauri-apps/plugin-dialog");
     const destino = await save({ defaultPath: nombreFichero, filters: [{ name: "PDF", extensions: ["pdf"] }] });
     if (!destino) return null;
     const pdf = await pdfDeVista(ruta);
-    const { ruta: final } = await api.post<{ ruta: string }>("/informes/guardar", { destino, pdf });
+    const { ruta: final } = await api.post<{ ruta: string }>("/informes/guardar", { destino, pdf, pacienteId });
     return final;
   }
   const pdf = await pdfDeVista(ruta);

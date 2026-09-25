@@ -7,9 +7,17 @@ import {
   actualizarPaciente,
   eliminarPaciente,
 } from '../controllers/pacientes.js';
+import { descargarPlantilla, ejecutarImportacion, revisarImportacion } from '../controllers/importacion.js';
+import { verificarRol } from '../middleware/auth.js';
 import { exportarPaciente, listarRetencionVencida, registrarConsentimiento } from '../controllers/rgpd.js';
 
 export const pacientesRouter = Router();
+
+// Importación desde la plantilla Excel (solo administradores; antes de /:id)
+pacientesRouter.get('/plantilla-importacion', descargarPlantilla);
+pacientesRouter.post('/plantilla-importacion', descargarPlantilla);
+pacientesRouter.post('/importar/revisar', verificarRol('admin'), revisarImportacion);
+pacientesRouter.post('/importar', verificarRol('admin'), ejecutarImportacion);
 
 // GET /api/pacientes - Obtener todos los pacientes
 pacientesRouter.get('/', obtenerPacientes);

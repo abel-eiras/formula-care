@@ -13,7 +13,7 @@ import { Calendar } from "@/components/ui/calendar";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
 import { Textarea } from "@/components/ui/textarea";
-import { ArrowLeft, Save, Settings, Building2, FlaskConical, Calendar as CalendarIcon, Plus, Trash2, GripVertical, Eye, EyeOff, Pencil, Shield, FileText, AlertTriangle, Mail, Palette, DatabaseBackup, Users, UserCircle, Globe, Send } from "lucide-react";
+import { ArrowLeft, Save, Settings, Building2, FlaskConical, Calendar as CalendarIcon, Plus, Trash2, GripVertical, Eye, EyeOff, Pencil, Shield, FileText, AlertTriangle, Mail, Palette, DatabaseBackup, Users, UserCircle, Globe, Send, Lock } from "lucide-react";
 import { Link } from "react-router-dom";
 import { toast } from "sonner";
 import { useConfiguracion, useActualizarFarmacia, useActualizarParametrosReferencia, useActualizarValoracionBio, useActualizarParametrosBioConfig, useConfiguracionRgpd, useActualizarRgpd } from "@/hooks/useConfiguracion";
@@ -24,6 +24,7 @@ import { SelectorTema } from "@/components/configuracion/SelectorTema";
 import { BackupTab } from "@/components/configuracion/BackupTab";
 import { UsuariosTab } from "@/components/configuracion/UsuariosTab";
 import { CorreoTab } from "@/components/configuracion/CorreoTab";
+import { SeguridadTab } from "@/components/configuracion/SeguridadTab";
 import { MiCuentaTab } from "@/components/configuracion/MiCuentaTab";
 import { ReservaOnlineTab } from "@/components/configuracion/ReservaOnlineTab";
 import { RetencionPacientes } from "@/components/configuracion/RetencionPacientes";
@@ -300,6 +301,12 @@ export default function Configuracion() {
             </TabsTrigger>
           )}
           {esAdmin && (
+            <TabsTrigger value="seguridad" className="gap-2">
+              <Lock className="h-4 w-4" />
+              Seguridad
+            </TabsTrigger>
+          )}
+          {esAdmin && (
             <TabsTrigger value="usuarios" className="gap-2">
               <Users className="h-4 w-4" />
               Usuarios
@@ -547,6 +554,13 @@ export default function Configuracion() {
         {esAdmin && (
           <TabsContent value="correo">
             <CorreoTab />
+          </TabsContent>
+        )}
+
+        {/* Tab: Seguridad (solo administradores) */}
+        {esAdmin && (
+          <TabsContent value="seguridad">
+            <SeguridadTab />
           </TabsContent>
         )}
 

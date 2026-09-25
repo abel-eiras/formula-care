@@ -17,6 +17,7 @@ import {
   obtenerConfigCorreo,
   actualizarConfigCorreo,
   probarCorreo,
+  actualizarSeguridad,
 } from '../controllers/configuracion.js';
 
 export const configuracionRouter = Router();
@@ -54,3 +55,6 @@ configuracionRouter.put('/backup', actualizarConfigBackup);
 configuracionRouter.get('/correo', verificarRol('admin'), obtenerConfigCorreo);
 configuracionRouter.put('/correo', verificarRol('admin'), actualizarConfigCorreo);
 configuracionRouter.post('/correo/prueba', verificarRol('admin'), probarCorreo);
+
+// Seguridad: cierre de sesión por inactividad (solo administradores)
+configuracionRouter.put('/seguridad', verificarRol('admin'), actualizarSeguridad);
