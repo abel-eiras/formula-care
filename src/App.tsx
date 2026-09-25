@@ -24,6 +24,7 @@ const ServicioNutricion = lazy(() => import("./pages/ServicioNutricion"));
 const VisitaNutricion = lazy(() => import("./pages/VisitaNutricion"));
 const ServicioNutricionPrint = lazy(() => import("./pages/ServicioNutricionPrint"));
 const Configuracion = lazy(() => import("./pages/Configuracion"));
+const Ayuda = lazy(() => import("./pages/Ayuda"));
 const Calendario = lazy(() => import("./pages/Calendario"));
 const Legal = lazy(() => import("./pages/Legal"));
 const NotFound = lazy(() => import("./pages/NotFound"));
@@ -119,6 +120,7 @@ const App = () => (
               <Route path="servicios/nutricion" element={<ServicioNutricion />} />
               <Route path="servicios/nutricion/visita" element={<VisitaNutricion />} />
               <Route path="configuracion" element={<Configuracion />} />
+              <Route path="ayuda" element={<Ayuda />} />
               <Route path="*" element={<NotFound />} />
             </Route>
           </Routes>

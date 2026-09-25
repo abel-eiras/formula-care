@@ -23,6 +23,8 @@ export interface Configuracion {
   farmaciaWhatsapp?: string;
   farmaciaLogo?: string;
   temaActivo?: string;
+  /** Minutos sin actividad tras los que se cierra la sesión (0 = nunca) */
+  minutosInactividad?: number;
   coloresMarca?: ColoresMarca | null;
   valoracionBioActiva: boolean;
   parametrosReferencia: Record<string, ParametroReferencia>;
@@ -143,6 +145,10 @@ export interface AnalisisBio extends CamposMedicion {
   proteinaCReactiva?: number; // PCR
   vitaminaD?: number;
   ferritina?: number;
+  // Riesgo cardiovascular (SCORE2) y de diabetes (FINDRISC)
+  fumador?: boolean | null;
+  /** JSON con la respuesta y los puntos de cada pregunta (null = no se hizo el test) */
+  findrisc?: string | null;
   // Observaciones y recomendaciones
   observaciones?: string;
   recomendaciones?: string;
@@ -206,7 +212,7 @@ export interface Paciente {
   notes?: string;
   /** Último servicio (Dermo, Bio o Nutrición); lo calcula el servidor en listados */
   ultimaVisita?: UltimaVisita | null;
-  origen?: 'manual' | 'autoregistro'; // "manual" = registrado por farmacia, "autoregistro" = reserva online
+  origen?: 'manual' | 'autoregistro' | 'importacion'; // "manual" = registrado por farmacia, "autoregistro" = reserva online, "importacion" = desde Excel
   /** Constancia del consentimiento (RGPD) */
   consentimientoFecha?: string | null;
   consentimientoVersion?: string | null;

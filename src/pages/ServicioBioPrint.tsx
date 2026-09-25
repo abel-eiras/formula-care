@@ -5,6 +5,7 @@ import { usePacientes } from "@/hooks/usePacientes";
 import { useConfiguracion } from "@/hooks/useConfiguracion";
 import { getColoresParaConfig } from "@/lib/coloresMarca";
 import { textoSobre } from "@/lib/contraste";
+import { AnexoFindrisc, ResumenRiesgoInforme } from "@/components/bio/RiesgoInforme";
 
 /**
  * Formatea una fecha ISO a formato dd/mm/aaaa
@@ -417,6 +418,8 @@ export default function ServicioBioPrint() {
           </div>
         </div>
 
+        <ResumenRiesgoInforme analisis={analisis} paciente={paciente} />
+
         {/* Observaciones - Siempre visible */}
         <div className="section-header">Observaciones</div>
         <div className="accent-box mb-4">
@@ -432,6 +435,8 @@ export default function ServicioBioPrint() {
             {analisis.recomendaciones || "—"}
           </div>
         </div>
+
+        <AnexoFindrisc analisis={analisis} />
 
         {/* Información de Contacto */}
         <div className="footer-line">

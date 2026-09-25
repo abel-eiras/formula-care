@@ -13,7 +13,7 @@ import { Calendar } from "@/components/ui/calendar";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
 import { Textarea } from "@/components/ui/textarea";
-import { ArrowLeft, Save, Settings, Building2, FlaskConical, Calendar as CalendarIcon, Plus, Trash2, GripVertical, Eye, EyeOff, Pencil, Shield, FileText, AlertTriangle, Mail, Palette, DatabaseBackup, Users, UserCircle, Globe, Send } from "lucide-react";
+import { ArrowLeft, Save, Settings, Building2, FlaskConical, Calendar as CalendarIcon, Plus, Trash2, GripVertical, Eye, EyeOff, Pencil, Shield, FileText, AlertTriangle, Mail, Palette, DatabaseBackup, Users, UserCircle, Globe, Send, Lock } from "lucide-react";
 import { Link } from "react-router-dom";
 import { toast } from "sonner";
 import { useConfiguracion, useActualizarFarmacia, useActualizarParametrosReferencia, useActualizarValoracionBio, useActualizarParametrosBioConfig, useConfiguracionRgpd, useActualizarRgpd } from "@/hooks/useConfiguracion";
@@ -24,6 +24,8 @@ import { SelectorTema } from "@/components/configuracion/SelectorTema";
 import { BackupTab } from "@/components/configuracion/BackupTab";
 import { UsuariosTab } from "@/components/configuracion/UsuariosTab";
 import { CorreoTab } from "@/components/configuracion/CorreoTab";
+import { SeguridadTab } from "@/components/configuracion/SeguridadTab";
+import { EnlaceAyuda } from "@/components/ayuda/EnlaceAyuda";
 import { MiCuentaTab } from "@/components/configuracion/MiCuentaTab";
 import { ReservaOnlineTab } from "@/components/configuracion/ReservaOnlineTab";
 import { RetencionPacientes } from "@/components/configuracion/RetencionPacientes";
@@ -300,6 +302,12 @@ export default function Configuracion() {
             </TabsTrigger>
           )}
           {esAdmin && (
+            <TabsTrigger value="seguridad" className="gap-2">
+              <Lock className="h-4 w-4" />
+              Seguridad
+            </TabsTrigger>
+          )}
+          {esAdmin && (
             <TabsTrigger value="usuarios" className="gap-2">
               <Users className="h-4 w-4" />
               Usuarios
@@ -547,6 +555,13 @@ export default function Configuracion() {
         {esAdmin && (
           <TabsContent value="correo">
             <CorreoTab />
+          </TabsContent>
+        )}
+
+        {/* Tab: Seguridad (solo administradores) */}
+        {esAdmin && (
+          <TabsContent value="seguridad">
+            <SeguridadTab />
           </TabsContent>
         )}
 
@@ -1992,7 +2007,6 @@ function PlantillasEmailTab() {
   const actualizarPlantilla = useActualizarPlantilla();
   const restaurarPlantilla = useRestaurarPlantilla();
   const [plantillaSeleccionada, setPlantillaSeleccionada] = useState<string | null>(null);
-  const [mostrarGuia, setMostrarGuia] = useState(false);
 
   // Encontrar la plantilla actualmente seleccionada
   const plantillaActual = plantillas?.find(p => p.tipo === plantillaSeleccionada);
@@ -2027,97 +2041,10 @@ function PlantillasEmailTab() {
 
   return (
     <div className="space-y-6">
-      {/* Guía de configuración de email para producción */}
-      <Card className="shadow-sm border-border/50 border-amber-200 bg-amber-50/30">
-        <CardHeader className="cursor-pointer" onClick={() => setMostrarGuia(!mostrarGuia)}>
-          <CardTitle className="flex items-center justify-between text-amber-800">
-            <div className="flex items-center gap-2">
-              <Settings className="h-5 w-5" />
-              Configuración del Servidor de Email
-            </div>
-            <Button variant="ghost" size="sm" className="text-amber-700">
-              {mostrarGuia ? 'Ocultar' : 'Ver guía'}
-            </Button>
-          </CardTitle>
-          <CardDescription className="text-amber-700">
-            Los emails se envían a través de un servidor SMTP o Resend. Haz clic para ver cómo configurarlo.
-          </CardDescription>
-        </CardHeader>
-        {mostrarGuia && (
-          <CardContent className="space-y-4 text-sm">
-            <div className="p-4 bg-white rounded-lg border space-y-4">
-              <h4 className="font-semibold text-foreground">Opción 1: SMTP (Gmail, Outlook, servidor propio)</h4>
-              <p className="text-muted-foreground">
-                Configura las siguientes variables de entorno en tu servidor:
-              </p>
-              <pre className="bg-slate-900 text-slate-100 p-4 rounded-lg text-xs overflow-x-auto">
-{`# Archivo .env en la carpeta backend/
-
-# Proveedor (smtp o resend)
-EMAIL_PROVIDER=smtp
-
-# Configuración SMTP
-SMTP_HOST=smtp.gmail.com
-SMTP_PORT=587
-SMTP_SECURE=false
-SMTP_USER=tu-email@gmail.com
-SMTP_PASS=tu-contraseña-de-aplicacion
-SMTP_FROM=tu-email@gmail.com`}
-              </pre>
-              <div className="p-3 bg-blue-50 rounded border border-blue-200 text-blue-800">
-                <strong>Gmail:</strong> Debes crear una "Contraseña de aplicación" en{' '}
-                <a 
-                  href="https://myaccount.google.com/apppasswords" 
-                  target="_blank" 
-                  rel="noopener noreferrer"
-                  className="underline"
-                >
-                  myaccount.google.com/apppasswords
-                </a>
-              </div>
-            </div>
-
-            <div className="p-4 bg-white rounded-lg border space-y-4">
-              <h4 className="font-semibold text-foreground">Opción 2: Resend (Recomendado para producción)</h4>
-              <p className="text-muted-foreground">
-                Resend es un servicio moderno y fiable para envío de emails transaccionales.
-              </p>
-              <ol className="list-decimal list-inside space-y-2 text-muted-foreground">
-                <li>Crea una cuenta en <a href="https://resend.com" target="_blank" rel="noopener noreferrer" className="text-primary underline">resend.com</a></li>
-                <li>Verifica tu dominio (o usa el dominio de pruebas)</li>
-                <li>Genera una API Key en el panel de Resend</li>
-                <li>Configura las variables de entorno:</li>
-              </ol>
-              <pre className="bg-slate-900 text-slate-100 p-4 rounded-lg text-xs overflow-x-auto">
-{`# Archivo .env en la carpeta backend/
-
-EMAIL_PROVIDER=resend
-RESEND_API_KEY=re_xxxxxxxxxxxxxxxxxxxxxxxx
-
-# Email remitente (debe estar verificado en Resend)
-SMTP_FROM=citas@tu-dominio.com`}
-              </pre>
-            </div>
-
-            <div className="p-4 bg-green-50 rounded-lg border border-green-200">
-              <h4 className="font-semibold text-green-800 mb-2">Estado actual (Desarrollo)</h4>
-              <p className="text-green-700 text-sm">
-                En modo desarrollo, los emails se envían a{' '}
-                <a href="https://ethereal.email" target="_blank" rel="noopener noreferrer" className="underline">
-                  Ethereal Email
-                </a>{' '}
-                (servicio de pruebas). Los emails no llegan a destinatarios reales, pero puedes ver una 
-                previsualización en la consola del servidor.
-              </p>
-            </div>
-
-            <div className="p-3 bg-purple-50 rounded border border-purple-200 text-purple-800">
-              <strong>Nota:</strong> Después de configurar las variables de entorno, reinicia el servidor 
-              backend para que los cambios surtan efecto.
-            </div>
-          </CardContent>
-        )}
-      </Card>
+      <p className="flex flex-wrap items-center gap-x-3 gap-y-1 text-sm text-muted-foreground">
+        Los correos se envían con la cuenta configurada en la pestaña Correo.
+        <EnlaceAyuda tema="plantillas" texto="Cómo editar las plantillas" />
+      </p>
 
       <Card className="shadow-sm border-border/50">
         <CardHeader>

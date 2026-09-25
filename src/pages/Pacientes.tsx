@@ -22,6 +22,8 @@ import { textoFechaRelativa } from "@/lib/fechas";
 import { NOMBRE_SERVICIO, VARIANTE_SERVICIO } from "@/lib/servicios";
 import { textoEdad } from "@/lib/edad";
 import { BotonExportarCsv } from "@/components/informes/BotonExportarCsv";
+import { ImportarPacientes } from "@/components/pacientes/ImportarPacientes";
+import { useAuthContext } from "@/contexts/AuthContext";
 
 /**
  * Obtiene las iniciales del nombre completo
@@ -49,6 +51,7 @@ const getServices = (paciente: Paciente): ServicioPaciente[] => {
 };
 
 export default function Pacientes() {
+  const { isAdmin: esAdmin } = useAuthContext();
   const [searchTerm, setSearchTerm] = useState("");
   const [filtros, setFiltros] = useState<FiltrosPacientes>({});
   
@@ -87,6 +90,7 @@ export default function Pacientes() {
           <p className="text-muted-foreground">Gestión de pacientes registrados</p>
         </div>
         <div className="flex flex-wrap gap-2">
+        {esAdmin && <ImportarPacientes />}
         <BotonExportarCsv tipo="pacientes" etiqueta="Exportar a Excel" />
         <Button size="lg" className="shadow-md hover:shadow-lg transition-shadow" asChild>
           <Link to="/pacientes/nuevo">

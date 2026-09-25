@@ -14,7 +14,7 @@ export async function guardarArchivo(opciones: {
   /** Escribe el fichero en la ruta elegida (app de escritorio) */
   escribirEn: (ruta: string) => Promise<unknown>;
   /** Obtiene el contenido para descargarlo (navegador) */
-  obtenerContenido: () => Promise<string>;
+  obtenerContenido: () => Promise<string | Blob>;
 }): Promise<string | null> {
   if (isTauri()) {
     const { save } = await import("@tauri-apps/plugin-dialog");
@@ -26,7 +26,8 @@ export async function guardarArchivo(opciones: {
     await opciones.escribirEn(ruta);
     return ruta;
   }
-  const blob = new Blob([await opciones.obtenerContenido()], { type: "application/octet-stream" });
+  const contenido = await opciones.obtenerContenido();
+  const blob = contenido instanceof Blob ? contenido : new Blob([contenido], { type: "application/octet-stream" });
   const url = URL.createObjectURL(blob);
   const enlace = Object.assign(document.createElement("a"), { href: url, download: opciones.nombreSugerido });
   enlace.click();

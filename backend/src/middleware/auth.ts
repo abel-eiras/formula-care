@@ -106,6 +106,21 @@ function extraerToken(req: Request): string | null {
 }
 
 /**
+ * Usuario del token de la petición, sin rechazarla si falta o no es válido
+ * (p. ej. para anotar quién cierra sesión)
+ */
+export function usuarioDelToken(req: Request): { id: string; nombre: string } | null {
+  const token = extraerToken(req);
+  if (!token) return null;
+  try {
+    const { id, nombre } = jwt.verify(token, JWT_SECRET) as { id: string; nombre: string };
+    return { id, nombre };
+  } catch {
+    return null;
+  }
+}
+
+/**
  * Middleware que verifica el token JWT
  * Si el token es válido, añade el usuario a req.usuario
  */

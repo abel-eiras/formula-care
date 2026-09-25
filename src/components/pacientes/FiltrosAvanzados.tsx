@@ -17,7 +17,7 @@ export interface FiltrosPacientes {
   busqueda?: string;
   email?: string;
   sexo?: "M" | "F" | "O";
-  origen?: "manual" | "autoregistro";
+  origen?: "manual" | "autoregistro" | "importacion";
   edadMin?: number;
   edadMax?: number;
   tieneDermo?: boolean;
@@ -147,8 +147,7 @@ export function FiltrosAvanzados({ filtros, onFiltrosChange, onReset }: FiltrosA
             </Select>
           </div>
 
-          {/* Origen (solo distingue algo si hay reserva online) */}
-          {RESERVA_ONLINE_DISPONIBLE && (
+          {/* Origen: alta manual, importación desde Excel o reserva online */}
             <div className="space-y-2">
               <Label htmlFor="filtro-origen" className="text-xs">Origen</Label>
               <Select
@@ -156,7 +155,7 @@ export function FiltrosAvanzados({ filtros, onFiltrosChange, onReset }: FiltrosA
                 onValueChange={(value) =>
                   setFiltrosLocales({
                     ...filtrosLocales,
-                    origen: value === "all" ? undefined : (value as "manual" | "autoregistro"),
+                    origen: value === "all" ? undefined : (value as "manual" | "autoregistro" | "importacion"),
                   })
                 }
               >
@@ -166,11 +165,11 @@ export function FiltrosAvanzados({ filtros, onFiltrosChange, onReset }: FiltrosA
                 <SelectContent>
                   <SelectItem value="all">Todos</SelectItem>
                   <SelectItem value="manual">Registrado manualmente</SelectItem>
-                  <SelectItem value="autoregistro">Reserva online</SelectItem>
+                  <SelectItem value="importacion">Importado desde Excel</SelectItem>
+                  {RESERVA_ONLINE_DISPONIBLE && <SelectItem value="autoregistro">Reserva online</SelectItem>}
                 </SelectContent>
               </Select>
             </div>
-          )}
 
           {/* Rango de Edad */}
           <div className="space-y-2">

@@ -87,10 +87,11 @@ const GENERADORES: Record<string, () => Promise<string>> = {
   actividad: csvActividad,
 };
 
-/** GET /api/exportar/:tipo → CSV. POST { destino } → lo guarda en esa ruta (app de escritorio) */
-export async function exportarCsv(req: Request, res: Response) {
-  const generar = GENERADORES[String(req.params.tipo)];
-  if (!generar) return res.status(404).json({ error: 'Exportación no disponible' });
+/**
+ * Responde con un CSV: en GET lo devuelve; en POST { destino } lo guarda en
+ * esa ruta (la app de escritorio no descarga ficheros desde el webview)
+ */
+export async function responderCsv(req: Request, res: Response, generar: () => Promise<string>) {
   try {
     const csv = await generar();
     if (req.method === 'GET') return res.type('text/csv; charset=utf-8').send(csv);
@@ -103,4 +104,11 @@ export async function exportarCsv(req: Request, res: Response) {
     console.error('Error al exportar:', error);
     res.status(500).json({ error: `No se pudo exportar: ${(error as Error).message}` });
   }
+}
+
+/** GET /api/exportar/:tipo → CSV. POST { destino } → lo guarda en esa ruta (app de escritorio) */
+export async function exportarCsv(req: Request, res: Response) {
+  const generar = GENERADORES[String(req.params.tipo)];
+  if (!generar) return res.status(404).json({ error: 'Exportación no disponible' });
+  return responderCsv(req, res, generar);
 }

@@ -1,6 +1,7 @@
 import { verificarYEjecutarBackupProgramado } from './backupService.js';
 import { generarAvisosCumpleanos } from './cumpleanosService.js';
 import { enviarRecordatoriosCitas, generarAvisosRevisiones } from './notificacionesService.js';
+import { podarRegistroAccesos } from './registroAccesos.js';
 
 /**
  * Tareas periódicas de la app de escritorio. Se ejecutan al arrancar (por si
@@ -12,6 +13,7 @@ const TAREAS: { nombre: string; ejecutar: () => Promise<unknown> }[] = [
   { nombre: 'avisos de cumpleaños', ejecutar: generarAvisosCumpleanos },
   { nombre: 'avisos de revisiones', ejecutar: generarAvisosRevisiones },
   { nombre: 'recordatorios de citas', ejecutar: enviarRecordatoriosCitas },
+  { nombre: 'limpieza del registro de accesos', ejecutar: podarRegistroAccesos },
 ];
 
 const INTERVALO_MS = 60 * 60 * 1000;

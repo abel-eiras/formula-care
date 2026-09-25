@@ -22,7 +22,7 @@ export function BotonesInforme({ ruta, pacienteId, emailPaciente, titulo, nombre
   const guardar = async () => {
     setOcupado("guardar");
     try {
-      const destino = await guardarInforme(ruta, nombreFichero);
+      const destino = await guardarInforme(ruta, nombreFichero, pacienteId);
       if (destino) toast.success("PDF guardado", { description: destino });
     } catch (error) {
       toast.error(error instanceof Error ? error.message : "No se ha podido generar el PDF");

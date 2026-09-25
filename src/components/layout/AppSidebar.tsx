@@ -6,6 +6,7 @@ import {
   Salad,
   CalendarDays,
   Settings,
+  BookOpen,
   LogOut,
   Menu,
   User,
@@ -128,6 +129,20 @@ export function AppSidebar() {
             </div>
           </div>
         )}
+        <NavLink
+          to="/ayuda"
+          className={({ isActive }) =>
+            cn(
+              "flex items-center gap-3 px-4 py-3 rounded-lg transition-all duration-200",
+              "text-sidebar-foreground hover:bg-sidebar-accent hover:text-sidebar-accent-foreground",
+              isActive && "bg-sidebar-accent",
+              collapsed && "justify-center px-3"
+            )
+          }
+        >
+          <BookOpen className="h-5 w-5" />
+          {!collapsed && <span>Ayuda</span>}
+        </NavLink>
         <NavLink
           to="/configuracion"
           className={cn(

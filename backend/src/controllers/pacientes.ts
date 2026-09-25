@@ -16,7 +16,7 @@ function serializarPaciente<T extends Pick<Paciente, 'textoBusqueda'>>({ textoBu
 }
 
 // Esquema de validación para crear paciente
-const crearPacienteSchema = z.object({
+export const crearPacienteSchema = z.object({
   name: z.string().min(2, 'El nombre debe tener al menos 2 caracteres'),
   sex: z.enum(['M', 'F', 'O']),
   phone: z.string().min(9, 'El teléfono debe tener al menos 9 caracteres'),
@@ -81,7 +81,7 @@ export async function obtenerPacientes(req: Request, res: Response) {
       condiciones.push({ sex: sexo });
     }
 
-    if (origen && (origen === 'manual' || origen === 'autoregistro')) {
+    if (origen && ['manual', 'autoregistro', 'importacion'].includes(origen)) {
       condiciones.push({ origen });
     }
 

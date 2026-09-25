@@ -13,6 +13,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@
 import { CheckCircle2, Eye, EyeOff, Mail, Save, Send, XCircle } from 'lucide-react';
 import { toast } from 'sonner';
 import { useAuthContext } from '@/contexts/AuthContext';
+import { EnlaceAyuda } from '@/components/ayuda/EnlaceAyuda';
 import {
   useActualizarConfigCorreo,
   useConfigCorreo,
@@ -133,7 +134,8 @@ export function CorreoTab() {
           </CardTitle>
           <CardDescription>
             La cuenta desde la que se envían las confirmaciones y recordatorios de citas, los informes y las
-            felicitaciones. Sin esto configurado, la app no puede enviar ningún correo.
+            felicitaciones. Sin esto configurado, la app no puede enviar ningún correo.{' '}
+            <EnlaceAyuda tema="correo" texto="Ver ayuda" />
           </CardDescription>
         </CardHeader>
         <CardContent className="space-y-5">

@@ -3,6 +3,7 @@ import { prisma } from '../src/lib/prisma.js';
 /** Deja vacías las tablas que usan los tests (en orden por las claves foráneas) */
 export async function vaciarBaseDeDatos(): Promise<void> {
   await prisma.$transaction([
+    prisma.registroAcceso.deleteMany(),
     prisma.notificacion.deleteMany(),
     prisma.cita.deleteMany(),
     prisma.solicitudOnline.deleteMany(),

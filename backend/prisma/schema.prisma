@@ -51,7 +51,7 @@ model Paciente {
   birthDate   String
   address     String?
   notes       String?
-  origen      String   @default("manual") // "manual" = registrado por farmacia, "autoregistro" = llegó por la reserva online
+  origen      String   @default("manual") // "manual" = registrado por farmacia, "autoregistro" = llegó por la reserva online, "importacion" = desde la plantilla Excel
   // Constancia del consentimiento (RGPD): cuándo y qué versión del texto aceptó
   consentimientoFecha   DateTime?
   consentimientoVersion String?
@@ -180,6 +180,10 @@ model AnalisisBio {
   vitaminaD             Float?
   ferritina             Float?
   // Las medidas corporales y la tensión se guardan en Medicion
+  // Riesgo cardiovascular (SCORE2): el resto de datos ya están en el análisis
+  fumador               Boolean?
+  // Test FINDRISC: JSON { edad: { valor, puntos }, imc: {…}, … } (null = no se hizo)
+  findrisc              String?
   // Observaciones y recomendaciones
   observaciones         String?
   recomendaciones       String?
@@ -465,6 +469,8 @@ model Configuracion {
   backupCifrado         Boolean   @default(false)
   backupCifradoClave    String?   // Clave derivada (scrypt) de la contraseña del usuario — nunca la contraseña en claro
   backupCifradoSalt     String?   // Salt usado para derivar backupCifradoClave
+  // Minutos sin actividad tras los que se cierra la sesión (0 = nunca)
+  minutosInactividad    Int       @default(15)
   backupUltimaEjecucion DateTime? // Última vez que se generó una copia (manual o automática)
   backupCarpetaExtra    String?   // Carpeta donde además se guarda cada copia (USB, NAS, carpeta sincronizada...)
   backupUltimoError     String?   // Si la última copia no se pudo guardar en la carpeta extra, por qué
@@ -569,4 +575,25 @@ model SolicitudOnline {
 
   @@index([estado])
   @@index([fecha])
+}
+
+// Registro de accesos a datos de pacientes (RGPD: datos de salud). Se guarda
+// el nombre del usuario y del paciente en el momento del acceso para que el
+// registro siga siendo legible aunque luego se borren.
+model RegistroAcceso {
+  id             String   @id @default(cuid())
+  fecha          DateTime @default(now())
+  usuarioId      String?
+  usuarioNombre  String
+  // "ver", "crear", "editar", "borrar", "exportar", "enviar", "login", "login-fallido"…
+  accion         String
+  // "paciente", "dermo", "bio", "nutricion", "listado", "copia", "sesion"…
+  recurso        String
+  pacienteId     String?
+  pacienteNombre String?
+  detalle        String?
+
+  @@index([fecha])
+  @@index([pacienteId])
+  @@index([usuarioId])
 }

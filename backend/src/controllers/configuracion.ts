@@ -918,3 +918,34 @@ export async function probarCorreo(req: Request, res: Response) {
     res.status(500).json({ error: 'Error al enviar correo de prueba' });
   }
 }
+
+// ==========================================
+// SEGURIDAD
+// ==========================================
+
+const seguridadSchema = z.object({
+  // 0 = no cerrar la sesión por inactividad
+  minutosInactividad: z.coerce.number().int().min(0).max(480),
+});
+
+/**
+ * Guardar los ajustes de seguridad (solo administradores)
+ * PUT /api/configuracion/seguridad
+ */
+export async function actualizarSeguridad(req: Request, res: Response) {
+  try {
+    const datos = seguridadSchema.parse(req.body);
+    const config = await prisma.configuracion.upsert({
+      where: { id: CONFIG_ID },
+      create: { id: CONFIG_ID, ...datos },
+      update: datos,
+    });
+    res.json({ minutosInactividad: config.minutosInactividad });
+  } catch (error) {
+    if (error instanceof z.ZodError) {
+      return res.status(400).json({ error: 'Datos inválidos', mensaje: 'Escribe un número de minutos entre 0 y 480' });
+    }
+    console.error('Error al guardar la configuración de seguridad:', error);
+    res.status(500).json({ error: 'Error al guardar la configuración de seguridad' });
+  }
+}

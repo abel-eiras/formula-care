@@ -37,6 +37,9 @@ jobs:
           - platform: ubuntu-22.04
           - platform: windows-latest
           - platform: macos-latest
+          # Mac con procesador Intel: se compila en una máquina Intel para que
+          # el Node incluido y el motor de Prisma sean de esa arquitectura
+          - platform: macos-15-intel
 
     runs-on: ${{ matrix.platform }}
 
