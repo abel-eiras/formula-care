@@ -1,6 +1,6 @@
 [package]
 name = "formula-care"
-version = "0.3.0"
+version = "0.4.0"
 description = "Formula Care - gestión de servicios de farmacia (app de escritorio, software libre)"
 authors = ["Abel Eiras"]
 license = "MIT"
