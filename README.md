@@ -2,9 +2,9 @@
 
 **Adiós Excel. Hola cordura.**
 
-Formula Care gestiona los servicios asistenciales de tu farmacia — análisis dermocosmético y bioquímico, nutrición (con seguimiento GLP-1), fichas de paciente, citas e informes — todo en un sitio, todo local. Nada de módulos que nunca vas a usar.
+Formula Care gestiona los servicios asistenciales de tu farmacia — análisis dermocosmético y bioquímico, nutrición (con seguimiento GLP-1), fichas de paciente, citas e informes — todo en un sitio. Nada de módulos que nunca vas a usar.
 
-Corre **en tu ordenador, no en la nube de nadie**: los datos de tus pacientes viven en una base de datos SQLite en tu propio equipo. Ni servidor que mantener, ni conexión a internet para el día a día (solo hace falta para instalar).
+Funciona **en tu ordenador, no en la nube de nadie**: los datos de tus pacientes se quedan en tu equipo. No hay servidor que mantener ni cuotas, y para el día a día no necesitas internet (solo para instalar y para enviar correos a los pacientes).
 
 Gratis. Y libre, código incluido — sin letra pequeña, sin límite de pacientes convertido en muro de pago, sin "en beta gratis y luego pagas".
 
@@ -12,113 +12,132 @@ Gratis. Y libre, código incluido — sin letra pequeña, sin límite de pacient
 
 Esta es la versión de escritorio, libre y de código abierto, de [Fórmula Care](https://formulafarma.com/formula-care/) — la herramienta que nació porque no encontraba software que sirviera de verdad en el día a día de una farmacia, así que la construí yo mismo. La promesa siempre fue que el código se haría público en cuanto estuviera listo. Esto es eso.
 
+## ✨ Qué puedes hacer
+
+### Pacientes
+- Ficha de cada paciente con sus datos, su historial de visitas y todos sus análisis.
+- Búsqueda rápida por nombre, teléfono o email.
+- Todas sus medidas (peso, perímetros, bioimpedancia, tensión, pulsaciones) en una sola tabla, con gráficas de evolución.
+
+### Análisis dermocosmético
+- Evaluación completa de la piel (hidratación, sebo, elasticidad…), plan de tratamiento y productos recomendados.
+
+### Análisis bioquímico
+- Registro de los valores de la analítica, con aviso visual de los que están fuera de rango y cálculo del IMC.
+- Seguimiento de la evolución entre analíticas. Los parámetros y sus rangos de referencia se pueden ajustar.
+
+### Nutrición (con seguimiento GLP-1 opcional)
+- Programa por paciente: motivo, objetivo, antecedentes y tratamientos.
+- Visitas de seguimiento con medidas, bioimpedancia, tensión, hábitos, actividad física y, si toma un GLP-1, dosis y efectos secundarios.
+- Evolución desde la primera visita: porcentaje de peso perdido, hitos del 5, 10 y 15 %, cintura y masa grasa frente a masa magra.
+- Registro de alimentación con análisis de picoteo, hambre, saciedad y malestar.
+- Sugerencias que explican en qué dato se basan, para que decidas tú qué recomendar.
+- Informe de cada visita y hoja de registro en blanco para que el paciente la rellene en casa.
+
+### Citas y calendario
+- Calendario mensual con todas las citas (dermo, bio, nutrición, consulta, seguimiento y talleres).
+- Estado de cada cita: confirmada, realizada, no se presentó o cancelada.
+- El paciente recibe un correo al darle cita, si se cambia o si se cancela, y un **recordatorio el día antes**. También puedes mandarle el recordatorio por WhatsApp con el mensaje ya escrito.
+- Cumpleaños de tus pacientes, con aviso el mismo día y felicitación por WhatsApp, correo o registro de que le felicitaste en persona o por teléfono.
+
+### Informes
+- Informe de cada servicio con el logo y los colores de tu farmacia: imprimir, guardar en PDF o enviar por correo al paciente.
+
+### Panel de inicio
+- Resumen de la actividad con gráficas, avisos, próximas revisiones, cumpleaños, pacientes recientes y accesos rápidos.
+- Exportación a Excel de la lista de pacientes y de la actividad del último año.
+
+### Tu farmacia, a tu manera
+- Datos de la farmacia, logo y colores (varios temas o los tuyos propios).
+- Textos de los correos editables.
+- Varios usuarios, cada uno con su contraseña, y un administrador que los gestiona.
+
+### Protección de datos
+- Consentimiento de cada paciente registrado (fecha y versión del texto aceptado).
+- Textos legales de la farmacia editables.
+- Exportación de todos los datos de un paciente si te los pide, y aviso de los pacientes que superan el periodo de conservación.
+- **Copias de seguridad automáticas**, que puedes proteger con contraseña y guardar también en un disco externo o una carpeta de OneDrive, Google Drive o Dropbox.
+
 ## 💾 Descargar e instalar
 
-Ve a la página de [**Releases**](https://github.com/abel-eiras/formula-care/releases) y descarga el instalador de la última versión que corresponda a tu sistema operativo.
+Entra en la página de [**descargas (Releases)**](https://github.com/abel-eiras/formula-care/releases) y, en la versión más reciente, descarga el archivo de tu sistema:
 
-> **Nota:** los instaladores no están firmados digitalmente (firmar cuesta dinero, y este es software gratuito y de código abierto), así que Windows y macOS mostrarán un aviso de "editor desconocido" la primera vez — ver más abajo cómo continuar. La instalación necesita conexión a internet.
+| Tu ordenador | Archivo que tienes que descargar |
+|--------------|----------------------------------|
+| Windows | el que termina en **`.exe`** |
+| Mac | el que termina en **`.dmg`** |
+| Linux | el que termina en **`.AppImage`** |
+
+> **La primera vez verás un aviso de seguridad.** Es normal: Windows y macOS avisan de todo programa que no haya pagado un certificado de firma, y este es gratuito y sin ánimo de lucro. Abajo tienes cómo continuar. Durante la instalación hace falta conexión a internet.
 
 ### 🪟 Windows
 
-Descarga el `.exe` (instalador NSIS) — o el `.msi` si prefieres un paquete MSI — y ejecútalo.
+1. Abre el archivo `.exe` que has descargado.
+2. Si aparece **"Windows protegió tu PC"**, pulsa **"Más información"** y luego **"Ejecutar de todas formas"**.
+3. Sigue los pasos del instalador. Al terminar, tendrás Formula Care en el menú Inicio.
 
-- Windows SmartScreen mostrará **"Windows protegió tu PC"**: haz clic en **"Más información"** y luego en **"Ejecutar de todas formas"**.
-- Si tu Windows no trae ya instalado el runtime Microsoft Edge WebView2 (poco habitual en Windows 10/11 actualizados), el propio instalador lo descarga automáticamente — por eso hace falta internet durante la instalación.
+(También hay un `.msi` para quien lo prefiera; hace lo mismo.)
 
-### 🍎 macOS
+### 🍎 Mac
 
-Descarga el `.dmg`, ábrelo y arrastra **Formula Care** a la carpeta Aplicaciones.
-
-- Como la app no está notarizada por Apple, Gatekeeper bloqueará la primera ejecución. Haz **clic derecho (o Ctrl+clic)** sobre la app → **"Abrir"** → confirma **"Abrir"** en el aviso. (Alternativa: Preferencias del Sistema → Privacidad y Seguridad → "Abrir de todas formas".)
+1. Abre el archivo `.dmg` y arrastra **Formula Care** a la carpeta **Aplicaciones**.
+2. La primera vez, en lugar de hacer doble clic, haz **clic derecho** (o Ctrl + clic) sobre la app → **Abrir** → y confirma **Abrir** en el aviso.
+   Si aun así no se abre: Ajustes del Sistema → Privacidad y seguridad → **"Abrir igualmente"**.
 
 ### 🐧 Linux
 
-La forma más rápida es el instalador de un solo comando — descarga el AppImage de la última versión y lo deja listo en el menú de aplicaciones, sin generar paquetes `.deb`/`.rpm` ni tocar tu gestor de paquetes:
+Abre una terminal y pega esta línea; descarga la última versión y la deja en el menú de aplicaciones:
 
 ```bash
 curl -fsSL https://raw.githubusercontent.com/abel-eiras/formula-care/main/scripts/install-linux.sh | sh
 ```
 
-Si prefieres hacerlo a mano: descarga el `.AppImage` desde Releases, dale permisos de ejecución y ejecútalo:
+O descarga el `.AppImage`, dale permiso de ejecución (clic derecho → Propiedades → "Permitir ejecutar") y ábrelo. Si no arranca, puede que falte `libfuse2` (en Ubuntu: `sudo apt install libfuse2`).
 
-```bash
-chmod +x "Formula Care_*.AppImage"
-./"Formula Care_*.AppImage"
-```
+## 🚀 Primeros pasos
 
-(El AppImage funciona en cualquier distribución x86_64 sin instalación a nivel de sistema. Si tu distro no trae FUSE, instala `libfuse2` — por ejemplo `sudo apt install libfuse2` en Debian/Ubuntu.)
+1. **Crea tu cuenta.** La primera vez que abres la app te pide un nombre, un correo y una contraseña: será la cuenta de administrador.
+2. **Configuración → Datos de la Farmacia**: nombre, dirección, teléfono y logo. Aparecen en los informes y en los correos.
+3. **Configuración → Correo**: la cuenta desde la que se enviarán los correos a los pacientes. Pulsa **Enviar correo de prueba** para comprobar que funciona (si usas Gmail, necesitarás una *contraseña de aplicación*; la pantalla te explica cómo).
+4. **Configuración → Copias de Seguridad**: elige cada cuánto se hacen y, si puedes, una carpeta adicional fuera del ordenador.
+5. **Configuración → Usuarios**: crea una cuenta para cada persona del equipo.
 
-### 🔄 Actualizar a una versión nueva
+## 🔄 Actualizar a una versión nueva
 
-Descarga el instalador de la nueva versión e instálalo encima: tus datos se conservan. Antes de actualizar la base de datos, la app guarda una copia de la anterior en su carpeta de datos (`copias-actualizacion/`), por si algo saliera mal.
+**La app te avisa sola.** Al abrirla, si hay una versión nueva, verás un mensaje con las novedades: pulsa **Actualizar ahora** y la app se descarga, se instala y se vuelve a abrir. Si prefieres hacerlo en otro momento, pulsa **Más tarde** y te lo volverá a ofrecer la próxima vez. También puedes comprobarlo cuando quieras en Configuración → Mi cuenta → **Buscar actualizaciones**.
 
-### 💻 Pasar a otro ordenador
+**Tus datos se conservan**, y antes de actualizar la app guarda por su cuenta una copia de los datos anteriores por si algo saliera mal.
 
-En el equipo antiguo: Configuración → Copias de seguridad → **Realizar copia ahora** y **Guardar en…** (a un USB, por ejemplo). En el nuevo: instala la app, crea la cuenta que te pida el primer arranque y ve a Configuración → Copias de seguridad → **Restaurar una copia**. Se recuperan todos los datos y toda la configuración (usuarios, correo, plantillas, apariencia); después, entra con un usuario de la copia.
+Si lo prefieres, también puedes descargar el instalador de la versión nueva desde [descargas (Releases)](https://github.com/abel-eiras/formula-care/releases) e instalarlo encima.
 
-Para no depender de acordarte, elige en esa misma pantalla una **carpeta adicional** (disco externo, NAS o carpeta sincronizada con OneDrive, Google Drive, Dropbox…): cada copia automática se guardará también allí.
+## 💻 Cambiar de ordenador
 
----
+1. En el ordenador antiguo: Configuración → Copias de Seguridad → **Realizar copia ahora** y luego **Guardar en…** (por ejemplo, en un USB).
+2. En el nuevo: instala la app, crea la cuenta que te pide al abrirla y ve a Configuración → Copias de Seguridad → **Restaurar una copia**.
+3. Se recupera todo: pacientes, citas, análisis, usuarios, correo, textos y apariencia. Después, entra con tu usuario de siempre.
 
-## 📋 Estado del Proyecto
+## 🆘 Si algo no va bien
 
-### ✅ Completado
-- **App de escritorio (Tauri)**
-  - Backend Node.js/Express embebido, arranca y se cierra junto con la app
-  - Base de datos SQLite local, una instalación = una farmacia
-  - Asistente de primer arranque para crear la cuenta de administrador
-
-- **Frontend React con TypeScript**
-  - UI moderna con shadcn/ui y Tailwind CSS
-  - Dashboard con estadísticas en tiempo real
-  - Gestión de pacientes (CRUD completo)
-  - Calendario de citas integrado
-  - Formularios de análisis dermocosmético y bioquímico
-  - Generación de informes PDF
-  - Sistema de notificaciones
-  - Configuración dinámica de parámetros bioquímicos
-
-- **Backend API con Node.js + Express**
-  - API RESTful completa
-  - Base de datos con Prisma ORM (SQLite)
-  - Controladores para pacientes, citas, análisis, notificaciones
-  - Servicio de disponibilidad de calendario
-  - Sistema de eventos personalizados
-
-- **Sistema de Autenticación**
-  - Login con JWT (token en cabecera en la app de escritorio)
-  - Roles: admin, farmaceutico, usuario, y gestión de usuarios desde Configuración
-  - Protección de rutas por rol
-  - La API solo escucha en el propio equipo (no es accesible desde la red)
-
-- **Sistema de Correos**
-  - Plantillas editables (HTML)
-  - Soporte para Nodemailer y Resend
-
-- **RGPD y Legal**
-  - Configuración de textos legales
-  - Constancia del consentimiento de cada paciente (fecha y versión del texto)
-  - Exportación de todos los datos de un paciente y lista de pacientes fuera del periodo de retención
-
-- **Copias de seguridad**
-  - Automáticas (diarias, semanales o mensuales), opcionalmente cifradas con contraseña
-  - Carpeta adicional (USB, NAS, carpeta sincronizada) y "Guardar en…" para sacarlas del equipo
-  - Restaurables en cualquier otro ordenador con datos y configuración completos; una copia de una versión anterior se pone al día sola
-  - Copia automática de la base de datos antes de actualizar a una versión nueva
-
-- **Reserva pública de citas (opcional, servicio aparte)**
-  - Ver [booking-web/](booking-web/): un servicio web independiente y autohospedable para quien quiera ofrecer reserva de citas online. La app le publica sus huecos libres y recoge las solicitudes, cifradas con la clave de la farmacia (**desactivado por ahora**: para activarlo, `RESERVA_ONLINE_DISPONIBLE` en `src/lib/funciones.ts` y `backend/src/config/funciones.ts`; después se configura en Configuración → Reserva online).
-
-### 🚧 En Desarrollo
-- Probar las versiones de Windows y macOS en equipos reales
-- Actualizaciones automáticas (necesitan una clave de firma para las actualizaciones)
-
-### 📝 Planificado
-Ver la carpeta [context/](context/) para documentación (guías activas e histórica).
+- **No llegan los correos:** Configuración → Correo → **Enviar correo de prueba**. Te dice en qué paso falla y qué revisar.
+- **Cualquier otro problema:** Configuración → Copias de Seguridad → **Exportar diagnóstico** genera un informe (sin datos de pacientes) con la versión y los últimos mensajes de la app. Puedes adjuntarlo al contarnos el problema en [Issues](https://github.com/abel-eiras/formula-care/issues).
+- La **reserva de citas online** desde la web de la farmacia todavía no está disponible.
 
 ---
 
-## 🚀 Inicio Rápido (desarrollo)
+# 🛠️ Para desarrolladores
+
+Todo lo que viene a partir de aquí es técnico: cómo está hecho Formula Care y cómo compilarlo o contribuir.
+
+## Cómo está hecho
+
+- **App de escritorio con [Tauri 2](https://v2.tauri.app/)** que lleva dentro su propio backend Node.js/Express; arranca y se cierra con la app y solo escucha en el propio equipo (`127.0.0.1`).
+- **Base de datos SQLite** local con Prisma: una instalación = una farmacia (sin multi-tenant). En el primer arranque se genera un `JWT_SECRET` aleatorio y en cada arranque se aplican las migraciones pendientes, con copia previa de la base de datos (`copias-actualizacion/`).
+- **Frontend React + TypeScript** (Vite, shadcn/ui, Tailwind, React Query).
+- **Correo** por SMTP (Nodemailer) o Resend, configurable desde la app; ver [backend/EMAIL_CONFIG.md](backend/EMAIL_CONFIG.md).
+- **Actualizaciones automáticas** con `tauri-plugin-updater`: la app consulta el `latest.json` del último release publicado y verifica la firma de cada paquete con la clave pública de `src-tauri/tauri.conf.json`. El workflow firma los paquetes si el repositorio tiene los secretos `TAURI_SIGNING_PRIVATE_KEY` y `TAURI_SIGNING_PRIVATE_KEY_PASSWORD` (esta firma no es la firma de código de Windows/macOS).
+- **Reserva pública de citas (opcional, servicio aparte):** [booking-web/](booking-web/) es un servicio web autohospedable al que la app publica sus huecos libres y del que recoge las solicitudes, cifradas con la clave de la farmacia. Está **desactivado** hasta que haya dónde alojarlo: el interruptor es `RESERVA_ONLINE_DISPONIBLE` en `src/lib/funciones.ts` y `backend/src/config/funciones.ts`.
+
+## Inicio rápido (desarrollo)
 
 ### Requisitos Previos
 - Node.js 18+ y npm
@@ -177,9 +196,7 @@ npm run dev
 
 Cambia esta contraseña en cuanto inicies sesión. En una instalación de escritorio real (sin seed de datos de ejemplo), la propia app te pedirá crear esta cuenta en el primer arranque.
 
----
-
-## 📦 Compilar la app de escritorio
+## Compilar la app de escritorio
 
 ```bash
 npm run tauri:build
@@ -191,9 +208,7 @@ Para generar las tres a la vez sin tener las tres máquinas, usa el workflow de 
 
 En el primer arranque de un paquete instalado, la app genera automáticamente un `JWT_SECRET` aleatorio y una base de datos SQLite propia en el directorio de datos del usuario del sistema operativo, y aplica las migraciones pendientes en cada arranque (también en actualizaciones futuras) — no hace falta configurar ni migrar nada a mano.
 
----
-
-## 🛠️ Tecnologías Utilizadas
+## Tecnologías
 
 ### App de escritorio
 - **Tauri 2** (Rust) — empaquetado nativo, backend Node embebido como proceso hijo
@@ -219,9 +234,7 @@ En el primer arranque de un paquete instalado, la app genera automáticamente un
 - **Vitest** - Tests del frontend y del backend (este sobre una base de datos temporal migrada desde cero)
 - **GitHub Actions** - En cada PR, tipos, lint, tests y builds de todos los proyectos ([`comprobaciones.yml`](.github/workflows/comprobaciones.yml)); los instaladores, con [`desktop-release.yml`](.github/workflows/desktop-release.yml)
 
----
-
-## 📁 Estructura del Proyecto
+## Estructura del proyecto
 
 ```
 formula-care/
@@ -254,70 +267,7 @@ formula-care/
 
 Para más detalles, ver [context/guias/ESTRUCTURA_PROYECTO.md](context/guias/ESTRUCTURA_PROYECTO.md)
 
----
-
-## 📚 Documentación
-
-- **[context/README.md](context/README.md)** - Índice de documentación (guías, stack, inicio rápido)
-- **[AGENTS.md](AGENTS.md)** - Guía para agentes de IA (reglas, checklist, referencias)
-- Guías activas en [context/guias/](context/guias/) (código limpio, React, estructura, despliegue)
-- Backend: [backend/README.md](backend/README.md), [backend/EMAIL_CONFIG.md](backend/EMAIL_CONFIG.md)
-- Reserva pública opcional: [booking-web/README.md](booking-web/README.md)
-
----
-
-## 🎯 Funcionalidades Principales
-
-### Gestión de Pacientes
-- Listado de pacientes con búsqueda
-- Detalle completo de cada paciente
-- Registro de nuevos pacientes
-- Historial de visitas y análisis
-
-### Análisis Dermocosmético
-- Formulario completo de evaluación de piel
-- Captura de parámetros (hidratación, sebo, elasticidad, etc.)
-- Plan de tratamiento personalizado
-- Recomendaciones de productos
-
-### Análisis Bioquímico
-- Registro de parámetros sanguíneos
-- Cálculo automático de IMC
-- Alertas visuales para valores fuera de rango
-- Seguimiento de evolución
-
-### Nutrición (con seguimiento GLP-1 opcional)
-- Programa por paciente: motivo, objetivo, antecedentes e historia de tratamiento
-- Visita inicial y de seguimiento con la misma estructura (medidas, bioimpedancia, tensión, hábitos, actividad, tratamiento GLP-1 y efectos secundarios)
-- Evolución respecto a la visita inicial: % de peso perdido, hitos del 5/10/15 %, cintura y masa grasa frente a masa magra
-- Registro de alimentación transcrito por el farmacéutico, con análisis de picoteo, hambre, saciedad y malestar
-- Sugerencias basadas en reglas explicables (cada una indica el dato que la dispara) para que el farmacéutico decida qué recomendar
-- Informe de visita imprimible y hoja de registro en blanco para el paciente, con la marca de la farmacia
-
-### Historial único de medidas
-- Peso, perímetros, bioimpedancia, tensión y pulsaciones de todos los servicios en una sola tabla por paciente
-- Gráficas de evolución conjuntas en la ficha del paciente
-
-### Calendario
-- Vista mensual de citas
-- Cumpleaños de pacientes (calculados desde su fecha de nacimiento), con aviso el mismo día y felicitación por WhatsApp (mensaje ya escrito), email (plantilla editable) o registro de felicitación por llamada o en persona
-- Creación, edición y estado de las citas (confirmada, realizada, no se presentó, cancelada), con aviso por email al paciente si cambia o se cancela
-- Recordatorio automático por email el día antes y recordatorio por WhatsApp con el mensaje ya escrito
-- Diferentes tipos de citas (dermo, bio, nutrición, consulta, seguimiento y talleres)
-
-### Dashboard
-- Estadísticas generales
-- Gráficos de evolución
-- Accesos rápidos
-- Pacientes recientes
-- Exportación a Excel (CSV) de la lista de pacientes y de la actividad de los últimos 12 meses
-
-### Informes
-- Informe de cada servicio para imprimir, guardar en PDF o enviar por email al paciente (con el PDF adjunto)
-
----
-
-## 💻 Scripts Disponibles
+## Scripts
 
 ```bash
 # Desarrollo web (sin Tauri)
@@ -343,47 +293,29 @@ npm run lint         # Verifica código con ESLint
 npm run preview      # Previsualiza build de producción
 ```
 
----
+## Documentación
 
-## 🧩 Principios de Desarrollo
+- **[context/README.md](context/README.md)** - Índice de documentación (guías, stack, inicio rápido)
+- **[AGENTS.md](AGENTS.md)** - Guía para agentes de IA (reglas, checklist, referencias)
+- Guías activas en [context/guias/](context/guias/) (código limpio, React, estructura, despliegue, correo)
+- Backend: [backend/README.md](backend/README.md), [backend/EMAIL_CONFIG.md](backend/EMAIL_CONFIG.md)
+- Reserva pública opcional: [booking-web/README.md](booking-web/README.md)
 
-Este proyecto sigue principios de **código limpio y simple**:
-
-- ✅ **Simplicidad sobre complejidad** - Soluciones simples que funcionan
-- ✅ **Código legible** - Fácil de entender sin explicación
-- ✅ **Funciones pequeñas** - Una responsabilidad por función
-- ✅ **Nombres descriptivos** - Variables y funciones que se explican solas
-- ✅ **Comentarios útiles** - Explican el "por qué", no el "qué"
-- ✅ **Sin sobre-ingeniería** - Solo lo necesario
-
----
-
-## 🤝 Contribución
+## Contribuir
 
 Formula Care es software libre. Contribuye si te apetece — programa mucho o programa poco, pero conoce bien el problema que resuelves.
 
 1. Haz un fork del repositorio y crea una rama para tu cambio: `git checkout -b feature/nueva-funcionalidad`
-2. Sigue la [Guía de Código Limpio](context/guias/GUIA_CODIGO_LIMPIO.md) y la estructura existente del proyecto
+2. Sigue la [Guía de Código Limpio](context/guias/GUIA_CODIGO_LIMPIO.md) y la estructura existente: código y comentarios en español, TypeScript estricto (sin `any`), componentes y funciones pequeños con una sola responsabilidad, y sin sobre-ingeniería.
 3. Asegúrate de que todo pasa: `npm run lint`, `npx tsc --noEmit -p tsconfig.app.json` y `npm test` en la raíz, y `npx tsc --noEmit` y `npm test` en `backend/` (la PR lo vuelve a comprobar automáticamente)
 4. Haz commit con mensajes claros
 5. Abre un Pull Request describiendo el cambio
 
----
+## Estado y limitaciones conocidas
 
-## 📝 Notas Importantes
-
-- **Código en español**: Comentarios y documentación en español
-- **TypeScript estricto**: Evitar `any`, usar tipos explícitos
-- **Componentes pequeños**: Máximo 200 líneas por componente
-- **Funciones enfocadas**: Una sola responsabilidad por función
-
----
-
-## 🐛 Problemas Conocidos
-
-- Los tres instaladores se generan y compilan vía CI ([`.github/workflows/desktop-release.yml`](.github/workflows/desktop-release.yml)) en su propio sistema operativo (Linux, Windows, macOS). El de Linux además se ha ejecutado e instalado de verdad en este entorno de desarrollo; Windows y macOS de momento solo están verificados por la propia compilación en CI, no por un arranque manual en esos sistemas — sin letra pequeña, es lo que hay. Ninguno de los tres está firmado digitalmente, así que Windows/macOS mostrarán un aviso de "editor no verificado" al abrirlos (ver [Descargar e instalar](#-descargar-e-instalar)).
-- La reserva online (`booking-web/`) está desactivada en la app hasta que haya un servidor accesible desde internet donde alojarla — ver su propio README.
-- Si algo falla, Configuración → Copias de seguridad → Exportar diagnóstico genera un informe (sin datos de pacientes) con la versión, el estado y los últimos mensajes de la app.
+- Los tres instaladores se compilan en CI, cada uno en su sistema operativo. El de Linux se ha instalado y ejecutado de verdad; los de Windows y macOS de momento solo están verificados por la compilación, no por un arranque manual en esos sistemas.
+- Los instaladores no están firmados ni notarizados, y no lo estarán: firmar cuesta dinero y este es un proyecto gratuito. De ahí los avisos de [Descargar e instalar](#-descargar-e-instalar).
+- Sin multipuesto: pensado para un solo ordenador por farmacia.
 
 ---
 

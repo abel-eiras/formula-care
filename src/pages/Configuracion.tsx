@@ -13,7 +13,7 @@ import { Calendar } from "@/components/ui/calendar";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
 import { Textarea } from "@/components/ui/textarea";
-import { ArrowLeft, Save, Settings, Building2, FlaskConical, Calendar as CalendarIcon, Plus, Trash2, GripVertical, Eye, EyeOff, Pencil, Shield, FileText, AlertTriangle, Mail, Palette, DatabaseBackup, Users, UserCircle, Globe } from "lucide-react";
+import { ArrowLeft, Save, Settings, Building2, FlaskConical, Calendar as CalendarIcon, Plus, Trash2, GripVertical, Eye, EyeOff, Pencil, Shield, FileText, AlertTriangle, Mail, Palette, DatabaseBackup, Users, UserCircle, Globe, Send } from "lucide-react";
 import { Link } from "react-router-dom";
 import { toast } from "sonner";
 import { useConfiguracion, useActualizarFarmacia, useActualizarParametrosReferencia, useActualizarValoracionBio, useActualizarParametrosBioConfig, useConfiguracionRgpd, useActualizarRgpd } from "@/hooks/useConfiguracion";
@@ -23,6 +23,7 @@ import { EditorPlantillaEmail } from "@/components/configuracion/EditorPlantilla
 import { SelectorTema } from "@/components/configuracion/SelectorTema";
 import { BackupTab } from "@/components/configuracion/BackupTab";
 import { UsuariosTab } from "@/components/configuracion/UsuariosTab";
+import { CorreoTab } from "@/components/configuracion/CorreoTab";
 import { MiCuentaTab } from "@/components/configuracion/MiCuentaTab";
 import { ReservaOnlineTab } from "@/components/configuracion/ReservaOnlineTab";
 import { RetencionPacientes } from "@/components/configuracion/RetencionPacientes";
@@ -270,6 +271,12 @@ export default function Configuracion() {
             <CalendarIcon className="h-4 w-4" />
             Calendario
           </TabsTrigger>
+          {esAdmin && (
+            <TabsTrigger value="correo" className="gap-2">
+              <Send className="h-4 w-4" />
+              Correo
+            </TabsTrigger>
+          )}
           <TabsTrigger value="plantillas" className="gap-2">
             <Mail className="h-4 w-4" />
             <span className="hidden sm:inline">Plantillas Email</span>
@@ -533,6 +540,13 @@ export default function Configuracion() {
         {esAdmin && RESERVA_ONLINE_DISPONIBLE && (
           <TabsContent value="reserva">
             <ReservaOnlineTab />
+          </TabsContent>
+        )}
+
+        {/* Tab: Correo (solo administradores: guarda credenciales) */}
+        {esAdmin && (
+          <TabsContent value="correo">
+            <CorreoTab />
           </TabsContent>
         )}
 

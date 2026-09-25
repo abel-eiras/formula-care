@@ -1,217 +1,61 @@
-# Configuración del Sistema de Emails
+# Correo: referencia técnica
 
-El sistema de emails permite enviar confirmaciones, recordatorios y cancelaciones de citas a los pacientes.
+Guía funcional (qué correos se envían, cómo configurarlo desde la app,
+problemas frecuentes): [context/guias/CONFIGURACION_EMAIL_Y_MENSAJERIA.md](../context/guias/CONFIGURACION_EMAIL_Y_MENSAJERIA.md).
 
-Para una guía de puesta en marcha del sistema completo (plantillas, variables de entorno, checklist para producción), ver **[context/guias/CONFIGURACION_EMAIL_Y_MENSAJERIA.md](../context/guias/CONFIGURACION_EMAIL_Y_MENSAJERIA.md)**.
+Todo el envío está en `src/services/emailService.ts`.
 
-## Configuración SMTP desde la app (recomendado)
+## De dónde sale la configuración
 
-Cualquier usuario con rol `admin` puede configurar el SMTP (o Resend) de su
-instalación desde **Configuración → Email**, sin tocar el `.env`:
+`obtenerConfigEmail()` lee la fila única de `Configuracion` (`id = 'singleton'`)
+y, para cada campo vacío, cae a la variable de entorno:
 
-1. Iniciar sesión como admin.
-2. Ir a **Configuración → Email**.
-3. Rellenar proveedor (SMTP o Resend), host, puerto, usuario, contraseña y email remitente.
-4. Guardar.
+| Campo en `Configuracion` | Variable de entorno | Notas |
+|--------------------------|---------------------|-------|
+| `emailProvider` | — | `smtp` (por defecto) o `resend` |
+| `emailRemitente` | `SMTP_FROM` | Si falta, `farmaciaEmail` |
+| `emailNombreRemitente` | — | Si falta, `farmaciaNombre` |
+| `smtpHost` / `smtpPort` / `smtpSecure` | `SMTP_HOST` / `SMTP_PORT` / `SMTP_SECURE` | Puerto 587 por defecto |
+| `smtpAcceptSelfSigned` | — | `tls.rejectUnauthorized = false` |
+| `smtpUser` / `smtpPass` | `SMTP_USER` / `SMTP_PASS` | |
+| `resendApiKey` | `RESEND_API_KEY` | Si Resend falla, se intenta SMTP |
 
-Estos valores se guardan en la fila única de `Configuracion` de la base de
-datos local de esta instalación (no hay configuración "de plataforma": cada
-instalación de escritorio es independiente).
+En la app instalada lo normal es configurarlo desde **Configuración → Correo**;
+las variables de entorno sirven para desarrollo.
 
-Si en algún momento el backend se ejecuta fuera de la app de escritorio (por
-ejemplo, para desarrollo), la variable de entorno `FRONTEND_URL` sigue
-determinando la URL a la que apuntan los enlaces de invitación por email
-(crear contraseña).
+Los clientes SMTP y Resend se cachean con una huella de la configuración: al
+guardar cambios se recrean sin reiniciar.
 
-## Modos de Funcionamiento
+## API
 
-### Modo Desarrollo (Sin configuración)
+Todas bajo `verificarToken`; las de correo, además, solo para `admin`.
 
-Si no se configuran las variables de entorno, el sistema usa automáticamente **Ethereal Email**, un servicio de pruebas que:
+| Método y ruta | Qué hace |
+|---------------|----------|
+| `GET /api/configuracion/correo` | Configuración sin credenciales (`smtpPassGuardada`, `resendApiKeyGuardada`) |
+| `PUT /api/configuracion/correo` | Guarda; `smtpPass`/`resendApiKey` vacíos u omitidos conservan los guardados |
+| `POST /api/configuracion/correo/prueba` | `{ destinatario }` → `{ enviado, pasos[], mensajeError?, sugerencia? }` |
 
-- No envía emails reales a los destinatarios
-- Genera una URL de preview para ver el email en el navegador
-- Muestra la URL en la consola del servidor
+`GET /api/configuracion` y el resto de respuestas de configuración pasan por
+`sinSecretos()`: nunca incluyen `smtpPass`, `resendApiKey`,
+`backupCifradoClave` ni `backupCifradoSalt`.
 
-**Ejemplo de salida en consola:**
-```
-⚠️  Configuración SMTP incompleta. Usando Ethereal Email para pruebas...
-📧 Cuenta de prueba Ethereal creada:
-   Usuario: abc123@ethereal.email
-   Los emails se pueden ver en: https://ethereal.email/login
-✅ Transportador Ethereal configurado (modo pruebas)
-✅ Email enviado vía SMTP a paciente@ejemplo.com
-📬 Preview del email (Ethereal):
-   https://ethereal.email/message/XXXXXXX
-```
+## Desarrollo
 
-Haz clic en la URL de preview para ver el email renderizado.
+- Sin SMTP completo y con `NODE_ENV` distinto de `production`, se usa una
+  cuenta de **Ethereal**: los correos no llegan a nadie y la consola imprime
+  el enlace para verlos.
+- En producción (la app instalada) **no** se usa Ethereal: sin configuración
+  el envío falla y queda registrado en el log.
+- Para probar con un servidor local se puede usar cualquier «catcher» SMTP
+  (p. ej. `aiosmtpd`, MailHog o Mailpit) y configurarlo en la pestaña Correo
+  como «Otro proveedor» (`127.0.0.1`, su puerto).
 
----
+## Plantillas
 
-## Configuración para Producción
-
-### Opción 1: SMTP (Gmail, Outlook, Servidor propio)
-
-Crea o edita el archivo `.env` en la carpeta `backend/`:
-
-```env
-# Proveedor de email
-EMAIL_PROVIDER=smtp
-
-# Configuración SMTP
-SMTP_HOST=smtp.gmail.com
-SMTP_PORT=587
-SMTP_SECURE=false
-SMTP_USER=tu-email@gmail.com
-SMTP_PASS=tu-contraseña-de-aplicacion
-SMTP_FROM=tu-email@gmail.com
-```
-
-#### Configuración específica por proveedor:
-
-**Gmail:**
-1. Activa la verificación en 2 pasos en tu cuenta Google
-2. Ve a [myaccount.google.com/apppasswords](https://myaccount.google.com/apppasswords)
-3. Crea una "Contraseña de aplicación" para "Correo"
-4. Usa esa contraseña (16 caracteres) en `SMTP_PASS`
-
-```env
-SMTP_HOST=smtp.gmail.com
-SMTP_PORT=587
-SMTP_SECURE=false
-```
-
-**Outlook/Hotmail:**
-```env
-SMTP_HOST=smtp.office365.com
-SMTP_PORT=587
-SMTP_SECURE=false
-```
-
-**Yahoo:**
-```env
-SMTP_HOST=smtp.mail.yahoo.com
-SMTP_PORT=465
-SMTP_SECURE=true
-```
-
----
-
-### Opción 2: Resend (Recomendado)
-
-[Resend](https://resend.com) es un servicio moderno de email transaccional con:
-- API simple y fiable
-- Buenas tasas de entrega
-- Analíticas de emails
-- Plan gratuito de 3,000 emails/mes
-
-#### Pasos para configurar Resend:
-
-1. **Crear cuenta** en [resend.com](https://resend.com)
-
-2. **Verificar dominio** (o usar el dominio de pruebas `onboarding@resend.dev`)
-   - Ve a Settings > Domains
-   - Añade tu dominio
-   - Configura los registros DNS indicados
-
-3. **Generar API Key**
-   - Ve a Settings > API Keys
-   - Crea una nueva API Key
-   - Copia la clave (empieza por `re_`)
-
-4. **Configurar variables de entorno:**
-
-```env
-# Proveedor de email
-EMAIL_PROVIDER=resend
-
-# API Key de Resend
-RESEND_API_KEY=re_xxxxxxxxxxxxxxxxxxxxxxxx
-
-# Email remitente (debe estar en un dominio verificado en Resend)
-SMTP_FROM=citas@tu-dominio.com
-```
-
----
-
-## Variables de Entorno Disponibles
-
-| Variable | Descripción | Requerido |
-|----------|-------------|-----------|
-| `EMAIL_PROVIDER` | `smtp` o `resend` | No (default: smtp) |
-| `RESEND_API_KEY` | API Key de Resend | Solo si provider=resend |
-| `SMTP_HOST` | Servidor SMTP | Solo si provider=smtp |
-| `SMTP_PORT` | Puerto SMTP | Solo si provider=smtp |
-| `SMTP_SECURE` | `true` para puerto 465, `false` para 587 | No |
-| `SMTP_USER` | Usuario SMTP | Solo si provider=smtp |
-| `SMTP_PASS` | Contraseña SMTP | Solo si provider=smtp |
-| `SMTP_FROM` | Email remitente | No (usa farmaciaEmail de config) |
-
----
-
-## Plantillas de Email
-
-Las plantillas se gestionan desde la aplicación:
-1. Ve a **Configuración > Plantillas Email**
-2. Selecciona la plantilla a editar
-3. Modifica el asunto y contenido HTML
-4. Usa variables como `{{nombrePaciente}}` que se reemplazarán automáticamente
-
-### Variables disponibles:
-
-| Variable | Descripción |
-|----------|-------------|
-| `{{nombrePaciente}}` | Nombre del paciente |
-| `{{fechaCita}}` | Fecha de la cita formateada |
-| `{{horaCita}}` | Hora de la cita |
-| `{{tipoServicio}}` | Tipo de servicio (Dermocosmética, Bioquímico, etc.) |
-| `{{nombreFarmacia}}` | Nombre de la farmacia |
-| `{{direccionFarmacia}}` | Dirección completa |
-| `{{telefonoFarmacia}}` | Teléfono de contacto |
-| `{{emailFarmacia}}` | Email de la farmacia |
-| `{{webFarmacia}}` | Sitio web |
-| `{{urlConfirmar}}` | Enlace para confirmar cita |
-| `{{urlModificar}}` | Enlace para modificar cita |
-| `{{urlCancelar}}` | Enlace para cancelar cita |
-| `{{motivoRechazo}}` | Motivo de cancelación (solo en email de cancelación) |
-| `{{anioActual}}` | Año actual (para footer) |
-
----
-
-## Solución de Problemas
-
-### "Los emails no llegan"
-1. Revisa la consola del servidor para errores
-2. Verifica que las credenciales SMTP son correctas
-3. Para Gmail, asegúrate de usar una "Contraseña de aplicación"
-4. Revisa la carpeta de spam del destinatario
-
-### "Error: Invalid login"
-- Gmail: Necesitas una contraseña de aplicación, no tu contraseña normal
-- Outlook: Puede requerir habilitar acceso SMTP en la configuración de la cuenta
-
-### "Error de conexión SMTP"
-- Verifica que el host y puerto son correctos
-- Algunos servidores bloquean puertos SMTP (prueba con puerto 587 o 465)
-
-### "Resend no envía emails"
-- Verifica que la API Key es válida
-- El dominio del remitente debe estar verificado en Resend
-- Para pruebas, usa `onboarding@resend.dev` como remitente
-
----
-
-## Reiniciar el Servidor
-
-Después de cambiar la configuración, reinicia el backend:
-
-```bash
-# Si usas npm
-cd backend && npm run dev
-
-# En producción
-pm2 restart backend
-# o
-systemctl restart farmacia-backend
-```
+`PlantillaEmail` (una por `tipo`: `confirmacion`, `recordatorio`,
+`cancelacion`, `modificacion`, `cumpleanos`…), editables en **Configuración →
+Plantillas Email**. `obtenerPlantilla(tipo)` devuelve `null` si está
+desactivada y entonces no se envía. Las variables `{{...}}` se sustituyen en
+`reemplazarVariables()`; el listado para la interfaz lo da
+`GET /api/plantillas-email/variables`.

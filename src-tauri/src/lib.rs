@@ -273,6 +273,14 @@ fn kill_backend(app: &tauri::AppHandle) {
     }
 }
 
+/// Para el backend antes de instalar una actualización: en Windows el
+/// instalador no puede sustituir los archivos de Node mientras sigan en uso,
+/// y en macOS/Linux la app reiniciada arranca su propio backend en el mismo puerto.
+#[tauri::command]
+fn detener_backend(app: tauri::AppHandle) {
+    kill_backend(&app);
+}
+
 #[cfg_attr(mobile, tauri::mobile_entry_point)]
 pub fn run() {
     let builder = tauri::Builder::default();
@@ -288,11 +296,15 @@ pub fn run() {
         }
     }));
 
+    #[cfg(desktop)]
+    let builder = builder.plugin(tauri_plugin_updater::Builder::new().build());
+
     builder
         .plugin(tauri_plugin_shell::init())
         .plugin(tauri_plugin_dialog::init())
         .plugin(tauri_plugin_process::init())
         .manage(BackendProcess(Mutex::new(None)))
+        .invoke_handler(tauri::generate_handler![detener_backend])
         .setup(|app| {
             if cfg!(debug_assertions) {
                 app.handle().plugin(
