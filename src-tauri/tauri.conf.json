@@ -1,7 +1,7 @@
 {
   "$schema": "../node_modules/@tauri-apps/cli/config.schema.json",
   "productName": "Formula Care",
-  "version": "0.3.0",
+  "version": "0.4.0",
   "identifier": "com.abeleiras.formulacare",
   "build": {
     "frontendDist": "../dist",
@@ -27,7 +27,13 @@
   },
   "bundle": {
     "active": true,
-    "targets": ["appimage", "msi", "nsis", "dmg", "app"],
+    "targets": [
+      "appimage",
+      "msi",
+      "nsis",
+      "dmg",
+      "app"
+    ],
     "icon": [
       "icons/32x32.png",
       "icons/128x128.png",
@@ -35,7 +41,9 @@
       "icons/icon.icns",
       "icons/icon.ico"
     ],
-    "externalBin": ["binaries/node"],
+    "externalBin": [
+      "binaries/node"
+    ],
     "resources": {
       "../backend/dist": "backend/dist",
       "../backend/node_modules": "backend/node_modules",
@@ -43,8 +51,30 @@
       "../backend/prisma/desktop-template.db": "backend/prisma/desktop-template.db",
       "../backend/prisma/migrations": "backend/prisma/migrations"
     },
+    "windows": {
+      "wix": {
+        "language": "es-ES"
+      },
+      "nsis": {
+        "languages": [
+          "Spanish"
+        ],
+        "displayLanguageSelector": false
+      }
+    },
     "android": {
       "debugApplicationIdSuffix": ".debug"
+    }
+  },
+  "plugins": {
+    "updater": {
+      "pubkey": "dW50cnVzdGVkIGNvbW1lbnQ6IG1pbmlzaWduIHB1YmxpYyBrZXk6IDlDMjY5RTlFMEQ4NTM2MzMKUldRek5vVU5ucDRtbkRlWE1IVGFaMS8yc3dJTWF5NWNXaDFQejVxb1BqSGJrd01UWmxWYUlrcUkK",
+      "endpoints": [
+        "https://github.com/abel-eiras/formula-care/releases/latest/download/latest.json"
+      ],
+      "windows": {
+        "installMode": "passive"
+      }
     }
   }
 }

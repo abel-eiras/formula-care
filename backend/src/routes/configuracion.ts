@@ -1,4 +1,5 @@
 import { Router } from 'express';
+import { verificarRol } from '../middleware/auth.js';
 import {
   obtenerConfiguracion,
   actualizarFarmacia,
@@ -13,6 +14,9 @@ import {
   actualizarRgpd,
   obtenerConfigBackup,
   actualizarConfigBackup,
+  obtenerConfigCorreo,
+  actualizarConfigCorreo,
+  probarCorreo,
 } from '../controllers/configuracion.js';
 
 export const configuracionRouter = Router();
@@ -45,3 +49,8 @@ configuracionRouter.put('/rgpd', actualizarRgpd);
 // Configuración de copias de seguridad
 configuracionRouter.get('/backup', obtenerConfigBackup);
 configuracionRouter.put('/backup', actualizarConfigBackup);
+
+// Configuración de correo (solo administradores: guarda credenciales)
+configuracionRouter.get('/correo', verificarRol('admin'), obtenerConfigCorreo);
+configuracionRouter.put('/correo', verificarRol('admin'), actualizarConfigCorreo);
+configuracionRouter.post('/correo/prueba', verificarRol('admin'), probarCorreo);

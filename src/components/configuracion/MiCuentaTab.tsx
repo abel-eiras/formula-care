@@ -6,6 +6,7 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/com
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { useAuthContext } from "@/contexts/AuthContext";
+import { TarjetaVersion } from "@/components/actualizaciones/TarjetaVersion";
 import { useCambiarMiPassword } from "@/hooks/useUsuarios";
 import { LONGITUD_MINIMA, ROLES, mensajeError } from "@/lib/usuarios";
 
@@ -98,6 +99,8 @@ export function MiCuentaTab() {
           </form>
         </CardContent>
       </Card>
+
+      <TarjetaVersion />
     </div>
   );
 }

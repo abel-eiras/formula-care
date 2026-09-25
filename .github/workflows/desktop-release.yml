@@ -7,10 +7,15 @@ name: Build app de escritorio
 # - Manual (workflow_dispatch): compila las tres plataformas sin publicar
 #   ningún release, solo para comprobar que el build sigue funcionando.
 #
-# No hace falta ningún secreto para que esto funcione (usa el GITHUB_TOKEN
-# que Actions inyecta automáticamente). Firmar los binarios de Windows/macOS
-# para que el sistema operativo no muestre avisos de "editor desconocido"
-# queda fuera de alcance de este workflow — ver la nota al final.
+# Actualizaciones automáticas: si el repositorio tiene los secretos
+# TAURI_SIGNING_PRIVATE_KEY y TAURI_SIGNING_PRIVATE_KEY_PASSWORD, cada
+# instalador se firma para el actualizador (.sig) y el release lleva un
+# latest.json, que es lo que consulta la app instalada. Sin esos secretos el
+# build funciona igual, pero sin actualizaciones automáticas.
+#
+# Esa firma solo sirve para que la app compruebe que la actualización es
+# auténtica; NO es la firma de código de Windows/macOS (de pago), que queda
+# fuera del proyecto: por eso el sistema avisa de "editor desconocido".
 
 on:
   push:
@@ -34,6 +39,10 @@ jobs:
           - platform: macos-latest
 
     runs-on: ${{ matrix.platform }}
+
+    env:
+      # 'true' si el repositorio tiene la clave para firmar las actualizaciones
+      HAY_CLAVE_ACTUALIZACIONES: ${{ secrets.TAURI_SIGNING_PRIVATE_KEY != '' }}
 
     steps:
       - uses: actions/checkout@v4
@@ -91,7 +100,11 @@ jobs:
         uses: tauri-apps/tauri-action@v0
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          TAURI_SIGNING_PRIVATE_KEY: ${{ secrets.TAURI_SIGNING_PRIVATE_KEY }}
+          TAURI_SIGNING_PRIVATE_KEY_PASSWORD: ${{ secrets.TAURI_SIGNING_PRIVATE_KEY_PASSWORD }}
         with:
+          # Con clave, genera además los archivos firmados del actualizador
+          args: ${{ env.HAY_CLAVE_ACTUALIZACIONES == 'true' && '--config src-tauri/tauri.actualizaciones.conf.json' || '' }}
           # tagName vacío en workflow_dispatch le indica a tauri-action que
           # compile sin crear ni tocar ningún release (solo en un push de
           # tag "v*" hay tagName real y se crea el borrador).
@@ -102,7 +115,11 @@ jobs:
             Descarga el que corresponda a tu sistema operativo.
           releaseDraft: true
           prerelease: false
-          includeUpdaterJson: false
+          # latest.json para la app instalada (solo tiene contenido con clave).
+          # Lleva una entrada por tipo de instalador, así quien instaló con el
+          # .msi se actualiza con el .msi y quien usó el .exe, con el .exe.
+          includeUpdaterJson: ${{ env.HAY_CLAVE_ACTUALIZACIONES == 'true' }}
+          updaterJsonPreferNsis: true
 
       - name: Subir instaladores como artefacto del run (workflow_dispatch)
         if: github.event_name == 'workflow_dispatch'
