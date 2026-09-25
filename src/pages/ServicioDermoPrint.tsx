@@ -471,6 +471,14 @@ export default function ServicioDermoPrint() {
           </div>
         </div>
 
+        {/* Recomendaciones - Siempre visible */}
+        <div className="section-header">Recomendaciones</div>
+        <div className="accent-box mb-6">
+          <div className="print-textarea whitespace-pre-wrap" style={{ minHeight: "100px" }}>
+            {analisis.recomendaciones || ""}
+          </div>
+        </div>
+
         {/* Firmas - Siempre visible */}
         <div className="signature-area text-sm">
           <div className="flex items-center">

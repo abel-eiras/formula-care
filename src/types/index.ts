@@ -192,6 +192,7 @@ export interface AnalisisDermo {
   rutinaNoche?: RutinaNoche | null;
   cuidadosSemanales?: CuidadosSemanales | null;
   suplementacionOral?: string;
+  recomendaciones?: string;
   proximaRevision?: string;
   farmaceutico?: string;
   createdAt?: string;

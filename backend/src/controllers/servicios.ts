@@ -35,6 +35,7 @@ const crearAnalisisDermoSchema = z.object({
     mascarilla: z.string().optional(),
   }).optional(),
   suplementacionOral: z.string().optional(),
+  recomendaciones: z.string().optional(),
   proximaRevision: z.string().optional(),
   farmaceutico: z.string().optional(),
   // Campos legacy (mantener para compatibilidad)

@@ -136,6 +136,7 @@ export default function ServicioDermo() {
       mascarilla: "",
     } as CuidadosSemanales,
     suplementacionOral: "",
+    recomendaciones: "",
     proximaRevision: "",
     farmaceutico: "",
   });
@@ -171,6 +172,7 @@ export default function ServicioDermo() {
           mascarilla: "",
         },
         suplementacionOral: analisisExistente.suplementacionOral || "",
+        recomendaciones: analisisExistente.recomendaciones || "",
         proximaRevision: analisisExistente.proximaRevision || "",
         farmaceutico: analisisExistente.farmaceutico || "",
       });
@@ -241,6 +243,7 @@ export default function ServicioDermo() {
         rutinaNoche: formData.rutinaNoche,
         cuidadosSemanales: formData.cuidadosSemanales,
         suplementacionOral: formData.suplementacionOral,
+        recomendaciones: formData.recomendaciones,
         proximaRevision: formData.proximaRevision ? parsearFecha(formData.proximaRevision) : undefined,
         farmaceutico: formData.farmaceutico,
       };
@@ -624,6 +627,21 @@ export default function ServicioDermo() {
                 />
               </div>
             </div>
+          </div>
+
+          {/* Recomendaciones */}
+          <div>
+            <div className="bg-secondary text-secondary-foreground font-semibold text-sm py-2 px-4 rounded-sm mb-4 uppercase tracking-wide">
+              Recomendaciones
+            </div>
+            <Textarea
+              id="recomendaciones"
+              value={formData.recomendaciones}
+              onChange={(e) => setFormData((prev) => ({ ...prev, recomendaciones: e.target.value }))}
+              rows={8}
+              placeholder="Consejos y recomendaciones para el paciente…"
+              className="text-sm"
+            />
           </div>
 
           {/* Firmas */}
