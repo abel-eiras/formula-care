@@ -59,6 +59,34 @@ jobs:
         working-directory: backend
         run: npm test
 
+  e2e:
+    name: Pruebas de extremo a extremo
+    runs-on: ubuntu-22.04
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 20
+          cache: npm
+      - name: Dependencias de la app
+        run: npm ci
+      - name: Dependencias del backend y cliente de Prisma
+        working-directory: backend
+        run: npm ci && npx prisma generate
+      - name: Navegador
+        run: npx playwright install --with-deps chromium
+      - name: Pruebas (app compilada contra el backend real, base de datos nueva)
+        run: npx playwright test
+      - name: Informe si fallan
+        if: failure()
+        uses: actions/upload-artifact@v4
+        with:
+          name: informe-e2e
+          path: |
+            playwright-report
+            test-results
+          retention-days: 7
+
   booking-web:
     name: booking-web
     runs-on: ubuntu-22.04

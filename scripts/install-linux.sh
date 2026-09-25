@@ -6,6 +6,10 @@
 # Uso:
 #   curl -fsSL https://raw.githubusercontent.com/abel-eiras/formula-care/main/scripts/install-linux.sh | sh
 #
+# Desinstalar (los datos se conservan salvo que se pida lo contrario):
+#   curl -fsSL https://raw.githubusercontent.com/abel-eiras/formula-care/main/scripts/install-linux.sh | sh -s -- --desinstalar
+#   … | sh -s -- --desinstalar --borrar-datos     (borra también pacientes, configuración y copias)
+#
 # Necesita conexión a internet (descarga ~150MB) y `curl`.
 set -eu
 
@@ -16,6 +20,40 @@ INSTALL_DIR="${FORMULA_CARE_INSTALL_DIR:-$HOME/.local/share/formula-care}"
 BIN_LINK_DIR="$HOME/.local/bin"
 DESKTOP_DIR="$HOME/.local/share/applications"
 ICON_DIR="$HOME/.local/share/icons/hicolor/128x128/apps"
+# Carpeta de datos de la app (base de datos, copias de seguridad, configuración)
+DATA_DIR="${XDG_DATA_HOME:-$HOME/.local/share}/com.abeleiras.formulacare"
+
+desinstalar() {
+  borrar_datos="$1"
+  rm -f "$INSTALL_DIR/$BIN_NAME.AppImage" "$BIN_LINK_DIR/$BIN_NAME" "$DESKTOP_DIR/$BIN_NAME.desktop" "$ICON_DIR/$BIN_NAME.png"
+  rmdir "$INSTALL_DIR" 2>/dev/null || true
+  echo "✓ $APP_NAME desinstalado."
+
+  if [ ! -d "$DATA_DIR" ]; then
+    return
+  fi
+  # Con «curl … | sh» la entrada es el propio script: se pregunta por la terminal
+  if [ "$borrar_datos" != "si" ] && (: < /dev/tty) 2>/dev/null; then
+    printf '¿Borrar también los datos (pacientes, configuración y copias de seguridad)? Esto no se puede deshacer. [s/N] '
+    read -r respuesta < /dev/tty || respuesta=""
+    case "$respuesta" in
+      s|S|si|sí|Si|Sí) borrar_datos="si" ;;
+    esac
+  fi
+  if [ "$borrar_datos" = "si" ]; then
+    rm -rf "$DATA_DIR"
+    echo "✓ Datos borrados."
+  else
+    echo "Tus datos se conservan en $DATA_DIR (si vuelves a instalar la app, seguirán ahí)."
+  fi
+}
+
+case "${1:-}" in
+  --desinstalar)
+    if [ "${2:-}" = "--borrar-datos" ]; then desinstalar si; else desinstalar no; fi
+    exit 0
+    ;;
+esac
 
 if [ "$(uname -s)" != "Linux" ]; then
   echo "Este instalador es solo para Linux. En macOS usa el .dmg y en Windows el .exe/.msi de la página de Releases." >&2

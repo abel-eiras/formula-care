@@ -104,6 +104,7 @@ export async function setupInicial(req: Request, res: Response) {
         rol: 'admin',
       },
     });
+    await anotarAcceso({ usuarioId: usuario.id, usuarioNombre: usuario.nombre, accion: 'login', recurso: 'sesion', detalle: 'cuenta de administrador creada' });
 
     const token = generarToken({
       id: usuario.id,

@@ -17,7 +17,8 @@
     "tauri:dev": "tauri dev",
     "predesktop:backend": "npm --prefix backend run build:desktop",
     "predesktop:node-sidecar": "node scripts/fetch-node-sidecar.mjs",
-    "tauri:build": "npm run predesktop:backend && npm run predesktop:node-sidecar && tauri build"
+    "tauri:build": "npm run predesktop:backend && npm run predesktop:node-sidecar && tauri build",
+    "test:e2e": "playwright test"
   },
   "dependencies": {
     "@fontsource/montserrat": "^5.3.0",
@@ -81,6 +82,7 @@
   },
   "devDependencies": {
     "@eslint/js": "^9.32.0",
+    "@playwright/test": "^1.63.0",
     "@tailwindcss/typography": "^0.5.16",
     "@tauri-apps/cli": "^2.11.4",
     "@testing-library/jest-dom": "^6.6.0",

@@ -46,3 +46,6 @@ nul
 src-tauri/target/
 src-tauri/gen/
 backend/prisma/desktop-template.db
+dist-e2e
+test-results
+playwright-report

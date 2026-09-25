@@ -18,6 +18,7 @@ Esta es la versión de escritorio, libre y de código abierto, de [Fórmula Care
 - Ficha de cada paciente con sus datos, su historial de visitas y todos sus análisis.
 - Búsqueda rápida por nombre, teléfono o email.
 - Todas sus medidas (peso, perímetros, bioimpedancia, tensión, pulsaciones) en una sola tabla, con gráficas de evolución.
+- ¿Los tenías en Excel? **Impórtalos de una vez** con la plantilla que te da la app: te avisa de las filas con errores y no duplica a nadie.
 
 ### Análisis dermocosmético
 - Evaluación completa de la piel (hidratación, sebo, elasticidad…), plan de tratamiento y productos recomendados.
@@ -25,6 +26,8 @@ Esta es la versión de escritorio, libre y de código abierto, de [Fórmula Care
 ### Análisis bioquímico
 - Registro de los valores de la analítica, con aviso visual de los que están fuera de rango y cálculo del IMC.
 - Seguimiento de la evolución entre analíticas. Los parámetros y sus rangos de referencia se pueden ajustar.
+- **Riesgo cardiovascular (SCORE2)** calibrado para España, cuando mides tensión y colesterol en la misma prueba.
+- **Test FINDRISC** de riesgo de diabetes cuando mides glucemia o hemoglobina glucosilada, con los puntos de cada pregunta guardados para el seguimiento y anexado al informe.
 
 ### Nutrición (con seguimiento GLP-1 opcional)
 - Programa por paciente: motivo, objetivo, antecedentes y tratamientos.
@@ -51,12 +54,14 @@ Esta es la versión de escritorio, libre y de código abierto, de [Fórmula Care
 - Datos de la farmacia, logo y colores (varios temas o los tuyos propios).
 - Textos de los correos editables.
 - Varios usuarios, cada uno con su contraseña, y un administrador que los gestiona.
+- **Ayuda dentro de la app** con guías de cada servicio, de las plantillas de correo y de la importación.
 
 ### Protección de datos
 - Consentimiento de cada paciente registrado (fecha y versión del texto aceptado).
 - Textos legales de la farmacia editables.
 - Exportación de todos los datos de un paciente si te los pide, y aviso de los pacientes que superan el periodo de conservación.
 - **Copias de seguridad automáticas**, que puedes proteger con contraseña y guardar también en un disco externo o una carpeta de OneDrive, Google Drive o Dropbox.
+- **La sesión se cierra sola** si el ordenador se queda desatendido, y un **registro de accesos** muestra quién ha consultado o cambiado cada ficha.
 
 ## 💾 Descargar e instalar
 
@@ -65,7 +70,8 @@ Entra en la página de [**descargas (Releases)**](https://github.com/abel-eiras/
 | Tu ordenador | Archivo que tienes que descargar |
 |--------------|----------------------------------|
 | Windows | el que termina en **`.exe`** |
-| Mac | el que termina en **`.dmg`** |
+| Mac con chip Apple (M1 o posterior) | el que termina en **`aarch64.dmg`** |
+| Mac con procesador Intel | el que termina en **`x64.dmg`** |
 | Linux | el que termina en **`.AppImage`** |
 
 > **La primera vez verás un aviso de seguridad.** Es normal: Windows y macOS avisan de todo programa que no haya pagado un certificado de firma, y este es gratuito y sin ánimo de lucro. Abajo tienes cómo continuar. Durante la instalación hace falta conexión a internet.
@@ -79,6 +85,8 @@ Entra en la página de [**descargas (Releases)**](https://github.com/abel-eiras/
 (También hay un `.msi` para quien lo prefiera; hace lo mismo.)
 
 ### 🍎 Mac
+
+Para saber qué `.dmg` descargar: menú  → **Acerca de este Mac**. Si pone «Chip Apple M…», el `aarch64.dmg`; si pone «Procesador … Intel», el `x64.dmg`.
 
 1. Abre el archivo `.dmg` y arrastra **Formula Care** a la carpeta **Aplicaciones**.
 2. La primera vez, en lugar de hacer doble clic, haz **clic derecho** (o Ctrl + clic) sobre la app → **Abrir** → y confirma **Abrir** en el aviso.
@@ -139,7 +147,11 @@ No. Esa contraseña no se guarda en ningún sitio y sin ella nadie puede abrir l
 
 - **Windows:** Configuración → Aplicaciones → Aplicaciones instaladas → **Formula Care** → **Desinstalar** (o desde el Panel de control → Programas).
 - **Mac:** arrastra **Formula Care** desde la carpeta Aplicaciones a la Papelera.
-- **Linux:** si la instalaste con el comando de arriba, borra la carpeta `~/.local/share/formula-care`, el archivo `~/.local/share/applications/formula-care.desktop` y el enlace `~/.local/bin/formula-care`. Si usabas el `.AppImage` suelto, basta con borrarlo.
+- **Linux:** si la instalaste con el comando de arriba, desinstálala con este otro (te preguntará si quieres borrar también los datos):
+  ```bash
+  curl -fsSL https://raw.githubusercontent.com/abel-eiras/formula-care/main/scripts/install-linux.sh | sh -s -- --desinstalar
+  ```
+  Si usabas el `.AppImage` suelto, basta con borrarlo.
 
 ### ¿Se borran mis datos al desinstalar?
 
@@ -273,6 +285,7 @@ En el primer arranque de un paquete instalado, la app genera automáticamente un
 
 ### Calidad
 - **Vitest** - Tests del frontend y del backend (este sobre una base de datos temporal migrada desde cero)
+- **Playwright** - Pruebas de extremo a extremo (`npm run test:e2e`): la app compilada contra el backend real con una base de datos nueva, recorriendo primer arranque, pacientes, importación, SCORE2/FINDRISC, ayuda y registro de accesos
 - **GitHub Actions** - En cada PR, tipos, lint, tests y builds de todos los proyectos ([`comprobaciones.yml`](.github/workflows/comprobaciones.yml)); los instaladores, con [`desktop-release.yml`](.github/workflows/desktop-release.yml)
 
 ## Estructura del proyecto
